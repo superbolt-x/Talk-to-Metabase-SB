@@ -103,6 +103,8 @@ class MetabaseAuth:
             
             try:
                 data = response.json() if response.content else None
+                # Debug: Log the JSON structure
+                logger.info(f"API response for {path}: Status {response.status_code}, data structure: {list(data.keys()) if isinstance(data, dict) else type(data)}")
             except json.JSONDecodeError:
                 data = {"text": response.text}
             
