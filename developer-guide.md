@@ -12,6 +12,7 @@ SuperMetabase is an MCP (Model Context Protocol) server that integrates Claude w
 2. **Tools**: Functions that map to Metabase API endpoints for resource operations
 3. **Configuration**: Environment variable-based configuration with .env file support
 4. **Response Handling**: Includes size limits to prevent oversized responses
+5. **Pagination**: Client-side pagination for large data sets where API doesn't natively support it
 
 ## Project Structure
 
@@ -228,7 +229,11 @@ logger.error(f"Error in tool_name: {e}")
 
 ### Pagination for Large Result Sets
 
-For API endpoints that may return large sets of data, implement pagination to ensure manageable response sizes:
+For API endpoints that may return large sets of data, implement pagination to ensure manageable response sizes. There are two types of pagination implementations in SuperMetabase:
+
+#### 1. API-Based Pagination
+
+When the Metabase API natively supports pagination:
 
 ```python
 @mcp.tool(name="list_resources", description="List resources with pagination")
@@ -253,7 +258,7 @@ async def list_resources(
     client = get_metabase_client(ctx)
     
     try:
-        # Make API request
+        # Make API request with pagination parameters
         data = await client.get_resources(page=page, page_size=page_size)
         
         # Format and return response with pagination metadata
@@ -273,6 +278,212 @@ async def list_resources(
         # ... error handling
 ```
 
+#### 2. Client-Side Pagination
+
+When the Metabase API doesn't support pagination but responses are too large:
+
+```python
+@mcp.tool(name="get_resource_with_items", description="Get resource with paginated items")
+async def get_resource_with_items(
+    id: int,
+    ctx: Context,
+    page: int = 1,
+    page_size: int = 20
+) -> str:
+    """
+    Get a resource with its items, applying client-side pagination.
+    
+    Args:
+        id: Resource ID
+        ctx: MCP context
+        page: Page number (default: 1)
+        page_size: Number of items per page (default: 20)
+        
+    Returns:
+        JSON string with resource data and paginated items
+    """
+    # Validation for pagination parameters
+    if page < 1:
+        return format_error_response(
+            status_code=400,
+            error_type="invalid_pagination",
+            message="Page number must be greater than or equal to 1",
+            request_info={"resource_id": id, "page": page}
+        )
+    
+    client = get_metabase_client(ctx)
+    
+    try:
+        # Get the full resource (API doesn't support pagination)
+        data = await client.get_resource(id)
+        
+        # Extract all items
+        all_items = data.get("items", [])
+        
+        # Sort items if needed
+        # all_items.sort(key=lambda item: (item.get("position", 0)))
+        
+        # Calculate pagination metadata
+        total_items = len(all_items)
+        total_pages = (total_items + page_size - 1) // page_size if total_items > 0 else 1
+        
+        if page > total_pages and total_pages > 0:
+            return format_error_response(
+                status_code=400,
+                error_type="page_out_of_range",
+                message=f"Page {page} exceeds the total number of pages ({total_pages})",
+                request_info={"resource_id": id, "page": page, "total_pages": total_pages}
+            )
+        
+        # Apply pagination
+        start_idx = (page - 1) * page_size
+        end_idx = min(start_idx + page_size, total_items)
+        
+        # Create paginated response
+        paginated_data = {
+            "id": data.get("id"),
+            "name": data.get("name"),
+            # Include other resource metadata...
+            "items": all_items[start_idx:end_idx],
+            "pagination": {
+                "page": page,
+                "page_size": page_size,
+                "total_items": total_items,
+                "total_pages": total_pages,
+                "has_more": page < total_pages,
+                "note": "Pagination is handled by the tool and not by the Metabase API"
+            }
+        }
+        
+        # Return the paginated response
+        response = json.dumps(paginated_data, indent=2)
+        return check_response_size(response, ctx.request_context.lifespan_context.auth.config)
+    except Exception as e:
+        # ... error handling
+```
+
+## Dashboard Tools with Pagination
+
+SuperMetabase implements a two-step approach for handling dashboards with large numbers of cards:
+
+### 1. `get_dashboard` Tool
+
+This tool provides metadata about a dashboard without including the full card data:
+
+```python
+@mcp.tool(name="get_dashboard", description="Retrieve a dashboard by ID without card details")
+async def get_dashboard(id: int, ctx: Context) -> str:
+    """
+    Retrieve a dashboard by ID without card details.
+    
+    Args:
+        id: Dashboard ID
+        ctx: MCP context
+        
+    Returns:
+        Dashboard data as JSON string without card details
+    """
+    # ... implementation details
+```
+
+Key features:
+- Returns dashboard metadata (name, description, etc.)
+- Includes tab information for multi-tab dashboards
+- Provides total card count but doesn't include the cards themselves
+- Adds an `is_single_tab` flag for dashboards without explicit tabs
+- Significantly reduces response size by omitting card data
+
+Example response:
+```json
+{
+  "id": 1864,
+  "name": "Analytics Dashboard",
+  "description": "Key performance metrics",
+  "dashcard_count": 35,
+  "is_single_tab": true
+}
+```
+
+### 2. `get_dashboard_tab` Tool
+
+This tool retrieves the cards for a specific dashboard tab with pagination:
+
+```python
+@mcp.tool(name="get_dashboard_tab", description="Retrieve cards for a specific dashboard tab with pagination")
+async def get_dashboard_tab(
+    dashboard_id: int, 
+    ctx: Context, 
+    tab_id: Optional[int] = None,
+    page: int = 1,
+    page_size: int = 20
+) -> str:
+    """
+    Retrieve cards for a specific dashboard tab with pagination.
+    
+    Args:
+        dashboard_id: Dashboard ID
+        ctx: MCP context
+        tab_id: Tab ID (optional, if not provided for single-tab dashboards)
+        page: Page number for pagination (default: 1)
+        page_size: Number of cards per page (default: 20)
+        
+    Returns:
+        Dashboard tab data with paginated cards as JSON string
+    """
+    # ... implementation details
+```
+
+Key features:
+- Supports both single-tab and multi-tab dashboards
+- Requires a tab_id parameter for multi-tab dashboards
+- Returns cards in a consistent order (top to bottom, left to right)
+- Applies client-side pagination to limit response size
+- Processes each card to include essential information while reducing size
+- Provides comprehensive pagination metadata
+
+Example response:
+```json
+{
+  "dashboard_id": 1864,
+  "dashcards": [
+    {
+      "id": 55882,
+      "card_id": null,
+      "row": 0,
+      "col": 0,
+      "size_x": 24,
+      "size_y": 1,
+      "card_summary": {
+        "id": null,
+        "name": null
+      },
+      "visualization_settings": {
+        "text": "### Overall",
+        "text.align_vertical": "middle",
+        "text.align_horizontal": "center"
+      }
+    },
+    // ... more cards
+  ],
+  "pagination": {
+    "page": 1,
+    "page_size": 20,
+    "total_cards": 35,
+    "total_pages": 2,
+    "has_more": true,
+    "note": "Pagination is handled by the tool and not by the Metabase API"
+  },
+  "is_single_tab": true,
+  "name": "Analytics Dashboard"
+}
+```
+
+Implementation considerations:
+- Cards are sorted by position (row, col) to match visual layout
+- Card objects are simplified to include only essential information
+- Card visualization settings are preserved to understand chart configuration
+- Series cards are also processed and simplified
+
 ## Metabase API Endpoints
 
 The following table shows the Metabase API endpoints that correspond to existing and planned tools, with an indicator of implementation status:
@@ -280,6 +491,7 @@ The following table shows the Metabase API endpoints that correspond to existing
 | Category | API Endpoint | Tool Name | Status |
 |----------|-------------|-----------|--------|
 | **Dashboard Operations** | `GET /api/dashboard/{id}` | `get_dashboard` | ✅ Implemented |
+| | `GET /api/dashboard/{id}` | `get_dashboard_tab` | ✅ Implemented (with client-side pagination) |
 | | `POST /api/dashboard/` | `create_dashboard` | ✅ Implemented |
 | | `PUT /api/dashboard/{id}` | `update_dashboard` | 📝 Planned |
 | | `POST /api/dashboard/{dashboard-id}/cards` | `add_card_to_dashboard` | 📝 Planned |
@@ -392,6 +604,8 @@ For testing pagination functionality, create tests that verify:
 1. Correct page slicing with different page sizes
 2. Accurate metadata calculation (total pages, has_more flag)
 3. Edge cases (first page, last page, empty results)
+4. Validation of pagination parameters
+5. Proper sorting of results before pagination
 
 ### Testing with Claude Desktop
 
@@ -402,7 +616,10 @@ To test with Claude Desktop:
 3. Ask questions that would trigger your new tool
 4. Check the server logs for any issues
 
-For paginated results, test navigation between pages by incrementing the page parameter.
+For paginated results, test multi-step interactions where Claude requests:
+1. First dashboard metadata with `get_dashboard`
+2. Then a specific tab's cards with `get_dashboard_tab` 
+3. Then navigates through pages by incrementing the page parameter
 
 ## Common Issues and Troubleshooting
 
@@ -425,6 +642,7 @@ If tools aren't appearing in Claude:
 If responses are being truncated:
 - The response likely exceeds the configured size limit
 - Use pagination with appropriate page_size to reduce response size
+- For large dashboards, use the two-step approach with `get_dashboard` followed by `get_dashboard_tab`
 - Adjust the `RESPONSE_SIZE_LIMIT` value if larger responses are required
 
 ### Parameter Parsing Issues
@@ -433,6 +651,13 @@ If string-formatted parameters (like JSON arrays or objects) aren't being parsed
 - Add explicit parsing for string representation of complex types
 - Include proper error handling for parsing failures
 - Log the original parameter value and type for debugging
+
+### Tab ID Issues
+
+If experiencing issues with dashboard tabs:
+- Verify that the tab_id parameter is only provided for multi-tab dashboards
+- Ensure tab_id is correctly validated against the available tabs
+- Check that client-side pagination is working correctly for the specific tab
 
 ## Performance Considerations
 
@@ -451,24 +676,36 @@ Be aware of Metabase's rate limiting. If you implement tools that make many API 
 ### Pagination Efficiency
 
 For very large result sets, consider implementing:
-- Client-side pagination (implemented in the search tool)
+- Client-side pagination (implemented in dashboard and search tools)
 - Server-side pagination if the API supports it
 - Cursor-based pagination for efficient scrolling through results
+- Appropriate caching for paginated results
+
+### Dashboard Processing
+
+When working with dashboards:
+- Remove nested card data in the `get_dashboard` tool to reduce response size
+- Process dashcards in `get_dashboard_tab` to include only essential information
+- Sort dashcards by position for a consistent user experience
+- Use appropriate page sizes based on typical dashboard layouts
 
 ## Next Steps for Development
 
-The current implementation includes functionality for retrieving and searching Metabase resources. Future development should focus on:
+The current implementation includes functionality for retrieving and searching Metabase resources with pagination. Future development should focus on:
 
 1. Implementing the remaining tools defined in the specifications
 2. Adding integration tests with a real Metabase instance
 3. Implementing caching for frequently accessed resources
 4. Adding more sophisticated error handling
 5. Implementing advanced query capabilities
-6. Adding server-side pagination where applicable
-7. Enhancing parameter parsing for complex types
+6. Enhancing pagination for other large resource types
+7. Improving parameter parsing for complex types
+8. Adding support for dashboard filters and parameters
 
 ## Conclusion
 
-By following these guidelines, you can effectively extend and improve the SuperMetabase MCP server. Remember to maintain consistency with the existing code patterns and to thoroughly test your implementations.
+By following these guidelines, you can effectively extend and improve the SuperMetabase MCP server. The pagination patterns established for dashboard and search resources provide a robust foundation for handling large datasets while maintaining performance and usability.
+
+Remember to maintain consistency with the existing code patterns and to thoroughly test your implementations, especially pagination functionality which requires careful validation of edge cases.
 
 Happy coding!
