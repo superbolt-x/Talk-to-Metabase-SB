@@ -39,7 +39,7 @@ async def search_resources(
     context: Optional[str] = None,
     model_ancestors: bool = False,
     page: int = 1,
-    page_size: int = 50,
+    page_size: int = 20,
 ) -> str:
     """
     Search for resources across Metabase with comprehensive filtering options and pagination.
@@ -65,7 +65,7 @@ async def search_resources(
         context: Search context
         model_ancestors: Include model ancestors (default: False)
         page: Page number for pagination (default: 1)
-        page_size: Number of results per page (default: 50)
+        page_size: Number of results per page (default: 20)
         
     Returns:
         Search results as JSON string with pagination metadata

@@ -59,7 +59,7 @@ async def test_search_resources_basic_success(mock_context, sample_search_result
     """Test successful basic search with query only."""
     # Set up the mock
     client_mock = MagicMock()
-    client_mock.search = AsyncMock(return_value={"results": sample_search_results, "pagination": {"page": 1, "page_size": 50, "total_count": 2, "total_pages": 1, "has_more": False}})
+    client_mock.search = AsyncMock(return_value={"results": sample_search_results, "pagination": {"page": 1, "page_size": 20, "total_count": 2, "total_pages": 1, "has_more": False}})
     
     with patch("supermetabase.tools.search.get_metabase_client", return_value=client_mock):
         # Call the tool with a simple query
@@ -83,7 +83,7 @@ async def test_search_resources_advanced_filters(mock_context, sample_search_res
     """Test search with advanced filters."""
     # Set up the mock
     client_mock = MagicMock()
-    client_mock.search = AsyncMock(return_value={"results": sample_search_results, "pagination": {"page": 1, "page_size": 50, "total_count": 2, "total_pages": 1, "has_more": False}})
+    client_mock.search = AsyncMock(return_value={"results": sample_search_results, "pagination": {"page": 1, "page_size": 20, "total_count": 2, "total_pages": 1, "has_more": False}})
     
     with patch("supermetabase.tools.search.get_metabase_client", return_value=client_mock):
         # Call the tool with multiple filters
@@ -119,7 +119,7 @@ async def test_search_resources_no_query_parameter(mock_context, sample_search_r
     """Test search without a query parameter."""
     # Set up the mock
     client_mock = MagicMock()
-    client_mock.search = AsyncMock(return_value={"results": sample_search_results, "pagination": {"page": 1, "page_size": 50, "total_count": 2, "total_pages": 1, "has_more": False}})
+    client_mock.search = AsyncMock(return_value={"results": sample_search_results, "pagination": {"page": 1, "page_size": 20, "total_count": 2, "total_pages": 1, "has_more": False}})
     
     with patch("supermetabase.tools.search.get_metabase_client", return_value=client_mock):
         # Call the tool without a query parameter
@@ -167,7 +167,7 @@ async def test_search_resources_with_timestamp_filters(mock_context, sample_sear
     """Test search with timestamp filters."""
     # Set up the mock
     client_mock = MagicMock()
-    client_mock.search = AsyncMock(return_value={"results": sample_search_results, "pagination": {"page": 1, "page_size": 50, "total_count": 2, "total_pages": 1, "has_more": False}})
+    client_mock.search = AsyncMock(return_value={"results": sample_search_results, "pagination": {"page": 1, "page_size": 20, "total_count": 2, "total_pages": 1, "has_more": False}})
     
     with patch("supermetabase.tools.search.get_metabase_client", return_value=client_mock):
         # Call the tool with timestamp filters
@@ -196,7 +196,7 @@ async def test_search_resources_with_dashboard_questions(mock_context, sample_se
     """Test search including dashboard questions."""
     # Set up the mock
     client_mock = MagicMock()
-    client_mock.search = AsyncMock(return_value={"results": sample_search_results, "pagination": {"page": 1, "page_size": 50, "total_count": 2, "total_pages": 1, "has_more": False}})
+    client_mock.search = AsyncMock(return_value={"results": sample_search_results, "pagination": {"page": 1, "page_size": 20, "total_count": 2, "total_pages": 1, "has_more": False}})
     
     with patch("supermetabase.tools.search.get_metabase_client", return_value=client_mock):
         # Call the tool with include_dashboard_questions

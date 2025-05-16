@@ -124,7 +124,7 @@ class MetabaseClient:
         context: Optional[str] = None,
         model_ancestors: bool = False,
         page: int = 1,
-        page_size: int = 50,
+        page_size: int = 20,
     ) -> Dict[str, Any]:
         """
         Search for resources across Metabase with pagination.
@@ -148,7 +148,7 @@ class MetabaseClient:
             context: Search context
             model_ancestors: Include model ancestors
             page: Page number for pagination (default: 1)
-            page_size: Number of results per page (default: 50)
+            page_size: Number of results per page (default: 20)
             
         Returns:
             Dict containing paginated search results and pagination metadata
