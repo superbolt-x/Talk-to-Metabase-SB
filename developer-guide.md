@@ -13,6 +13,7 @@ SuperMetabase is an MCP (Model Context Protocol) server that integrates Claude w
 3. **Configuration**: Environment variable-based configuration with .env file support
 4. **Response Handling**: Includes size limits to prevent oversized responses
 5. **Pagination**: Client-side pagination for large data sets where API doesn't natively support it
+6. **Unified Query Execution**: Flexible tool for executing queries in both standalone and dashboard contexts
 
 ## Project Structure
 
@@ -499,7 +500,7 @@ The following table shows the Metabase API endpoints that correspond to existing
 | **Card Operations** | `GET /api/card/{id}` | `get_card` | ✅ Implemented |
 | | `POST /api/card/` | `create_card` | 📝 Planned |
 | | `PUT /api/card/{id}` | `update_card` | 📝 Planned |
-| | `POST /api/card/{card-id}/query` | `execute_card_query` | 📝 Planned |
+| | `POST /api/card/{card-id}/query` | `execute_card_query` | ✅ Implemented (with dashboard context support) |
 | | `DELETE /api/card/{id}` | `delete_card` | 📝 Planned |
 | **Collection Operations** | `GET /api/collection/` | `list_collections` | ✅ Implemented |
 | | `GET /api/collection/{id}` | `get_collection` | 📝 Planned |
@@ -516,6 +517,111 @@ The following table shows the Metabase API endpoints that correspond to existing
 Implementation Legend:
 - ✅ Implemented: Tool is fully implemented and available in the current version
 - 📝 Planned: Tool is defined in specifications but not yet implemented
+
+## Unified Card Query Execution Tool
+
+The `execute_card_query` tool has been implemented as a unified solution for executing queries associated with cards, both as standalone cards and within dashboards. This implementation provides a flexible interface with contextual behavior based on the parameters provided.
+
+### Key Features
+
+1. **Contextual Behavior**: The tool automatically selects the appropriate API endpoint:
+   - For standalone cards: `/api/card/{card-id}/query`
+   - For dashboard cards: `/api/dashboard/{dashboard-id}/dashcard/{dashcard-id}/card/{card-id}/query`
+
+2. **Parameter Validation**: The tool enforces validation rules for parameters:
+   - `card_id` is always required
+   - If `dashboard_id` is provided, `dashcard_id` is required
+   - Optional parameters are properly handled with default values
+
+3. **Enhanced Metadata**: The response includes additional metadata:
+   - Execution context (card ID, dashboard ID if applicable)
+   - Row count for the result set
+   - Query type (standalone or dashboard)
+   - Timestamp of execution
+
+4. **Error Handling**: Comprehensive error handling for:
+   - Missing required parameters
+   - API errors from Metabase
+   - Query execution failures
+
+### Usage Examples
+
+#### Standalone Card Query
+
+```json
+{
+  "method": "tools/call",
+  "params": {
+    "name": "execute_card_query",
+    "arguments": {
+      "card_id": 123,
+      "ignore_cache": true
+    }
+  },
+  "jsonrpc": "2.0",
+  "id": 1
+}
+```
+
+#### Dashboard Card Query with Parameters
+
+```json
+{
+  "method": "tools/call",
+  "params": {
+    "name": "execute_card_query",
+    "arguments": {
+      "card_id": 123,
+      "dashboard_id": 456,
+      "dashcard_id": 789,
+      "parameters": [
+        {"id": "date_range", "value": ["2023-01-01", "2023-12-31"]},
+        {"id": "category", "value": "Electronics"}
+      ]
+    }
+  },
+  "jsonrpc": "2.0",
+  "id": 2
+}
+```
+
+### Response Structure
+
+```json
+{
+  "data": {
+    "rows": [
+      ["Value 1", "Value 2", 123],
+      ["Value 3", "Value 4", 456]
+    ],
+    "cols": [
+      {"name": "Column 1", "display_name": "Column 1", "base_type": "type/Text"},
+      {"name": "Column 2", "display_name": "Column 2", "base_type": "type/Text"},
+      {"name": "Column 3", "display_name": "Column 3", "base_type": "type/Number"}
+    ]
+  },
+  "status": "completed",
+  "metadata": {
+    "execution_context": {
+      "card_id": 123,
+      "dashboard_id": 456,
+      "dashcard_id": 789,
+      "query_type": "dashboard_card",
+      "timestamp": 1684789123.456
+    },
+    "row_count": 2
+  }
+}
+```
+
+### Implementation Details
+
+- The tool works directly with the Metabase API endpoints, making the appropriate POST requests
+- For dashboard-contextualized queries, it provides a `dashboard_load_id` based on the current timestamp
+- The implementation carefully processes and structures response data for Claude to use effectively
+- Robust error handling captures and reports issues at all stages of execution
+
+This unified implementation eliminates redundancy while providing a clean, flexible interface for executing card queries in different contexts. It gives Claude a powerful tool to access actual query data from both standalone cards and dashboard-contextualized cards, while preserving all the necessary context and parameters.
 
 ## Enhanced Search Tool with Pagination
 
@@ -691,16 +797,16 @@ When working with dashboards:
 
 ## Next Steps for Development
 
-The current implementation includes functionality for retrieving and searching Metabase resources with pagination. Future development should focus on:
+The current implementation includes functionality for retrieving and searching Metabase resources with pagination, as well as executing queries for both standalone cards and cards within dashboards. Future development should focus on:
 
 1. Implementing the remaining tools defined in the specifications
 2. Adding integration tests with a real Metabase instance
 3. Implementing caching for frequently accessed resources
 4. Adding more sophisticated error handling
-5. Implementing advanced query capabilities
+5. Implementing additional advanced query capabilities
 6. Enhancing pagination for other large resource types
 7. Improving parameter parsing for complex types
-8. Adding support for dashboard filters and parameters
+8. Enhancing dashboard filter and parameter support
 
 ## Conclusion
 
