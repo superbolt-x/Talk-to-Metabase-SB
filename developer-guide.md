@@ -636,7 +636,7 @@ The following table shows the Metabase API endpoints that correspond to existing
 | | `POST /api/collection/` | `create_collection` | 📝 Planned |
 | | `PUT /api/collection/{id}` | `update_collection` | 📝 Planned |
 | **Database Operations** | `GET /api/database/` | `list_databases` | ✅ Implemented (simplified output) |
-| | `GET /api/database/{id}/metadata` | `get_database_metadata` | 📝 Planned |
+| | `GET /api/database/{id}/metadata` | `get_database_metadata` | ✅ Implemented (with schema organization) |
 | | `GET /api/table/{id}` | `get_table` | 📝 Planned |
 | | `GET /api/table/{id}/query_metadata` | `get_table_query_metadata` | 📝 Planned |
 | **Query Operations** | `POST /api/dataset/` | `run_dataset_query` | 📝 Planned |
@@ -1125,7 +1125,96 @@ The `list_databases` tool has been optimized to provide only essential database 
 - **Efficiency**: Faster parsing and processing for Claude
 - **Usability**: Clean, readable output focused on user needs
 
-For detailed database information, users can utilize future tools like `get_database_metadata` when they need to examine specific database configurations.
+### Database Metadata Tool (`get_database_metadata`)
+
+The `get_database_metadata` tool retrieves essential metadata about a database, including its tables organized by schema. It's designed to provide a clean, hierarchical view of database structure while keeping the response size manageable.
+
+#### Key Features
+
+1. **Simplified Database Info**: Returns only essential database information (`id`, `name`, `engine`, `timezone`)
+2. **Schema Organization**: Tables are grouped by schema for easier navigation
+3. **Simplified Table Details**: Each table includes only essential information (`id`, `name`, `entity_type`)
+4. **Summary Statistics**: Includes total table count and schema count
+5. **Performance Optimization**: Always uses `skip_fields=true` to avoid fetching field metadata
+
+#### Usage Example
+
+```json
+{
+  "method": "tools/call",
+  "params": {
+    "name": "get_database_metadata",
+    "arguments": {
+      "id": 130
+    }
+  },
+  "jsonrpc": "2.0",
+  "id": 1
+}
+```
+
+#### Response Structure
+
+```json
+{
+  "database": {
+    "id": 130,
+    "name": "Ask Tia",
+    "engine": "redshift",
+    "timezone": "GMT"
+  },
+  "schemas": [
+    {
+      "name": "facebook_raw",
+      "tables": [
+        {
+          "id": 34320,
+          "name": "account_history",
+          "entity_type": "entity/UserTable"
+        },
+        {
+          "id": 34429,
+          "name": "ad_campaign_issues_info",
+          "entity_type": "entity/GenericTable"
+        }
+      ]
+    },
+    {
+      "name": "googleads_raw",
+      "tables": [
+        {
+          "id": 34422,
+          "name": "account_history",
+          "entity_type": "entity/UserTable"
+        },
+        {
+          "id": 34322,
+          "name": "account_hourly_stats",
+          "entity_type": "entity/UserTable"
+        }
+      ]
+    }
+  ],
+  "table_count": 4,
+  "schema_count": 2
+}
+```
+
+#### Implementation Details
+
+- **Skip Fields**: Always uses the `skip_fields=true` parameter to avoid fetching field metadata, which can be extremely large
+- **Schema Organization**: Tables are grouped by their schema name for easier navigation
+- **No Redundancy**: Schema name only appears once as the key for each group of tables
+- **Essential Information**: Only includes the minimal information needed to understand and navigate the database structure
+- **Error Handling**: Handles missing schemas gracefully by grouping tables with empty schema under an empty string key
+
+#### Benefits
+
+- **Structured View**: Provides a clear hierarchical view of the database organization
+- **Reduced Size**: Significantly smaller response size compared to raw Metabase API response
+- **Schema Navigation**: Easy to understand which tables belong to which schemas
+- **Quick Statistics**: Includes table count and schema count for quick reference
+- **Simplified Integration**: Makes it easier for Claude to understand and navigate database structure
 
 ## Performance Considerations
 
