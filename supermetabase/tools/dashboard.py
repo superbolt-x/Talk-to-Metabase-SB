@@ -250,7 +250,7 @@ async def get_dashboard_tab(
                         processed_dashcard["series"] = []
                     
                     filtered_dashcards.append(processed_dashcard)
-        
+            
         # Sort dashcards by position (top to bottom, left to right)
         # This means sorting primarily by row and secondarily by col
         filtered_dashcards.sort(key=lambda card: (card.get("row", 0), card.get("col", 0)))
@@ -279,6 +279,7 @@ async def get_dashboard_tab(
         tab_data = {
             "dashboard_id": dashboard_id,
             "dashcards": paginated_dashcards,
+            "dashcard_count": len(paginated_dashcards),
             "pagination": {
                 "page": page,
                 "page_size": page_size,
