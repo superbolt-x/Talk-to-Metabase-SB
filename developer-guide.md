@@ -502,11 +502,10 @@ The following table shows the Metabase API endpoints that correspond to existing
 | | `PUT /api/card/{id}` | `update_card` | 📝 Planned |
 | | `POST /api/card/{card-id}/query` | `execute_card_query` | ✅ Implemented (with dashboard context support) |
 | | `DELETE /api/card/{id}` | `delete_card` | 📝 Planned |
-| **Collection Operations** | `GET /api/collection/` | `list_collections` | ✅ Implemented |
+| **Collection Operations** | `GET /api/collection/root/items` & `GET /api/collection/{id}/items` | `explore_collection_tree` & `view_collection_contents` | ✅ Implemented |
 | | `GET /api/collection/{id}` | `get_collection` | 📝 Planned |
 | | `POST /api/collection/` | `create_collection` | 📝 Planned |
 | | `PUT /api/collection/{id}` | `update_collection` | 📝 Planned |
-| | `GET /api/collection/{id}/items` | `get_collection_items` | 📝 Planned |
 | **Database Operations** | `GET /api/database/` | `list_databases` | ✅ Implemented |
 | | `GET /api/database/{id}/metadata` | `get_database_metadata` | 📝 Planned |
 | | `GET /api/table/{id}` | `get_table` | 📝 Planned |
@@ -682,6 +681,170 @@ The search tool supports all Metabase search API parameters, including:
 - Pagination parameters (page and page_size)
 
 The implementation handles both JSON-formatted string parameters and native types, with proper error handling for parameter parsing issues.
+
+## Collection Tools
+
+SuperMetabase provides two specialized tools for collection exploration and content viewing, each optimized for different use cases:
+
+### 1. Collection Tree Explorer (`explore_collection_tree`)
+
+This tool is designed for navigating the collection hierarchy. It shows only direct child collections while providing a comprehensive summary of all content types in the collection.
+
+#### Key Features
+
+1. **Collection Navigation**: Shows only child collections for easy hierarchy navigation
+2. **Comprehensive Content Summary**: Provides counts for all item types (dashboard, card, collection, dataset, timeline, snippet, pulse, metric) in the collection
+3. **Database Filtering**: Automatically filters out database items
+4. **Simplified Collection Data**: Returns only essential collection information (id, name, model, location)
+
+#### Usage Example
+
+```json
+{
+  "method": "tools/call",
+  "params": {
+    "name": "explore_collection_tree",
+    "arguments": {
+      "collection_id": 123
+    }
+  },
+  "jsonrpc": "2.0",
+  "id": 1
+}
+```
+
+#### Response Structure
+
+```json
+{
+  "collection_id": 123,
+  "child_collections": [
+    {
+      "id": 456,
+      "name": "Marketing Analytics",
+      "model": "collection",
+      "location": "/"
+    },
+    {
+      "id": 789,
+      "name": "Sales Reports",
+      "model": "collection"
+    }
+  ],
+  "content_summary": {
+    "dashboard": 18,
+    "card": 15,
+    "collection": 12,
+    "dataset": 3,
+    "timeline": 0,
+    "snippet": 2,
+    "pulse": 1,
+    "metric": 0
+  }
+}
+```
+
+### 2. Collection Content Viewer (`view_collection_contents`)
+
+This tool is designed for viewing all items within a collection, with optional filtering by content type.
+
+#### Key Features
+
+1. **Complete Content View**: Shows all direct children items in a collection
+2. **Flexible Filtering**: Optional filtering by model types using the `models` parameter
+3. **Simplified Item Data**: Returns only essential item information (id, name, model, location)
+4. **Comprehensive Summary**: Provides counts for all item types in the collection
+
+#### Usage Examples
+
+**View all items:**
+```json
+{
+  "method": "tools/call",
+  "params": {
+    "name": "view_collection_contents",
+    "arguments": {
+      "collection_id": 123
+    }
+  },
+  "jsonrpc": "2.0",
+  "id": 1
+}
+```
+
+**View specific item types:**
+```json
+{
+  "method": "tools/call",
+  "params": {
+    "name": "view_collection_contents",
+    "arguments": {
+      "collection_id": 123,
+      "models": ["dashboard", "card"]
+    }
+  },
+  "jsonrpc": "2.0",
+  "id": 2
+}
+```
+
+#### Response Structure
+
+```json
+{
+  "collection_id": 123,
+  "items": [
+    {
+      "id": 456,
+      "name": "Q4 Revenue Dashboard",
+      "model": "dashboard"
+    },
+    {
+      "id": 789,
+      "name": "Customer Analysis",
+      "model": "card"
+    },
+    {
+      "id": 101,
+      "name": "Sales Data",
+      "model": "dataset"
+    }
+  ],
+  "content_summary": {
+    "dashboard": 18,
+    "card": 15,
+    "collection": 12,
+    "dataset": 3,
+    "timeline": 0,
+    "snippet": 2,
+    "pulse": 1,
+    "metric": 0
+  }
+}
+```
+
+#### Supported Model Types
+
+Both tools support filtering and summarizing the following model types:
+- `dashboard` - Interactive dashboards
+- `card` - Questions/queries 
+- `collection` - Sub-collections
+- `dataset` - Models/datasets
+- `timeline` - Timeline events
+- `snippet` - SQL snippets
+- `pulse` - Automated reports
+- `metric` - Business metrics
+
+### Implementation Details
+
+- Both tools use the `/api/collection/root/items` endpoint for root collections and `/api/collection/{id}/items` for specific collections
+- Database items are automatically filtered out as they are managed by separate database tools
+- The tree explorer always fetches all item types to provide accurate summaries, then filters the display to show only collections
+- The content viewer respects the `models` parameter for API-level filtering when specified
+- All responses include comprehensive summaries with counts for all supported model types
+- Items are simplified to include only essential fields for efficient exploration
+
+This two-tool approach provides both efficient collection hierarchy navigation and detailed content viewing, allowing Claude to choose the appropriate tool based on the user's needs.
 
 ## Configuration Options
 
