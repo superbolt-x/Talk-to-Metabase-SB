@@ -240,11 +240,13 @@ async def view_collection_contents(
             location = item.get("location")
             if location:
                 simplified_item["location"] = location
-                
-            simplified_items.append(simplified_item)
+
+            model_type = item.get("model")
+            
+            if not models or model_type in models:
+                simplified_items.append(simplified_item)
             
             # Count for summary
-            model_type = item.get("model")
             if model_type in content_summary:
                 content_summary[model_type] += 1
         

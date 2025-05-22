@@ -251,9 +251,9 @@ async def test_view_collection_contents_filtered_models(mock_context):
         result_data = json.loads(result)
         
         # Should show filtered items
-        assert len(result_data["items"]) == 3  # API already filtered
+        assert len(result_data["items"]) == 2  # Filtered
         
-        # All items should be dashboards (since API filtered)
+        # All items should be dashboards (filtered)
         models_in_items = [item["model"] for item in result_data["items"]]
         assert all(model == "dashboard" for model in models_in_items)
         
@@ -330,11 +330,11 @@ async def test_collection_tools_error_handling(mock_context):
         # Test explore_collection_tree error handling
         result1 = await explore_collection_tree(collection_id=9999, ctx=mock_context)
         result1_data = json.loads(result1)
-        assert result1_data["status"] == "error"
+        assert result1_data["success"] == False
         assert result1_data["error"]["status_code"] == 404
         
         # Test view_collection_contents error handling  
         result2 = await view_collection_contents(collection_id=9999, ctx=mock_context)
         result2_data = json.loads(result2)
-        assert result2_data["status"] == "error"
+        assert result2_data["success"] == False
         assert result2_data["error"]["status_code"] == 404
