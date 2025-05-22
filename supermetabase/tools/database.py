@@ -178,7 +178,136 @@ async def get_database_metadata(id: int, ctx: Context) -> str:
         )
 
 
-# Additional database tools will be implemented later
-# Potential future tools:
-# - get_table
-# - get_table_query_metadata
+@mcp.tool(name="get_table_query_metadata", description="Get metadata about a table useful for running queries, with essential field information only")
+async def get_table_query_metadata(
+    id: int,
+    ctx: Context,
+    include_sensitive_fields: bool = False,
+    include_hidden_fields: bool = False,
+    include_editable_data_model: bool = False
+) -> str:
+    """
+    Get metadata about a table useful for running queries, with essential field information only.
+    
+    Args:
+        id: Table ID
+        ctx: MCP context
+        include_sensitive_fields: Include sensitive fields in response (default: False)
+        include_hidden_fields: Include hidden fields in response (default: False)
+        include_editable_data_model: Check write permissions instead of read permissions (default: False)
+        
+    Returns:
+        Table query metadata as JSON string with essential field information for query building
+    """
+    logger.info(f"Tool called: get_table_query_metadata(id={id}, include_sensitive_fields={include_sensitive_fields}, include_hidden_fields={include_hidden_fields}, include_editable_data_model={include_editable_data_model})")
+    client = get_metabase_client(ctx)
+    
+    try:
+        # Build query parameters
+        params = {}
+        if include_sensitive_fields:
+            params["include_sensitive_fields"] = "true"
+        if include_hidden_fields:
+            params["include_hidden_fields"] = "true"
+        if include_editable_data_model:
+            params["include_editable_data_model"] = "true"
+        
+        data, status, error = await client.auth.make_request(
+            "GET", f"table/{id}/query_metadata", params=params
+        )
+        
+        if error:
+            return format_error_response(
+                status_code=status,
+                error_type="retrieval_error",
+                message=error,
+                request_info={"endpoint": f"/api/table/{id}/query_metadata", "method": "GET", "params": params}
+            )
+        
+        # Extract essential table information
+        table_info = {
+            "id": data.get("id"),
+            "name": data.get("name"),
+            "schema": data.get("schema"),
+            "entity_type": data.get("entity_type"),
+            "description": data.get("description"),
+            "view_count": data.get("view_count")
+        }
+        
+        # Extract essential database information
+        db_data = data.get("db", {})
+        database_info = {
+            "id": db_data.get("id"),
+            "name": db_data.get("name"),
+            "engine": db_data.get("engine"),
+            "timezone": db_data.get("timezone")
+        }
+        
+        # Process fields with essential information only
+        fields = []
+        primary_key_fields = []
+        date_fields = []
+        
+        for field in data.get("fields", []):
+            # Extract ONLY essential field information
+            field_info = {
+                "id": field.get("id"),
+                "name": field.get("name"),
+                "display_name": field.get("display_name"),
+                "base_type": field.get("base_type"),
+                "effective_type": field.get("effective_type"),
+                "semantic_type": field.get("semantic_type"),
+                "database_type": field.get("database_type"),
+                "active": field.get("active"),
+                "visibility_type": field.get("visibility_type"),
+                "has_field_values": field.get("has_field_values"),
+                "position": field.get("position")
+            }
+            
+            fields.append(field_info)
+            
+            # Categorize special field types for summary
+            semantic_type = field.get("semantic_type")
+            base_type = field.get("base_type")
+            
+            if semantic_type == "type/PK":
+                primary_key_fields.append(field.get("name"))
+            
+            if base_type in ["type/Date", "type/DateTime", "type/DateTimeWithLocalTZ", "type/Time"]:
+                date_fields.append(field.get("name"))
+        
+        # Sort fields by position for consistent ordering
+        fields.sort(key=lambda f: f.get("position", 0))
+        
+        # Create final response structure
+        response_data = {
+            "table": table_info,
+            "database": database_info,
+            "fields": fields,
+            "field_count": len(fields),
+            "primary_key_fields": primary_key_fields,
+            "date_fields": date_fields
+        }
+        
+        # Convert to JSON string
+        response = json.dumps(response_data, indent=2)
+        
+        # Check response size before returning
+        metabase_ctx = ctx.request_context.lifespan_context
+        config = metabase_ctx.auth.config
+        return check_response_size(response, config)
+    except Exception as e:
+        logger.error(f"Error getting table query metadata: {e}")
+        return format_error_response(
+            status_code=500,
+            error_type="retrieval_error",
+            message=str(e),
+            request_info={"endpoint": f"/api/table/{id}/query_metadata", "method": "GET"}
+        )
+
+
+# Additional database tools can be implemented here
+# Future tools might include:
+# - get_table (basic table info without query metadata)
+# - run_native_query
+# - get_field_values

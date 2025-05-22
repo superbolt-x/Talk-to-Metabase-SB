@@ -638,7 +638,7 @@ The following table shows the Metabase API endpoints that correspond to existing
 | **Database Operations** | `GET /api/database/` | `list_databases` | ✅ Implemented (simplified output) |
 | | `GET /api/database/{id}/metadata` | `get_database_metadata` | ✅ Implemented (with schema organization) |
 | | `GET /api/table/{id}` | `get_table` | 📝 Planned |
-| | `GET /api/table/{id}/query_metadata` | `get_table_query_metadata` | 📝 Planned |
+| | `GET /api/table/{id}/query_metadata` | `get_table_query_metadata` | ✅ Implemented (essential fields only) |
 | **Query Operations** | `POST /api/dataset/` | `run_dataset_query` | 📝 Planned |
 | **Search Operations** | `GET /api/search/` | `search_resources` | ✅ Implemented with pagination |
 
@@ -1215,6 +1215,104 @@ The `get_database_metadata` tool retrieves essential metadata about a database, 
 - **Schema Navigation**: Easy to understand which tables belong to which schemas
 - **Quick Statistics**: Includes table count and schema count for quick reference
 - **Simplified Integration**: Makes it easier for Claude to understand and navigate database structure
+
+### Table Query Metadata Tool (`get_table_query_metadata`)
+
+The `get_table_query_metadata` tool retrieves detailed metadata about a specific table that is essential for building and executing queries. This tool provides comprehensive field information while maintaining a clean, simplified output structure.
+
+#### Key Features
+
+1. **Essential Information Only**: Returns only the fields necessary for query building, excluding optional metadata like fingerprints and dimension options
+2. **Field Categorization**: Automatically categorizes fields as primary keys and date fields for easy identification
+3. **Optional Parameters**: Supports Metabase API parameters for including sensitive, hidden, or editable data model fields
+4. **Simplified Structure**: Clean, organized response structure with table, database, and field information
+5. **Performance Optimization**: Excludes verbose metadata to keep response size manageable
+
+#### Usage Example
+
+```json
+{
+  "method": "tools/call",
+  "params": {
+    "name": "get_table_query_metadata",
+    "arguments": {
+      "id": 50112,
+      "include_sensitive_fields": false,
+      "include_hidden_fields": false,
+      "include_editable_data_model": false
+    }
+  },
+  "jsonrpc": "2.0",
+  "id": 1
+}
+```
+
+#### Response Structure
+
+```json
+{
+  "table": {
+    "id": 50112,
+    "name": "bariendo_blended",
+    "schema": "reporting",
+    "entity_type": "entity/GenericTable",
+    "description": null,
+    "view_count": 75
+  },
+  "database": {
+    "id": 195,
+    "name": "Bariendo",
+    "engine": "redshift",
+    "timezone": "UTC"
+  },
+  "fields": [
+    {
+      "id": 50705149,
+      "name": "date",
+      "display_name": "Date",
+      "base_type": "type/Date",
+      "effective_type": "type/Date",
+      "semantic_type": null,
+      "database_type": "date",
+      "active": true,
+      "visibility_type": "normal",
+      "has_field_values": "none",
+      "position": 0
+    }
+    // ... more fields
+  ],
+  "field_count": 11,
+  "primary_key_fields": [],
+  "date_fields": ["date"]
+}
+```
+
+#### Implementation Details
+
+- **Essential Fields Only**: Each field includes only the 11 essential properties needed for query building
+- **Field Categorization**: Automatically identifies primary key fields (semantic_type = "type/PK") and date fields (base_type includes Date/DateTime variants)
+- **Sorted Output**: Fields are sorted by position for consistent ordering
+- **Parameter Support**: All three Metabase API optional parameters are supported with proper boolean handling
+- **Error Handling**: Comprehensive error handling for API failures and missing data
+- **Response Size Control**: Uses the standard response size checking mechanism
+
+#### Excluded Information
+
+To maintain clean, focused output, the following information is intentionally excluded:
+- Field fingerprint statistical data
+- Dimension options arrays and counts
+- Internal metadata fields (entity_id, fingerprint_version, etc.)
+- Database connection details and verbose configuration
+- Field relationship information and constraints
+
+#### Benefits
+
+- **Clean Output**: Dramatically smaller response size compared to raw Metabase API response
+- **Query-Focused**: Includes exactly what's needed for building queries and understanding table structure
+- **Fast Processing**: Efficient for Claude to parse and understand
+- **Categorized Fields**: Easy identification of key field types (primary keys, dates)
+- **Essential Context**: Maintains necessary database and table context information
+```
 
 ## Performance Considerations
 
