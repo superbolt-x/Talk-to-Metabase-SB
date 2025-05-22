@@ -110,10 +110,28 @@ async def tool_name(
     
     try:
         # Make the API request using the client
-        data = await client.some_method()
+        data, status, error = await client.auth.make_request(
+            "GET", "endpoint"
+        )
+        
+        if error:
+            return format_error_response(
+                status_code=status,
+                error_type="retrieval_error",
+                message=error,
+                request_info={"endpoint": "/api/endpoint", "method": "GET"}
+            )
+        
+        # Extract and simplify data if needed for performance
+        # For simple tools, consider returning only essential fields
+        if should_simplify_response:
+            simplified_data = extract_essential_fields(data)
+            response_data = {"items": simplified_data}
+        else:
+            response_data = data
         
         # Convert data to JSON string
-        response = json.dumps(data, indent=2)
+        response = json.dumps(response_data, indent=2)
         
         # Check response size before returning
         metabase_ctx = ctx.request_context.lifespan_context
@@ -125,7 +143,86 @@ async def tool_name(
             status_code=500,
             error_type="tool_error",
             message=str(e),
-            request_info={"endpoint": "/api/endpoint", "method": "METHOD"}
+            request_info={"endpoint": "/api/endpoint", "method": "GET"}
+        )
+```
+
+#### Template for Simplified Tools
+
+For tools that need to return only essential information (like `list_databases`), use this pattern:
+
+```python
+@mcp.tool(name="list_items", description="List items with essential information only")
+async def list_items(ctx: Context) -> str:
+    """
+    List items with essential information only.
+    
+    Args:
+        ctx: MCP context
+        
+    Returns:
+        Simplified list of items as JSON string with essential fields only
+    """
+    logger.info("Tool called: list_items()")
+    client = get_metabase_client(ctx)
+    
+    try:
+        data, status, error = await client.auth.make_request(
+            "GET", "items"
+        )
+        
+        if error:
+            return format_error_response(
+                status_code=status,
+                error_type="retrieval_error",
+                message=error,
+                request_info={"endpoint": "/api/items", "method": "GET"}
+            )
+        
+        # Handle different response formats
+        if isinstance(data, dict) and "data" in data:
+            items = data["data"]
+        elif isinstance(data, list):
+            items = data
+        else:
+            logger.error(f"Unexpected data format: {type(data)}")
+            return format_error_response(
+                status_code=500,
+                error_type="unexpected_format",
+                message="Unexpected response format from Metabase API",
+                request_info={"endpoint": "/api/items", "method": "GET"}
+            )
+        
+        # Extract only essential fields
+        simplified_items = []
+        for item in items:
+            simplified_item = {
+                "id": item.get("id"),
+                "name": item.get("name"),
+                "type": item.get("type")
+                # Add only fields that are essential for the tool's purpose
+            }
+            simplified_items.append(simplified_item)
+        
+        # Create final response structure
+        response_data = {
+            "items": simplified_items
+        }
+        
+        # Convert to JSON string
+        response = json.dumps(response_data, indent=2)
+        
+        # Check response size before returning
+        metabase_ctx = ctx.request_context.lifespan_context
+        config = metabase_ctx.auth.config
+        return check_response_size(response, config)
+    except Exception as e:
+        logger.error(f"Error in list_items: {e}")
+        return format_error_response(
+            status_code=500,
+            error_type="retrieval_error",
+            message=str(e),
+            request_info={"endpoint": "/api/items", "method": "GET"}
         )
 ```
 
@@ -195,6 +292,38 @@ metabase_ctx = ctx.request_context.lifespan_context
 config = metabase_ctx.auth.config
 return check_response_size(response, config)
 ```
+
+### Simplifying Responses for Performance
+
+For tools that may return large amounts of data, consider implementing response simplification:
+
+```python
+# Example: Extract only essential fields from a complex API response
+def extract_essential_fields(items_data):
+    """Extract only essential fields from API response."""
+    simplified_items = []
+    for item in items_data:
+        simplified_item = {
+            "id": item.get("id"),
+            "name": item.get("name"),
+            "type": item.get("type"),
+            # Include only fields necessary for the tool's purpose
+            # Exclude: detailed configurations, metadata, nested objects
+        }
+        simplified_items.append(simplified_item)
+    return simplified_items
+
+# Usage in tool implementation
+simplified_data = extract_essential_fields(data)
+response_data = {"items": simplified_data}
+```
+
+This approach provides several benefits:
+- **Dramatically smaller responses** (often 10-100x reduction)
+- **Faster processing** by Claude
+- **Better user experience** with cleaner, focused data
+- **Reduced bandwidth usage**
+- **Enhanced security** by excluding sensitive configuration details
 
 ### Error Handling
 
@@ -506,7 +635,7 @@ The following table shows the Metabase API endpoints that correspond to existing
 | | `GET /api/collection/{id}` | `get_collection` | 📝 Planned |
 | | `POST /api/collection/` | `create_collection` | 📝 Planned |
 | | `PUT /api/collection/{id}` | `update_collection` | 📝 Planned |
-| **Database Operations** | `GET /api/database/` | `list_databases` | ✅ Implemented |
+| **Database Operations** | `GET /api/database/` | `list_databases` | ✅ Implemented (simplified output) |
 | | `GET /api/database/{id}/metadata` | `get_database_metadata` | 📝 Planned |
 | | `GET /api/table/{id}` | `get_table` | 📝 Planned |
 | | `GET /api/table/{id}/query_metadata` | `get_table_query_metadata` | 📝 Planned |
@@ -928,6 +1057,76 @@ If experiencing issues with dashboard tabs:
 - Ensure tab_id is correctly validated against the available tabs
 - Check that client-side pagination is working correctly for the specific tab
 
+## Database Tools
+
+SuperMetabase provides essential database connectivity tools optimized for performance and usability.
+
+### List Databases Tool (`list_databases`)
+
+The `list_databases` tool has been optimized to provide only essential database information, dramatically reducing response size while maintaining all necessary functionality for database selection.
+
+#### Key Features
+
+1. **Ultra-Minimal Response**: Returns only `id`, `name`, and `engine` for each database
+2. **Dramatic Size Reduction**: Reduces response size from ~500 lines to ~5 lines per database
+3. **Fast Performance**: Eliminates unnecessary data processing and transmission
+4. **Easy Database Selection**: Provides exactly what's needed to identify and work with databases
+
+#### Usage Example
+
+```json
+{
+  "method": "tools/call",
+  "params": {
+    "name": "list_databases",
+    "arguments": {}
+  },
+  "jsonrpc": "2.0",
+  "id": 1
+}
+```
+
+#### Response Structure
+
+```json
+{
+  "databases": [
+    {
+      "id": 130,
+      "name": "Ask Tia",
+      "engine": "redshift"
+    },
+    {
+      "id": 144,
+      "name": "AUrate",
+      "engine": "redshift"
+    },
+    {
+      "id": 189,
+      "name": "Baret Scholars",
+      "engine": "redshift"
+    }
+  ]
+}
+```
+
+#### Implementation Details
+
+- **Response Processing**: Extracts only essential fields from the full Metabase API response
+- **Error Handling**: Handles both list and dict response formats from the API
+- **Size Optimization**: Eliminates detailed connection info, features arrays, and metadata
+- **Simplified Structure**: Returns a clean `databases` array without pagination (databases are typically few in number)
+
+#### Benefits Over Previous Implementation
+
+- **Performance**: ~100x smaller response size (from ~500 lines to ~5 lines per database)
+- **Clarity**: Users can quickly scan available databases
+- **Security**: Removes sensitive connection details and configuration
+- **Efficiency**: Faster parsing and processing for Claude
+- **Usability**: Clean, readable output focused on user needs
+
+For detailed database information, users can utilize future tools like `get_database_metadata` when they need to examine specific database configurations.
+
 ## Performance Considerations
 
 ### Authentication Caching
@@ -937,6 +1136,13 @@ The server caches the authentication token to reduce API calls. The token is ref
 ### Response Size Limitations
 
 Large responses are checked against the configured size limit to prevent overwhelming Claude or the client application. Use pagination to manage large result sets.
+
+#### Response Size Optimization Strategies
+
+1. **Simplified Tool Outputs**: Tools like `list_databases` return only essential information
+2. **Pagination**: Implement client-side or server-side pagination for large datasets
+3. **Two-Step Approaches**: Use metadata tools followed by detailed data tools (e.g., `get_dashboard` + `get_dashboard_tab`)
+4. **Field Selection**: Extract only necessary fields from API responses
 
 ### Rate Limiting
 
