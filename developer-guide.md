@@ -627,7 +627,7 @@ The following table shows the Metabase API endpoints that correspond to existing
 | | `POST /api/dashboard/{dashboard-id}/cards` | `add_card_to_dashboard` | 📝 Planned |
 | | `DELETE /api/dashboard/{id}` | `delete_dashboard` | 📝 Planned |
 | **Card Operations** | `GET /api/card/{id}` | `get_card_definition` | ✅ Implemented |
-| | `POST /api/card/` | `create_card` | 📝 Planned |
+| | `POST /api/card/` | `create_card` | ✅ Implemented |
 | | `PUT /api/card/{id}` | `update_card` | 📝 Planned |
 | | `POST /api/card/{card-id}/query` | `execute_card_query` | ✅ Implemented (with dashboard context support) |
 | | `DELETE /api/card/{id}` | `delete_card` | 📝 Planned |
@@ -750,6 +750,135 @@ The `execute_card_query` tool has been implemented as a unified solution for exe
 - Robust error handling captures and reports issues at all stages of execution
 
 This unified implementation eliminates redundancy while providing a clean, flexible interface for executing card queries in different contexts. It gives Claude a powerful tool to access actual query data from both standalone cards and dashboard-contextualized cards, while preserving all the necessary context and parameters.
+
+## Card Creation Tool
+
+The `create_card` tool implements a two-step process for creating new SQL-based cards in Metabase, providing a streamlined way to create questions, models, or metrics from SQL queries.
+
+### Key Features
+
+1. **Query Validation**: Executes the SQL query first to validate it before creating the card
+2. **Support for Multiple Card Types**: Creates cards of type "question", "model", or "metric"
+3. **Concise Responses**: Returns simplified success/error responses focused on essential information
+4. **Optional Parameters**: Supports collection placement and descriptions
+5. **Automatic Metadata**: Captures result metadata from validation query for better card integration
+
+### Implementation Approach
+
+The tool uses a two-phase process:
+
+1. First, it executes the SQL query using the `/api/dataset/` endpoint to validate the query
+2. If the query is valid, it creates a new card using the `/api/card/` endpoint
+3. If the query fails, it returns the error message in a concise format
+
+### Usage Example
+
+```json
+{
+  "method": "tools/call",
+  "params": {
+    "name": "create_card",
+    "arguments": {
+      "database_id": 195,
+      "query": "SELECT * FROM reporting.bariendo_blended LIMIT 5",
+      "name": "My New Card",
+      "card_type": "question",
+      "collection_id": 123,
+      "description": "A test card created via MCP"
+    }
+  },
+  "jsonrpc": "2.0",
+  "id": 1
+}
+```
+
+### Response Structure
+
+#### Success Response
+
+```json
+{
+  "success": true,
+  "card_id": 53832,
+  "name": "My New Card"
+}
+```
+
+#### Error Response (Query Validation Failed)
+
+```json
+{
+  "success": false,
+  "error": "ERROR: column \"non_existent_column\" does not exist"
+}
+```
+
+### Implementation Details
+
+- **Query Validation**: Uses a helper function `execute_sql_query` that executes the SQL and returns success/error information
+- **Card Creation**: On successful validation, prepares a card creation payload with all necessary fields, including an empty `visualization_settings` object that's required by the Metabase API
+- **Card Types**: Validates that the card_type is one of the supported types ("question", "model", or "metric")
+- **Minimal Response**: Returns only essential information (success status, card ID, name) in the response
+- **Error Handling**: Extracts clean error messages from Metabase's sometimes verbose error responses
+
+### Helper Function: execute_sql_query
+
+A utility function that executes SQL queries and processes the results:
+
+```python
+async def execute_sql_query(client, database_id: int, query: str) -> Dict[str, Any]:
+    """Execute a SQL query to validate it before creating a card."""
+    # Prepare the query payload
+    query_data = {
+        "database": database_id,
+        "type": "native",
+        "native": {
+            "query": query,
+            "template-tags": {}
+        }
+    }
+    
+    # Execute the query and handle results/errors
+    # Returns a dict with success/error information
+```
+
+### Complete Example
+
+A simplified implementation showing all required fields:
+
+```python
+async def create_card(database_id: int, query: str, name: str, ctx: Context):
+    """Create a SQL-based card after validating the query."""
+    # Validate the query by executing it
+    query_result = await execute_sql_query(client, database_id, query)
+    
+    if not query_result["success"]:
+        return json.dumps({"success": False, "error": query_result["error"]})
+    
+    # Create the card with all required fields
+    card_data = {
+        "name": name,
+        "dataset_query": {
+            "database": database_id,
+            "native": {"query": query, "template-tags": {}},
+            "type": "native"
+        },
+        "display": "table",
+        "type": "question",
+        "visualization_settings": {}  # Required field, even if empty
+    }
+    
+    # Submit to API
+    data, status, error = await client.auth.make_request(
+        "POST", "card", json=card_data
+    )
+    
+    # Return success response
+    if not error:
+        return json.dumps({"success": True, "card_id": data.get("id"), "name": data.get("name")})
+```
+
+This implementation provides a clean, user-friendly way to create SQL cards in Metabase while ensuring the SQL is valid first, avoiding the creation of cards with invalid queries.
 
 ## Enhanced Search Tool with Pagination
 
@@ -1474,7 +1603,7 @@ When working with dashboards:
 
 ## Next Steps for Development
 
-The current implementation includes functionality for retrieving and searching Metabase resources with pagination, as well as executing queries for both standalone cards and cards within dashboards. Future development should focus on:
+The current implementation includes functionality for retrieving and searching Metabase resources with pagination, as well as executing queries for both standalone cards and cards within dashboards, and creating new SQL cards. Future development should focus on:
 
 1. Implementing the remaining tools defined in the specifications
 2. Adding integration tests with a real Metabase instance

@@ -4,7 +4,7 @@ Card (Question) operations MCP tools.
 
 import json
 import logging
-from typing import Dict, Optional, Any, List
+from typing import Dict, Optional, Any, List, Union
 
 from mcp.server.fastmcp import Context, FastMCP
 
@@ -190,6 +190,63 @@ async def get_sql_translation(client, card_data: Dict[str, Any]) -> Optional[str
         return None
 
 
+async def execute_sql_query(client, database_id: int, query: str) -> Dict[str, Any]:
+    """
+    Execute a SQL query to validate it before creating a card.
+    
+    Args:
+        client: Metabase client
+        database_id: Database ID
+        query: SQL query string
+    
+    Returns:
+        Dictionary with execution result (success/error info)
+    """
+    try:
+        # Prepare the query payload
+        query_data = {
+            "database": database_id,
+            "type": "native",
+            "native": {
+                "query": query,
+                "template-tags": {}
+            }
+        }
+        
+        # Execute the query
+        data, status, error = await client.auth.make_request(
+            "POST", "dataset", json=query_data
+        )
+        
+        if error:
+            # Extract the essential error message
+            error_message = error
+            if data and isinstance(data, dict):
+                if "error" in data:
+                    error_message = data["error"]
+                    
+            return {
+                "success": False,
+                "error": error_message,
+                "status_code": status
+            }
+        
+        # Query executed successfully
+        return {
+            "success": True,
+            "result_metadata": data.get("data", {}).get("cols", []),
+            "row_count": data.get("row_count", 0)
+        }
+        
+    except Exception as e:
+        logger.error(f"Error executing SQL query: {e}")
+        return {
+            "success": False,
+            "error": str(e),
+            "status_code": 500
+        }
+
+
 @mcp.tool(name="get_card_definition", description="Retrieve a card's definition and metadata without results")
 async def get_card_definition(id: int, ctx: Context, ignore_view: Optional[bool] = None, translate_mbql: bool = True) -> str:
     """
@@ -259,5 +316,119 @@ async def get_card_definition(id: int, ctx: Context, ignore_view: Optional[bool]
                 "endpoint": f"/api/card/{id}", 
                 "method": "GET",
                 "params": params
+            }
+        )
+
+
+@mcp.tool(name="create_card", description="Create a new SQL card after validating the query")
+async def create_card(
+    database_id: int,
+    query: str,
+    name: str,
+    ctx: Context,
+    card_type: str = "question",
+    collection_id: Optional[int] = None,
+    description: Optional[str] = None
+) -> str:
+    """
+    Create a new SQL card after validating the query.
+    
+    Args:
+        database_id: Database ID to run the query against
+        query: SQL query string
+        name: Name for the new card
+        ctx: MCP context
+        card_type: Type of card (question, model, or metric)
+        collection_id: ID of the collection to place the card in (optional)
+        description: Optional description for the card
+        
+    Returns:
+        JSON string with creation result or error information
+    """
+    logger.info(f"Tool called: create_card(database_id={database_id}, name={name}, card_type={card_type})")
+    
+    # Validate card type
+    valid_card_types = ["question", "model", "metric"]
+    if card_type not in valid_card_types:
+        return format_error_response(
+            status_code=400,
+            error_type="invalid_parameter",
+            message=f"Invalid card type: {card_type}. Must be one of: {', '.join(valid_card_types)}",
+            request_info={"database_id": database_id, "name": name}
+        )
+    
+    client = get_metabase_client(ctx)
+    
+    # Step 1: Execute the query to validate it
+    execution_result = await execute_sql_query(client, database_id, query)
+    
+    if not execution_result["success"]:
+        # Return a concise error response if query validation fails
+        return json.dumps({
+            "success": False,
+            "error": execution_result["error"]
+        }, indent=2)
+    
+    # Step 2: Query is valid, create the card
+    try:
+        # Prepare the card creation payload
+        card_data = {
+            "name": name,
+            "dataset_query": {
+                "database": database_id,
+                "native": {
+                    "query": query,
+                    "template-tags": {}
+                },
+                "type": "native"
+            },
+            "display": "table",  # Default display type
+            "type": card_type,
+            "visualization_settings": {}  # Required field, even if empty
+        }
+        
+        # Add optional fields if provided
+        if description:
+            card_data["description"] = description
+            
+        if collection_id:
+            card_data["collection_id"] = collection_id
+        
+        # If we have result metadata from the query execution, include it
+        if "result_metadata" in execution_result:
+            card_data["result_metadata"] = execution_result["result_metadata"]
+        
+        # Create the card
+        data, status, error = await client.auth.make_request(
+            "POST", "card", json=card_data
+        )
+        
+        if error:
+            return format_error_response(
+                status_code=status,
+                error_type="creation_error",
+                message=error,
+                request_info={
+                    "endpoint": "/api/card",
+                    "method": "POST"
+                }
+            )
+        
+        # Return a concise success response with essential info
+        return json.dumps({
+            "success": True,
+            "card_id": data.get("id"),
+            "name": data.get("name")
+        }, indent=2)
+        
+    except Exception as e:
+        logger.error(f"Error creating card: {e}")
+        return format_error_response(
+            status_code=500,
+            error_type="creation_error",
+            message=str(e),
+            request_info={
+                "endpoint": "/api/card",
+                "method": "POST"
             }
         )
