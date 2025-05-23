@@ -242,9 +242,21 @@ The MCP server will implement tools that map directly to Metabase API endpoints,
 - **Description**: Execute an ad-hoc query against a database
 - **Parameters**:
   - `database`: Integer (database ID, required)
-  - `type`: String ("query" or "native", required)
-  - `query`: Object (query definition, required)
-- **Returns**: Query results
+  - `native`: Object (native query with SQL, required for native queries)
+  - `query`: Object (MBQL query definition, required for structured queries)
+  - `type`: String ("query" or "native", default: "native")
+- **Returns**: Query results with essential fields including:
+  - `data.rows`: Array of result rows
+  - `data.cols`: Column metadata
+  - `data.native_form`: Original query
+  - `status`: Query execution status
+  - `error`: Error message if query failed
+  - `error_type`: Type of error if query failed
+  - `database_id`: Database ID
+  - `started_at`: Query start timestamp
+  - `running_time`: Query execution time in ms
+  - `row_count`: Number of rows returned
+  - `results_timezone`: Timezone used for results
 
 ## Resource Identification Strategy
 

@@ -24,5 +24,8 @@ try:
     
     from . import search
     logger.info("Loaded search tools module")
+    
+    from . import dataset
+    logger.info("Loaded dataset tools module")
 except Exception as e:
     logger.error(f"Error loading tool modules: {e}")

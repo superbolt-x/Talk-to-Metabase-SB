@@ -639,7 +639,7 @@ The following table shows the Metabase API endpoints that correspond to existing
 | | `GET /api/database/{id}/metadata` | `get_database_metadata` | ✅ Implemented (with schema organization) |
 | | `GET /api/table/{id}` | `get_table` | 📝 Planned |
 | | `GET /api/table/{id}/query_metadata` | `get_table_query_metadata` | ✅ Implemented (essential fields only) |
-| **Query Operations** | `POST /api/dataset/` | `run_dataset_query` | 📝 Planned |
+| **Query Operations** | `POST /api/dataset/` | `run_dataset_query` | ✅ Implemented |
 | **Search Operations** | `GET /api/search/` | `search_resources` | ✅ Implemented with pagination |
 
 Implementation Legend:
@@ -974,6 +974,127 @@ Both tools support filtering and summarizing the following model types:
 - Items are simplified to include only essential fields for efficient exploration
 
 This two-tool approach provides both efficient collection hierarchy navigation and detailed content viewing, allowing Claude to choose the appropriate tool based on the user's needs.
+
+## Dataset Query Tool
+
+The `run_dataset_query` tool has been implemented to allow direct execution of both native SQL and structured MBQL queries against Metabase databases. The implementation follows SuperMetabase best practices by focusing on essential fields while maintaining all critical information.
+
+### Key Features
+
+1. **Dual Query Support**: Handles both native SQL queries and structured MBQL queries
+2. **Essential Field Focus**: Returns only the most important fields for query results
+3. **Comprehensive Error Handling**: Preserves detailed error information for debugging SQL issues
+4. **Parameter Validation**: Validates required parameters based on query type
+5. **Clean Response Structure**: Organized, consistent response format for all query types
+
+### Usage Examples
+
+#### Native SQL Query
+
+```json
+{
+  "method": "tools/call",
+  "params": {
+    "name": "run_dataset_query",
+    "arguments": {
+      "database": 195,
+      "native": {
+        "query": "select channel, date, SUM(spend) from reporting.bariendo_blended WHERE date_granularity='week' GROUP BY 1,2"
+      }
+    }
+  },
+  "jsonrpc": "2.0",
+  "id": 1
+}
+```
+
+#### MBQL Structured Query
+
+```json
+{
+  "method": "tools/call",
+  "params": {
+    "name": "run_dataset_query",
+    "arguments": {
+      "database": 195,
+      "query": {
+        "source-table": 50112,
+        "aggregation": [["sum", ["field", 50705151, null]]],
+        "breakout": [
+          ["field", 50705149, null],
+          ["field", 50705150, null]
+        ]
+      },
+      "type": "query"
+    }
+  },
+  "jsonrpc": "2.0",
+  "id": 2
+}
+```
+
+### Response Structure
+
+```json
+{
+  "data": {
+    "rows": [
+      ["Google", "2025-04-14T00:00:00Z", 18316.65625],
+      ["Meta", "2025-03-10T00:00:00Z", 15587.970000000001]
+    ],
+    "cols": [
+      {"name": "channel", "display_name": "channel", "base_type": "type/Text"},
+      {"name": "date", "display_name": "date", "base_type": "type/Date"},
+      {"name": "sum", "display_name": "sum", "base_type": "type/Float"}
+    ],
+    "native_form": {
+      "query": "select channel, date, SUM(spend) from reporting.bariendo_blended WHERE date_granularity='week' GROUP BY 1,2"
+    }
+  },
+  "status": "completed",
+  "database_id": 195,
+  "started_at": "2025-05-23T15:26:04.524227594Z",
+  "running_time": 6242,
+  "row_count": 2,
+  "results_timezone": "UTC"
+}
+```
+
+### Error Response Example
+
+```json
+{
+  "success": false,
+  "error": {
+    "status_code": 400,
+    "error_type": "query_error",
+    "message": "ERROR: column \"bariendo_blended.channel\" must appear in the GROUP BY clause or be used in an aggregate function",
+    "request_info": {
+      "endpoint": "/api/dataset",
+      "method": "POST",
+      "database": 195,
+      "query_type": "native"
+    },
+    "raw_response": {
+      "database_id": 195,
+      "started_at": "2025-05-23T15:36:30.405166542Z",
+      "status": "failed",
+      "error": "ERROR: column \"bariendo_blended.channel\" must appear in the GROUP BY clause or be used in an aggregate function",
+      "error_type": "invalid-query"
+    }
+  }
+}
+```
+
+### Implementation Details
+
+- The tool works directly with the Metabase `/api/dataset/` endpoint for executing queries
+- Parameter validation ensures the appropriate query objects are provided based on type
+- Responses include only essential fields to maintain performance and readability
+- Comprehensive error handling captures and formats SQL errors for easier debugging
+- The implementation follows the same patterns as other SuperMetabase tools for consistency
+
+This implementation provides Claude with a powerful way to directly execute SQL and MBQL queries against Metabase databases, while focusing on essential output fields for better performance and readability.
 
 ## Configuration Options
 
