@@ -1,13 +1,13 @@
-# SuperMetabase Development Guide
+# Talk to Metabase Development Guide
 
-This document outlines the development process and next steps for the SuperMetabase MCP server project.
+This document outlines the development process and next steps for the Talk to Metabase MCP server project.
 
 ## Project Structure
 
 The project is organized as follows:
 
 ```
-SuperMetabase/
+Talk to Metabase/
 ├── LICENSE
 ├── .gitignore
 ├── .git/
@@ -20,7 +20,7 @@ SuperMetabase/
 ├── install.bat         # Installation script (Windows)
 ├── test_import.py      # Basic import test
 ├── test_auth.py        # Authentication test
-├── supermetabase/      # Main package
+├── talk_to_metabase/      # Main package
 │   ├── __init__.py     # Package initialization
 │   ├── auth.py         # Metabase authentication
 │   ├── client.py       # Metabase API client
@@ -200,4 +200,4 @@ Improve documentation:
 
 ## Conclusion
 
-The SuperMetabase MCP server provides a solid foundation for integrating Claude with Metabase. By implementing the remaining tools and features, you'll create a powerful tool that enables Claude to interact with Metabase data, providing users with AI-powered data analysis and visualization capabilities.
+The Talk to Metabase MCP server provides a solid foundation for integrating Claude with Metabase. By implementing the remaining tools and features, you'll create a powerful tool that enables Claude to interact with Metabase data, providing users with AI-powered data analysis and visualization capabilities.

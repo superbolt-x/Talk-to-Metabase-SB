@@ -7,7 +7,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from supermetabase.tools.database import get_table_query_metadata
+from talk_to_metabase.tools.database import get_table_query_metadata
 
 
 @pytest.fixture
@@ -280,7 +280,7 @@ async def test_get_table_query_metadata_success(mock_context, sample_table_query
     
     client_mock.auth.make_request = AsyncMock(side_effect=mock_make_request)
     
-    with patch("supermetabase.tools.database.get_metabase_client", return_value=client_mock):
+    with patch("talk_to_metabase.tools.database.get_metabase_client", return_value=client_mock):
         # Call the tool
         result = await get_table_query_metadata(id=50112, ctx=mock_context)
         
@@ -306,7 +306,7 @@ async def test_get_table_query_metadata_with_parameters(mock_context, sample_tab
     
     client_mock.auth.make_request = AsyncMock(side_effect=mock_make_request)
     
-    with patch("supermetabase.tools.database.get_metabase_client", return_value=client_mock):
+    with patch("talk_to_metabase.tools.database.get_metabase_client", return_value=client_mock):
         # Call the tool with optional parameters
         result = await get_table_query_metadata(
             id=50112, 
@@ -354,7 +354,7 @@ async def test_get_table_query_metadata_api_error(mock_context):
     
     client_mock.auth.make_request = AsyncMock(side_effect=mock_make_request)
     
-    with patch("supermetabase.tools.database.get_metabase_client", return_value=client_mock):
+    with patch("talk_to_metabase.tools.database.get_metabase_client", return_value=client_mock):
         # Call the tool
         result = await get_table_query_metadata(id=99999, ctx=mock_context)
         
@@ -374,7 +374,7 @@ async def test_get_table_query_metadata_exception(mock_context):
     client_mock = MagicMock()
     client_mock.auth.make_request = AsyncMock(side_effect=Exception("Connection failed"))
     
-    with patch("supermetabase.tools.database.get_metabase_client", return_value=client_mock):
+    with patch("talk_to_metabase.tools.database.get_metabase_client", return_value=client_mock):
         # Call the tool
         result = await get_table_query_metadata(id=50112, ctx=mock_context)
         
@@ -463,7 +463,7 @@ async def test_get_table_query_metadata_missing_fields(mock_context):
     
     client_mock.auth.make_request = AsyncMock(side_effect=mock_make_request)
     
-    with patch("supermetabase.tools.database.get_metabase_client", return_value=client_mock):
+    with patch("talk_to_metabase.tools.database.get_metabase_client", return_value=client_mock):
         # Call the tool
         result = await get_table_query_metadata(id=50112, ctx=mock_context)
         
@@ -556,7 +556,7 @@ async def test_get_table_query_metadata_field_categorization(mock_context):
     
     client_mock.auth.make_request = AsyncMock(side_effect=mock_make_request)
     
-    with patch("supermetabase.tools.database.get_metabase_client", return_value=client_mock):
+    with patch("talk_to_metabase.tools.database.get_metabase_client", return_value=client_mock):
         # Call the tool
         result = await get_table_query_metadata(id=50112, ctx=mock_context)
         
@@ -629,7 +629,7 @@ async def test_get_table_query_metadata_empty_fields(mock_context):
     
     client_mock.auth.make_request = AsyncMock(side_effect=mock_make_request)
     
-    with patch("supermetabase.tools.database.get_metabase_client", return_value=client_mock):
+    with patch("talk_to_metabase.tools.database.get_metabase_client", return_value=client_mock):
         # Call the tool
         result = await get_table_query_metadata(id=50112, ctx=mock_context)
         

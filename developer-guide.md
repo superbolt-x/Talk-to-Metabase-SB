@@ -1,10 +1,10 @@
-# SuperMetabase MCP Developer Guide
+# Talk to Metabase MCP Developer Guide
 
-This document provides comprehensive guidance for developers who will be implementing or modifying tools in the SuperMetabase MCP server project.
+This document provides comprehensive guidance for developers who will be implementing or modifying tools in the Talk to Metabase MCP server project.
 
 ## Project Overview
 
-SuperMetabase is an MCP (Model Context Protocol) server that integrates Claude with Metabase, allowing Claude to interact with Metabase resources. The server follows the Model Context Protocol specification to expose Metabase functionality as tools that Claude can use.
+Talk to Metabase is an MCP (Model Context Protocol) server that integrates Claude with Metabase, allowing Claude to interact with Metabase resources. The server follows the Model Context Protocol specification to expose Metabase functionality as tools that Claude can use.
 
 ### Key Components
 
@@ -18,8 +18,8 @@ SuperMetabase is an MCP (Model Context Protocol) server that integrates Claude w
 ## Project Structure
 
 ```
-SuperMetabase/
-├── supermetabase/              # Main package
+Talk to Metabase/
+├── talk_to_metabase/              # Main package
 │   ├── __init__.py             # Package initialization
 │   ├── auth.py                 # Metabase authentication
 │   ├── client.py               # Metabase API client
@@ -55,7 +55,7 @@ The architecture follows a modular design pattern:
 5. **Tools**: Individual modules in the `tools/` directory expose Metabase functionality
 
 The core pattern is:
-1. User query → Claude → MCP client → SuperMetabase MCP server
+1. User query → Claude → MCP client → Talk to Metabase MCP server
 2. Server authenticates with Metabase
 3. Tool executes corresponding API call
 4. Response is formatted and returned to Claude
@@ -249,7 +249,7 @@ async def test_tool_name_success(mock_context, sample_data):
     client_mock = MagicMock()
     client_mock.some_method = AsyncMock(return_value=sample_data)
     
-    with patch("supermetabase.tools.your_module.get_metabase_client", return_value=client_mock):
+    with patch("talk_to_metabase.tools.your_module.get_metabase_client", return_value=client_mock):
         # Call the tool
         result = await tool_name(param1="value", ctx=mock_context)
         
@@ -359,7 +359,7 @@ logger.error(f"Error in tool_name: {e}")
 
 ### Pagination for Large Result Sets
 
-For API endpoints that may return large sets of data, implement pagination to ensure manageable response sizes. There are two types of pagination implementations in SuperMetabase:
+For API endpoints that may return large sets of data, implement pagination to ensure manageable response sizes. There are two types of pagination implementations in Talk to Metabase:
 
 #### 1. API-Based Pagination
 
@@ -494,7 +494,7 @@ async def get_resource_with_items(
 
 ## Dashboard Tools with Pagination
 
-SuperMetabase implements a two-step approach for handling dashboards with large numbers of cards:
+Talk to Metabase implements a two-step approach for handling dashboards with large numbers of cards:
 
 ### 1. `get_dashboard` Tool
 
@@ -942,7 +942,7 @@ The implementation handles both JSON-formatted string parameters and native type
 
 ## Collection Tools
 
-SuperMetabase provides two specialized tools for collection exploration and content viewing, each optimized for different use cases:
+Talk to Metabase provides two specialized tools for collection exploration and content viewing, each optimized for different use cases:
 
 ### 1. Collection Tree Explorer (`explore_collection_tree`)
 
@@ -1106,7 +1106,7 @@ This two-tool approach provides both efficient collection hierarchy navigation a
 
 ## Dataset Query Tool
 
-The `run_dataset_query` tool has been implemented to allow direct execution of both native SQL and structured MBQL queries against Metabase databases. The implementation follows SuperMetabase best practices by focusing on essential fields while maintaining all critical information.
+The `run_dataset_query` tool has been implemented to allow direct execution of both native SQL and structured MBQL queries against Metabase databases. The implementation follows Talk to Metabase best practices by focusing on essential fields while maintaining all critical information.
 
 ### Key Features
 
@@ -1221,13 +1221,13 @@ The `run_dataset_query` tool has been implemented to allow direct execution of b
 - Parameter validation ensures the appropriate query objects are provided based on type
 - Responses include only essential fields to maintain performance and readability
 - Comprehensive error handling captures and formats SQL errors for easier debugging
-- The implementation follows the same patterns as other SuperMetabase tools for consistency
+- The implementation follows the same patterns as other Talk to Metabase tools for consistency
 
 This implementation provides Claude with a powerful way to directly execute SQL and MBQL queries against Metabase databases, while focusing on essential output fields for better performance and readability.
 
 ## Configuration Options
 
-SuperMetabase is configured through environment variables, which can be set in a `.env` file or in the Claude Desktop configuration:
+Talk to Metabase is configured through environment variables, which can be set in a `.env` file or in the Claude Desktop configuration:
 
 | Parameter | Description | Default |
 |-----------|-------------|---------|
@@ -1259,7 +1259,7 @@ For testing pagination functionality, create tests that verify:
 
 To test with Claude Desktop:
 
-1. Update your Claude Desktop configuration to include the SuperMetabase server
+1. Update your Claude Desktop configuration to include the Talk to Metabase server
 2. Start a conversation with Claude
 3. Ask questions that would trigger your new tool
 4. Check the server logs for any issues
@@ -1309,7 +1309,7 @@ If experiencing issues with dashboard tabs:
 
 ## Database Tools
 
-SuperMetabase provides essential database connectivity tools optimized for performance and usability.
+Talk to Metabase provides essential database connectivity tools optimized for performance and usability.
 
 ### List Databases Tool (`list_databases`)
 
@@ -1616,7 +1616,7 @@ The current implementation includes functionality for retrieving and searching M
 
 ## Conclusion
 
-By following these guidelines, you can effectively extend and improve the SuperMetabase MCP server. The pagination patterns established for dashboard and search resources provide a robust foundation for handling large datasets while maintaining performance and usability.
+By following these guidelines, you can effectively extend and improve the Talk to Metabase MCP server. The pagination patterns established for dashboard and search resources provide a robust foundation for handling large datasets while maintaining performance and usability.
 
 Remember to maintain consistency with the existing code patterns and to thoroughly test your implementations, especially pagination functionality which requires careful validation of edge cases.
 

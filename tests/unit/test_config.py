@@ -7,7 +7,7 @@ from unittest.mock import patch
 
 import pytest
 
-from supermetabase.config import MetabaseConfig
+from talk_to_metabase.config import MetabaseConfig
 
 
 def test_validate_url():

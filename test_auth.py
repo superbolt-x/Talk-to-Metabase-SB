@@ -23,8 +23,8 @@ if __name__ == "__main__":
 # Load environment variables
 load_dotenv()
 
-from supermetabase.config import MetabaseConfig
-from supermetabase.auth import MetabaseAuth
+from talk_to_metabase.config import MetabaseConfig
+from talk_to_metabase.auth import MetabaseAuth
 
 
 async def test_authentication():

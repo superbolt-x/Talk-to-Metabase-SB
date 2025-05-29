@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-SuperMetabase MCP Server entry point.
+Talk to Metabase MCP Server entry point.
 """
 
 import os
@@ -33,11 +33,11 @@ if __name__ == "__main__":
     logger.info(f"Added parent directory to path: {os.path.abspath(os.path.join(os.path.dirname(__file__), '..')) }")
 
 try:
-    from supermetabase.server import run_server
-    logger.info("Successfully imported supermetabase.server module")
+    from talk_to_metabase.server import run_server
+    logger.info("Successfully imported talk_to_metabase.server module")
     
     if __name__ == "__main__":
-        logger.info("Starting SuperMetabase MCP server...")
+        logger.info("Starting Talk to Metabase MCP server...")
         run_server()
 except Exception as e:
     logger.error(f"Error starting server: {e}")

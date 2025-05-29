@@ -9,10 +9,10 @@ from typing import Dict, Any
 import pytest
 from unittest.mock import MagicMock, AsyncMock, patch
 
-from supermetabase.auth import MetabaseAuth
-from supermetabase.client import MetabaseClient
-from supermetabase.config import MetabaseConfig
-from supermetabase.server import MetabaseContext
+from talk_to_metabase.auth import MetabaseAuth
+from talk_to_metabase.client import MetabaseClient
+from talk_to_metabase.config import MetabaseConfig
+from talk_to_metabase.server import MetabaseContext
 
 
 @pytest.fixture

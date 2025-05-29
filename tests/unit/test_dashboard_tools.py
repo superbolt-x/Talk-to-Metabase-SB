@@ -7,7 +7,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from supermetabase.tools.dashboard import get_dashboard, create_dashboard, get_dashboard_tab
+from talk_to_metabase.tools.dashboard import get_dashboard, create_dashboard, get_dashboard_tab
 
 
 @pytest.mark.asyncio
@@ -17,7 +17,7 @@ async def test_get_dashboard_success(mock_context, sample_dashboard):
     client_mock = MagicMock()
     client_mock.get_resource = AsyncMock(return_value=sample_dashboard)
     
-    with patch("supermetabase.tools.dashboard.get_metabase_client", return_value=client_mock):
+    with patch("talk_to_metabase.tools.dashboard.get_metabase_client", return_value=client_mock):
         # Call the tool
         result = await get_dashboard(id=1, ctx=mock_context)
         
@@ -78,7 +78,7 @@ async def test_get_dashboard_with_tabs(mock_context, sample_dashboard):
     client_mock = MagicMock()
     client_mock.get_resource = AsyncMock(return_value=dashboard_with_tabs)
     
-    with patch("supermetabase.tools.dashboard.get_metabase_client", return_value=client_mock):
+    with patch("talk_to_metabase.tools.dashboard.get_metabase_client", return_value=client_mock):
         # Call the tool
         result = await get_dashboard(id=1, ctx=mock_context)
         
@@ -111,7 +111,7 @@ async def test_get_dashboard_error(mock_context):
     client_mock = MagicMock()
     client_mock.get_resource = AsyncMock(side_effect=ValueError("Test error"))
     
-    with patch("supermetabase.tools.dashboard.get_metabase_client", return_value=client_mock):
+    with patch("talk_to_metabase.tools.dashboard.get_metabase_client", return_value=client_mock):
         # Call the tool
         result = await get_dashboard(id=1, ctx=mock_context)
         
@@ -130,7 +130,7 @@ async def test_create_dashboard_success(mock_context, sample_dashboard):
     client_mock = MagicMock()
     client_mock.create_resource = AsyncMock(return_value=sample_dashboard)
     
-    with patch("supermetabase.tools.dashboard.get_metabase_client", return_value=client_mock):
+    with patch("talk_to_metabase.tools.dashboard.get_metabase_client", return_value=client_mock):
         # Call the tool
         result = await create_dashboard(
             name="Test Dashboard",
@@ -190,7 +190,7 @@ async def test_get_dashboard_tab_single_tab(mock_context, sample_dashboard, samp
     client_mock = MagicMock()
     client_mock.get_resource = AsyncMock(return_value=complex_dashboard)
     
-    with patch("supermetabase.tools.dashboard.get_metabase_client", return_value=client_mock):
+    with patch("talk_to_metabase.tools.dashboard.get_metabase_client", return_value=client_mock):
         # Call the tool
         result = await get_dashboard_tab(dashboard_id=1, ctx=mock_context)  # No tab_id needed
         
@@ -271,7 +271,7 @@ async def test_get_dashboard_tab_with_tabs(mock_context, sample_dashboard, sampl
     client_mock = MagicMock()
     client_mock.get_resource = AsyncMock(return_value=dashboard_with_tabs)
     
-    with patch("supermetabase.tools.dashboard.get_metabase_client", return_value=client_mock):
+    with patch("talk_to_metabase.tools.dashboard.get_metabase_client", return_value=client_mock):
         # Call the tool for tab 101
         result = await get_dashboard_tab(dashboard_id=1, ctx=mock_context, tab_id=101)
         
@@ -309,7 +309,7 @@ async def test_get_dashboard_tab_error_missing_tab_id(mock_context, sample_dashb
     client_mock = MagicMock()
     client_mock.get_resource = AsyncMock(return_value=dashboard_with_tabs)
     
-    with patch("supermetabase.tools.dashboard.get_metabase_client", return_value=client_mock):
+    with patch("talk_to_metabase.tools.dashboard.get_metabase_client", return_value=client_mock):
         # Call the tool without tab_id
         result = await get_dashboard_tab(dashboard_id=1, ctx=mock_context)
         
@@ -340,7 +340,7 @@ async def test_get_dashboard_tab_error_invalid_tab_id(mock_context, sample_dashb
     client_mock = MagicMock()
     client_mock.get_resource = AsyncMock(return_value=dashboard_with_tabs)
     
-    with patch("supermetabase.tools.dashboard.get_metabase_client", return_value=client_mock):
+    with patch("talk_to_metabase.tools.dashboard.get_metabase_client", return_value=client_mock):
         # Call the tool with non-existent tab_id
         result = await get_dashboard_tab(dashboard_id=1, ctx=mock_context, tab_id=999)
         
@@ -370,7 +370,7 @@ async def test_get_dashboard_tab_error_invalid_tab_for_single_tab(mock_context, 
     client_mock = MagicMock()
     client_mock.get_resource = AsyncMock(return_value=single_tab_dashboard)
     
-    with patch("supermetabase.tools.dashboard.get_metabase_client", return_value=client_mock):
+    with patch("talk_to_metabase.tools.dashboard.get_metabase_client", return_value=client_mock):
         # Call the tool with tab_id for a single-tab dashboard
         result = await get_dashboard_tab(dashboard_id=1, ctx=mock_context, tab_id=101)
         

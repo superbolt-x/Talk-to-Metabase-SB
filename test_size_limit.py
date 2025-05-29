@@ -23,8 +23,8 @@ load_dotenv()
 # Add the parent directory to the path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from supermetabase.config import MetabaseConfig
-from supermetabase.tools.common import check_response_size
+from talk_to_metabase.config import MetabaseConfig
+from talk_to_metabase.tools.common import check_response_size
 
 def test_size_limit():
     """Test the size limit functionality."""

@@ -7,7 +7,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from supermetabase.tools.dataset import run_dataset_query
+from talk_to_metabase.tools.dataset import run_dataset_query
 
 
 @pytest.mark.asyncio
@@ -47,7 +47,7 @@ async def test_run_native_dataset_query_success(mock_context):
     client_mock = MagicMock()
     client_mock.auth = auth_mock
     
-    with patch("supermetabase.tools.dataset.get_metabase_client", return_value=client_mock):
+    with patch("talk_to_metabase.tools.dataset.get_metabase_client", return_value=client_mock):
         # Call the tool
         result = await run_dataset_query(
             database=195,
@@ -114,7 +114,7 @@ async def test_run_dataset_query_error(mock_context):
     client_mock = MagicMock()
     client_mock.auth = auth_mock
     
-    with patch("supermetabase.tools.dataset.get_metabase_client", return_value=client_mock):
+    with patch("talk_to_metabase.tools.dataset.get_metabase_client", return_value=client_mock):
         # Call the tool with a query that will cause an error
         result = await run_dataset_query(
             database=195,
@@ -143,7 +143,7 @@ async def test_run_dataset_query_missing_parameters(mock_context):
     # Set up the mock
     client_mock = MagicMock()
     
-    with patch("supermetabase.tools.dataset.get_metabase_client", return_value=client_mock):
+    with patch("talk_to_metabase.tools.dataset.get_metabase_client", return_value=client_mock):
         # Call the tool without required parameters
         result = await run_dataset_query(
             database=195,
@@ -196,7 +196,7 @@ async def test_run_mbql_dataset_query(mock_context):
     client_mock = MagicMock()
     client_mock.auth = auth_mock
     
-    with patch("supermetabase.tools.dataset.get_metabase_client", return_value=client_mock):
+    with patch("talk_to_metabase.tools.dataset.get_metabase_client", return_value=client_mock):
         # Call the tool with an MBQL query
         result = await run_dataset_query(
             database=195,

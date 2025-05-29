@@ -6,7 +6,7 @@ import json
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from supermetabase.tools.collection import explore_collection_tree, view_collection_contents
+from talk_to_metabase.tools.collection import explore_collection_tree, view_collection_contents
 
 
 @pytest.mark.asyncio
@@ -59,7 +59,7 @@ async def test_explore_collection_tree_root_success(mock_context):
     client_mock = MagicMock()
     client_mock.auth.make_request = AsyncMock(return_value=(sample_data, 200, None))
     
-    with patch("supermetabase.tools.collection.get_metabase_client", return_value=client_mock):
+    with patch("talk_to_metabase.tools.collection.get_metabase_client", return_value=client_mock):
         result = await explore_collection_tree(ctx=mock_context)
         
         # Verify the result
@@ -121,7 +121,7 @@ async def test_explore_collection_tree_specific_collection(mock_context):
     client_mock = MagicMock()
     client_mock.auth.make_request = AsyncMock(return_value=(sample_data, 200, None))
     
-    with patch("supermetabase.tools.collection.get_metabase_client", return_value=client_mock):
+    with patch("talk_to_metabase.tools.collection.get_metabase_client", return_value=client_mock):
         result = await explore_collection_tree(collection_id=123, ctx=mock_context)
         
         result_data = json.loads(result)
@@ -183,7 +183,7 @@ async def test_view_collection_contents_all_items(mock_context):
     client_mock = MagicMock()
     client_mock.auth.make_request = AsyncMock(return_value=(sample_data, 200, None))
     
-    with patch("supermetabase.tools.collection.get_metabase_client", return_value=client_mock):
+    with patch("talk_to_metabase.tools.collection.get_metabase_client", return_value=client_mock):
         result = await view_collection_contents(ctx=mock_context)
         
         result_data = json.loads(result)
@@ -241,7 +241,7 @@ async def test_view_collection_contents_filtered_models(mock_context):
     client_mock = MagicMock()
     client_mock.auth.make_request = AsyncMock(return_value=(sample_data, 200, None))
     
-    with patch("supermetabase.tools.collection.get_metabase_client", return_value=client_mock):
+    with patch("talk_to_metabase.tools.collection.get_metabase_client", return_value=client_mock):
         # Filter for only dashboards
         result = await view_collection_contents(
             ctx=mock_context, 
@@ -279,7 +279,7 @@ async def test_explore_collection_tree_empty_collection(mock_context):
     client_mock = MagicMock()
     client_mock.auth.make_request = AsyncMock(return_value=(sample_data, 200, None))
     
-    with patch("supermetabase.tools.collection.get_metabase_client", return_value=client_mock):
+    with patch("talk_to_metabase.tools.collection.get_metabase_client", return_value=client_mock):
         result = await explore_collection_tree(ctx=mock_context)
         
         result_data = json.loads(result)
@@ -305,7 +305,7 @@ async def test_view_collection_contents_empty_collection(mock_context):
     client_mock = MagicMock()
     client_mock.auth.make_request = AsyncMock(return_value=(sample_data, 200, None))
     
-    with patch("supermetabase.tools.collection.get_metabase_client", return_value=client_mock):
+    with patch("talk_to_metabase.tools.collection.get_metabase_client", return_value=client_mock):
         result = await view_collection_contents(ctx=mock_context)
         
         result_data = json.loads(result)
@@ -326,7 +326,7 @@ async def test_collection_tools_error_handling(mock_context):
     client_mock = MagicMock()
     client_mock.auth.make_request = AsyncMock(return_value=(None, 404, "Collection not found"))
     
-    with patch("supermetabase.tools.collection.get_metabase_client", return_value=client_mock):
+    with patch("talk_to_metabase.tools.collection.get_metabase_client", return_value=client_mock):
         # Test explore_collection_tree error handling
         result1 = await explore_collection_tree(collection_id=9999, ctx=mock_context)
         result1_data = json.loads(result1)

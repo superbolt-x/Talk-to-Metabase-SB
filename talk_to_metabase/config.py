@@ -1,5 +1,5 @@
 """
-Configuration module for the SuperMetabase MCP Server.
+Configuration module for the Talk to Metabase MCP Server.
 """
 
 import os

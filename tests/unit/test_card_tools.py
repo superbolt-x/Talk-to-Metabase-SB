@@ -7,7 +7,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from supermetabase.tools.card import get_card_definition, extract_essential_card_info, get_sql_translation, update_card
+from talk_to_metabase.tools.card import get_card_definition, extract_essential_card_info, get_sql_translation, update_card
 
 
 @pytest.mark.asyncio
@@ -20,8 +20,9 @@ async def test_get_card_definition_success(mock_context, sample_card):
     client_mock = MagicMock()
     client_mock.auth = auth_mock
     
-    with patch("supermetabase.tools.card.get_metabase_client", return_value=client_mock), \
-         patch("supermetabase.tools.card.get_sql_translation", return_value=AsyncMock(return_value=None)):
+    with patch("talk_to_metabase.tools.card.get_metabase_client", return_value=client_mock), \
+         patch("talk_to_metabase.tools.card.get_sql_translation", return_value=AsyncMock(return_value=None)):
+
         # Call the tool
         result = await get_card_definition(id=1, ctx=mock_context)
         
@@ -45,8 +46,9 @@ async def test_get_card_definition_with_params(mock_context, sample_card):
     client_mock = MagicMock()
     client_mock.auth = auth_mock
     
-    with patch("supermetabase.tools.card.get_metabase_client", return_value=client_mock), \
-         patch("supermetabase.tools.card.get_sql_translation", return_value=AsyncMock(return_value=None)):
+    with patch("talk_to_metabase.tools.card.get_metabase_client", return_value=client_mock), \
+         patch("talk_to_metabase.tools.card.get_sql_translation", return_value=AsyncMock(return_value=None)):
+
         # Call the tool with parameters
         result = await get_card_definition(
             id=1, 
@@ -79,7 +81,7 @@ async def test_get_card_definition_error(mock_context):
     client_mock = MagicMock()
     client_mock.auth = auth_mock
     
-    with patch("supermetabase.tools.card.get_metabase_client", return_value=client_mock):
+    with patch("talk_to_metabase.tools.card.get_metabase_client", return_value=client_mock):
         # Call the tool
         result = await get_card_definition(id=999, ctx=mock_context)
         
@@ -125,7 +127,7 @@ async def test_get_card_definition_with_mbql_translation(mock_context):
     client_mock = MagicMock()
     client_mock.auth = auth_mock
     
-    with patch("supermetabase.tools.card.get_metabase_client", return_value=client_mock):
+    with patch("talk_to_metabase.tools.card.get_metabase_client", return_value=client_mock):
         # Call the tool
         result = await get_card_definition(id=42, ctx=mock_context)
         
@@ -391,7 +393,7 @@ async def test_update_card_success(mock_context, sample_card):
     client_mock = MagicMock()
     client_mock.auth = auth_mock
     
-    with patch("supermetabase.tools.card.get_metabase_client", return_value=client_mock):
+    with patch("talk_to_metabase.tools.card.get_metabase_client", return_value=client_mock):
         # Call the tool with update parameters
         result = await update_card(
             id=1,
@@ -428,7 +430,7 @@ async def test_update_card_no_fields(mock_context, sample_card):
     client_mock = MagicMock()
     client_mock.auth = auth_mock
     
-    with patch("supermetabase.tools.card.get_metabase_client", return_value=client_mock):
+    with patch("talk_to_metabase.tools.card.get_metabase_client", return_value=client_mock):
         # Call the tool with no update parameters
         result = await update_card(id=1, ctx=mock_context)
         
@@ -455,7 +457,7 @@ async def test_update_card_not_found(mock_context):
     client_mock = MagicMock()
     client_mock.auth = auth_mock
     
-    with patch("supermetabase.tools.card.get_metabase_client", return_value=client_mock):
+    with patch("talk_to_metabase.tools.card.get_metabase_client", return_value=client_mock):
         # Call the tool
         result = await update_card(
             id=999, 
@@ -502,8 +504,9 @@ async def test_update_card_with_sql(mock_context, sample_card):
     # Set up the mocks
     client_mock = MagicMock()
     
-    with patch("supermetabase.tools.card.get_metabase_client", return_value=client_mock), \
-         patch("supermetabase.tools.card.execute_sql_query", AsyncMock(return_value=validation_result)):
+    with patch("talk_to_metabase.tools.card.get_metabase_client", return_value=client_mock), \
+         patch("talk_to_metabase.tools.card.execute_sql_query", AsyncMock(return_value=validation_result)):
+
         
         # Setup the make_request mock with side effects
         client_mock.auth.make_request = AsyncMock(side_effect=[
@@ -542,7 +545,7 @@ async def test_update_card_missing_database_id(mock_context, sample_card):
     client_mock = MagicMock()
     client_mock.auth = auth_mock
     
-    with patch("supermetabase.tools.card.get_metabase_client", return_value=client_mock):
+    with patch("talk_to_metabase.tools.card.get_metabase_client", return_value=client_mock):
         # Call the tool with query parameter but card has no database ID
         result = await update_card(
             id=1,

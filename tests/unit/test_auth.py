@@ -8,8 +8,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from supermetabase.auth import MetabaseAuth
-from supermetabase.config import MetabaseConfig
+from talk_to_metabase.auth import MetabaseAuth
+from talk_to_metabase.config import MetabaseConfig
 
 
 @pytest.fixture

@@ -1,6 +1,6 @@
-# Testing SuperMetabase
+# Testing Talk to Metabase
 
-This document provides instructions for testing the SuperMetabase MCP server.
+This document provides instructions for testing the Talk to Metabase MCP server.
 
 ## Prerequisites
 
@@ -13,7 +13,7 @@ This document provides instructions for testing the SuperMetabase MCP server.
 1. Clone the repository and navigate to the project directory:
 
 ```bash
-cd /Users/Pro/Workspace/SuperMetabase
+cd /Users/Pro/Workspace/"Talk to Metabase"
 ```
 
 2. Create a `.env` file with your Metabase credentials:
@@ -71,7 +71,7 @@ python test_import.py
 If successful, you should see:
 ```
 All imports successful!
-SuperMetabase version: 0.1.0
+Talk to Metabase version: 0.1.0
 Package structure seems correct.
 ```
 
@@ -135,14 +135,14 @@ On Windows:
 notepad %APPDATA%\Claude\claude_desktop_config.json
 ```
 
-3. Add your SuperMetabase server configuration:
+3. Add your Talk to Metabase server configuration:
 
 ```json
 {
   "mcpServers": {
     "metabase": {
       "command": "python",
-      "args": ["/absolute/path/to/SuperMetabase/metabase_mcp.py"],
+      "args": ["/absolute/path/to/Talk to Metabase/metabase_mcp.py"],
       "env": {
         "METABASE_URL": "https://your-metabase-instance.company.com",
         "METABASE_USERNAME": "your-username",

@@ -1,6 +1,6 @@
 # Collection Tools Overview
 
-SuperMetabase now provides two specialized collection tools that work together to provide efficient collection exploration and content viewing.
+Talk to Metabase now provides two specialized collection tools that work together to provide efficient collection exploration and content viewing.
 
 ## Tools
 

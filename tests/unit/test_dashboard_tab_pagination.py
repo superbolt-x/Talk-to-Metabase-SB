@@ -7,7 +7,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from supermetabase.tools.dashboard import get_dashboard_tab
+from talk_to_metabase.tools.dashboard import get_dashboard_tab
 
 
 @pytest.mark.asyncio
@@ -44,7 +44,7 @@ async def test_get_dashboard_tab_with_pagination(mock_context, sample_dashboard,
     client_mock = MagicMock()
     client_mock.get_resource = AsyncMock(return_value=dashboard_with_many_cards)
     
-    with patch("supermetabase.tools.dashboard.get_metabase_client", return_value=client_mock):
+    with patch("talk_to_metabase.tools.dashboard.get_metabase_client", return_value=client_mock):
         # Call the tool with default pagination (page 1, page_size 20)
         result = await get_dashboard_tab(dashboard_id=1, ctx=mock_context)
         
@@ -108,7 +108,7 @@ async def test_get_dashboard_tab_pagination_second_page(mock_context, sample_das
     client_mock = MagicMock()
     client_mock.get_resource = AsyncMock(return_value=dashboard_with_many_cards)
     
-    with patch("supermetabase.tools.dashboard.get_metabase_client", return_value=client_mock):
+    with patch("talk_to_metabase.tools.dashboard.get_metabase_client", return_value=client_mock):
         # Call the tool for the second page
         result = await get_dashboard_tab(dashboard_id=1, ctx=mock_context, page=2)
         
@@ -167,7 +167,7 @@ async def test_get_dashboard_tab_custom_page_size(mock_context, sample_dashboard
     client_mock = MagicMock()
     client_mock.get_resource = AsyncMock(return_value=dashboard_with_many_cards)
     
-    with patch("supermetabase.tools.dashboard.get_metabase_client", return_value=client_mock):
+    with patch("talk_to_metabase.tools.dashboard.get_metabase_client", return_value=client_mock):
         # Call the tool with a custom page size of 10
         result = await get_dashboard_tab(dashboard_id=1, ctx=mock_context, page_size=10)
         
@@ -213,7 +213,7 @@ async def test_get_dashboard_tab_invalid_page(mock_context, sample_dashboard, sa
     client_mock = MagicMock()
     client_mock.get_resource = AsyncMock(return_value=dashboard_with_cards)
     
-    with patch("supermetabase.tools.dashboard.get_metabase_client", return_value=client_mock):
+    with patch("talk_to_metabase.tools.dashboard.get_metabase_client", return_value=client_mock):
         # Call the tool with an invalid page number (page=0)
         result_invalid_page = await get_dashboard_tab(dashboard_id=1, ctx=mock_context, page=0)
         
@@ -246,7 +246,7 @@ async def test_get_dashboard_tab_invalid_page_size(mock_context, sample_dashboar
     client_mock = MagicMock()
     client_mock.get_resource = AsyncMock(return_value=sample_dashboard)
     
-    with patch("supermetabase.tools.dashboard.get_metabase_client", return_value=client_mock):
+    with patch("talk_to_metabase.tools.dashboard.get_metabase_client", return_value=client_mock):
         # Call the tool with an invalid page size (page_size=0)
         result = await get_dashboard_tab(dashboard_id=1, ctx=mock_context, page_size=0)
         

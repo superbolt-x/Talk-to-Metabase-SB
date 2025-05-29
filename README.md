@@ -1,4 +1,4 @@
-# SuperMetabase MCP
+# Talk to Metabase MCP
 
 A Model Context Protocol (MCP) server that integrates Claude with Metabase, providing AI-powered data analysis, visualization, and dashboard management capabilities.
 

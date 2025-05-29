@@ -8,7 +8,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from supermetabase.tools.dashboard import execute_card_query
+from talk_to_metabase.tools.dashboard import execute_card_query
 
 
 @pytest.mark.asyncio
@@ -50,7 +50,7 @@ async def test_execute_standalone_card_query(mock_context):
     client_mock = MagicMock()
     client_mock.auth = auth_mock
     
-    with patch("supermetabase.tools.dashboard.get_metabase_client", return_value=client_mock):
+    with patch("talk_to_metabase.tools.dashboard.get_metabase_client", return_value=client_mock):
         # Call the tool
         result = await execute_card_query(card_id=123, ctx=mock_context)
         
@@ -107,7 +107,7 @@ async def test_execute_dashboard_card_query(mock_context):
     client_mock = MagicMock()
     client_mock.auth = auth_mock
     
-    with patch("supermetabase.tools.dashboard.get_metabase_client", return_value=client_mock):
+    with patch("talk_to_metabase.tools.dashboard.get_metabase_client", return_value=client_mock):
         # Call the tool
         result = await execute_card_query(
             card_id=123,
@@ -155,7 +155,7 @@ async def test_execute_card_query_missing_parameter(mock_context):
     # Set up the mock
     client_mock = MagicMock()
     
-    with patch("supermetabase.tools.dashboard.get_metabase_client", return_value=client_mock):
+    with patch("talk_to_metabase.tools.dashboard.get_metabase_client", return_value=client_mock):
         # Call the tool with dashboard_id but no dashcard_id
         result = await execute_card_query(
             card_id=123,
@@ -188,7 +188,7 @@ async def test_execute_card_query_api_error(mock_context):
     client_mock = MagicMock()
     client_mock.auth = auth_mock
     
-    with patch("supermetabase.tools.dashboard.get_metabase_client", return_value=client_mock):
+    with patch("talk_to_metabase.tools.dashboard.get_metabase_client", return_value=client_mock):
         # Call the tool
         result = await execute_card_query(card_id=999, ctx=mock_context)
         
