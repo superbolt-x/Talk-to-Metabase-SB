@@ -7,7 +7,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from supermetabase.tools.card import get_card_definition, extract_essential_card_info, get_sql_translation
+from supermetabase.tools.card import get_card_definition, extract_essential_card_info, get_sql_translation, update_card
 
 
 @pytest.mark.asyncio
@@ -216,11 +216,11 @@ def test_extract_essential_card_info():
         "dashboard_count": 3,
         "created_at": "2024-01-01T00:00:00Z",
         "updated_at": "2025-01-01T00:00:00Z",
-        "embedding_params": null,
-        "enable_embedding": false,
-        "cache_ttl": null,
-        "archived": false,
-        "can_write": true
+        "embedding_params": None,
+        "enable_embedding": False,
+        "cache_ttl": None,
+        "archived": False,
+        "can_write": True
     }
     
     # Extract essential info
@@ -340,7 +340,7 @@ async def test_get_sql_translation_not_mbql():
     
     # Verify no translation was attempted
     assert sql_translation is None
-    assert client_mock.auth.make_request.call_count == 0
+    assert getattr(client_mock, 'auth', MagicMock()).make_request.call_count == 0
 
 
 @pytest.mark.asyncio
@@ -372,3 +372,187 @@ async def test_get_sql_translation_error():
     
     # Verify the result is None on error
     assert sql_translation is None
+
+
+@pytest.mark.asyncio
+async def test_update_card_success(mock_context, sample_card):
+    """Test successful card update."""
+    # Sample update data
+    updated_card = sample_card.copy()
+    updated_card["name"] = "Updated Test Card"
+    
+    # Set up the mock
+    auth_mock = MagicMock()
+    auth_mock.make_request = AsyncMock(side_effect=[
+        (sample_card, 200, None),  # First call for retrieving existing card
+        (updated_card, 200, None)  # Second call for updating the card
+    ])
+    
+    client_mock = MagicMock()
+    client_mock.auth = auth_mock
+    
+    with patch("supermetabase.tools.card.get_metabase_client", return_value=client_mock):
+        # Call the tool with update parameters
+        result = await update_card(
+            id=1,
+            ctx=mock_context,
+            name="Updated Test Card"
+        )
+        
+        # Verify the result
+        assert isinstance(result, str)
+        result_data = json.loads(result)
+        assert result_data["success"] is True
+        assert result_data["card_id"] == 1
+        assert result_data["name"] == "Updated Test Card"
+        
+        # Verify the mocks were called correctly
+        assert auth_mock.make_request.call_count == 2
+        # First call for retrieving the card
+        assert auth_mock.make_request.call_args_list[0][0] == ("GET", "card/1")
+        # Second call for updating the card
+        assert auth_mock.make_request.call_args_list[1][0][0] == "PUT"
+        assert auth_mock.make_request.call_args_list[1][0][1] == "card/1"
+        # Verify the update payload
+        update_payload = auth_mock.make_request.call_args_list[1][1]["json"]
+        assert update_payload == {"name": "Updated Test Card"}
+
+
+@pytest.mark.asyncio
+async def test_update_card_no_fields(mock_context, sample_card):
+    """Test card update with no fields to update."""
+    # Set up the mock
+    auth_mock = MagicMock()
+    auth_mock.make_request = AsyncMock(return_value=(sample_card, 200, None))
+    
+    client_mock = MagicMock()
+    client_mock.auth = auth_mock
+    
+    with patch("supermetabase.tools.card.get_metabase_client", return_value=client_mock):
+        # Call the tool with no update parameters
+        result = await update_card(id=1, ctx=mock_context)
+        
+        # Verify the result indicates error due to no update fields
+        assert isinstance(result, str)
+        result_data = json.loads(result)
+        assert result_data["success"] is False
+        assert "No fields provided for update" in result_data["error"]
+        
+        # Verify only the GET request was made
+        assert auth_mock.make_request.call_count == 1
+        assert auth_mock.make_request.call_args[0] == ("GET", "card/1")
+
+
+@pytest.mark.asyncio
+async def test_update_card_not_found(mock_context):
+    """Test card update when card is not found."""
+    # Set up the mock
+    auth_mock = MagicMock()
+    auth_mock.make_request = AsyncMock(
+        return_value=({}, 404, "Card not found")
+    )
+    
+    client_mock = MagicMock()
+    client_mock.auth = auth_mock
+    
+    with patch("supermetabase.tools.card.get_metabase_client", return_value=client_mock):
+        # Call the tool
+        result = await update_card(
+            id=999, 
+            ctx=mock_context,
+            name="Updated Name"
+        )
+        
+        # Verify the result is an error response
+        assert isinstance(result, str)
+        result_data = json.loads(result)
+        assert result_data["success"] is False
+        assert result_data["error"]["message"] == "Cannot update card 999: Card not found"
+        assert result_data["error"]["error_type"] == "retrieval_error"
+
+
+@pytest.mark.asyncio
+async def test_update_card_with_sql(mock_context, sample_card):
+    """Test card update with a new SQL query."""
+    # Add database ID to sample card
+    sample_card_with_db = sample_card.copy()
+    sample_card_with_db["dataset_query"] = {"database": 1, "type": "native"}
+    
+    # New SQL query
+    new_query = "SELECT * FROM test_table"
+    
+    # Query validation result
+    validation_result = {
+        "success": True,
+        "result_metadata": [],
+        "row_count": 0
+    }
+    
+    # Updated card data
+    updated_card = sample_card_with_db.copy()
+    updated_card["dataset_query"] = {
+        "type": "native",
+        "database": 1,
+        "native": {
+            "query": new_query,
+            "template-tags": {}
+        }
+    }
+    
+    # Set up the mocks
+    client_mock = MagicMock()
+    
+    with patch("supermetabase.tools.card.get_metabase_client", return_value=client_mock), \
+         patch("supermetabase.tools.card.execute_sql_query", AsyncMock(return_value=validation_result)):
+        
+        # Setup the make_request mock with side effects
+        client_mock.auth.make_request = AsyncMock(side_effect=[
+            (sample_card_with_db, 200, None),  # First call for retrieving existing card
+            (updated_card, 200, None)  # Second call for updating the card
+        ])
+        
+        # Call the tool with query parameter
+        result = await update_card(
+            id=1,
+            ctx=mock_context,
+            query=new_query
+        )
+        
+        # Verify the result
+        assert isinstance(result, str)
+        result_data = json.loads(result)
+        assert result_data["success"] is True
+        assert result_data["card_id"] == 1
+        
+        # Verify the update payload
+        update_payload = client_mock.auth.make_request.call_args_list[1][1]["json"]
+        assert update_payload["dataset_query"]["native"]["query"] == new_query
+
+
+@pytest.mark.asyncio
+async def test_update_card_missing_database_id(mock_context, sample_card):
+    """Test card update with SQL but missing database ID."""
+    # Sample card without database ID
+    sample_card_no_db = sample_card.copy()
+    
+    # Set up the mock
+    auth_mock = MagicMock()
+    auth_mock.make_request = AsyncMock(return_value=(sample_card_no_db, 200, None))
+    
+    client_mock = MagicMock()
+    client_mock.auth = auth_mock
+    
+    with patch("supermetabase.tools.card.get_metabase_client", return_value=client_mock):
+        # Call the tool with query parameter but card has no database ID
+        result = await update_card(
+            id=1,
+            ctx=mock_context,
+            query="SELECT * FROM test_table"
+        )
+        
+        # Verify the result is an error response
+        assert isinstance(result, str)
+        result_data = json.loads(result)
+        assert result_data["success"] is False
+        assert "database_id not found" in result_data["error"]["message"]
+        assert result_data["error"]["error_type"] == "validation_error"

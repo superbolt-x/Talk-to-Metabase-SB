@@ -432,3 +432,147 @@ async def create_card(
                 "method": "POST"
             }
         )
+
+
+@mcp.tool(name="update_card", description="Update an existing card with a new SQL query")
+async def update_card(
+    id: int,
+    ctx: Context,
+    query: Optional[str] = None,
+    name: Optional[str] = None,
+    description: Optional[str] = None,
+    collection_id: Optional[int] = None,
+    archived: Optional[bool] = None
+) -> str:
+    """
+    Update an existing card with a new SQL query or metadata.
+    
+    Args:
+        id: Card ID to update (required, must be a positive integer)
+        ctx: MCP context
+        query: New SQL query string (optional)
+        name: New name for the card (optional)
+        description: New description for the card (optional)
+        collection_id: New collection ID to move the card to (optional)
+        archived: Whether the card is archived (optional)
+        
+    Returns:
+        JSON string with update result or error information
+    """
+    logger.info(f"Tool called: update_card(id={id}, name={name})")
+    
+    client = get_metabase_client(ctx)
+    
+    try:
+        # First, fetch the current card to ensure it exists
+        current_data, status, error = await client.auth.make_request(
+            "GET", f"card/{id}"
+        )
+        
+        if error:
+            return format_error_response(
+                status_code=status,
+                error_type="retrieval_error",
+                message=f"Cannot update card {id}: {error}",
+                request_info={
+                    "endpoint": f"/api/card/{id}", 
+                    "method": "GET"
+                }
+            )
+        
+        # Get the database ID from the existing card for SQL validation
+        database_id = None
+        if "dataset_query" in current_data and "database" in current_data["dataset_query"]:
+            database_id = current_data["dataset_query"]["database"]
+        
+        # Prepare update payload with only the fields to be updated
+        update_data = {}
+        
+        # Add fields that are provided
+        if name is not None:
+            update_data["name"] = name
+        if description is not None:
+            update_data["description"] = description
+        if collection_id is not None:
+            update_data["collection_id"] = collection_id
+        if archived is not None:
+            update_data["archived"] = archived
+        
+        # If query is provided, validate it and update the dataset_query
+        if query is not None:
+            if database_id is None:
+                return format_error_response(
+                    status_code=400,
+                    error_type="validation_error",
+                    message="Cannot update query: database_id not found in existing card",
+                    request_info={
+                        "endpoint": f"/api/card/{id}", 
+                        "method": "PUT"
+                    }
+                )
+            
+            # Validate the SQL query
+            execution_result = await execute_sql_query(client, database_id, query)
+            
+            if not execution_result["success"]:
+                # Return a concise error response if query validation fails
+                return json.dumps({
+                    "success": False,
+                    "error": execution_result["error"]
+                }, indent=2)
+            
+            # Add the validated query to the update data
+            update_data["dataset_query"] = {
+                "type": "native",
+                "database": database_id,
+                "native": {
+                    "query": query,
+                    "template-tags": {}
+                }
+            }
+            
+            # If we have result metadata from the query execution, include it
+            if "result_metadata" in execution_result:
+                update_data["result_metadata"] = execution_result["result_metadata"]
+        
+        # If no fields were provided to update, return early
+        if not update_data:
+            return json.dumps({
+                "success": False,
+                "error": "No fields provided for update"
+            }, indent=2)
+        
+        # Perform the update
+        data, status, error = await client.auth.make_request(
+            "PUT", f"card/{id}", json=update_data
+        )
+        
+        if error:
+            return format_error_response(
+                status_code=status,
+                error_type="update_error",
+                message=error,
+                request_info={
+                    "endpoint": f"/api/card/{id}", 
+                    "method": "PUT"
+                }
+            )
+        
+        # Return a concise success response with essential info
+        return json.dumps({
+            "success": True,
+            "card_id": data.get("id"),
+            "name": data.get("name")
+        }, indent=2)
+        
+    except Exception as e:
+        logger.error(f"Error updating card {id}: {e}")
+        return format_error_response(
+            status_code=500,
+            error_type="update_error",
+            message=str(e),
+            request_info={
+                "endpoint": f"/api/card/{id}", 
+                "method": "PUT"
+            }
+        )

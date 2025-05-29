@@ -628,7 +628,7 @@ The following table shows the Metabase API endpoints that correspond to existing
 | | `DELETE /api/dashboard/{id}` | `delete_dashboard` | 📝 Planned |
 | **Card Operations** | `GET /api/card/{id}` | `get_card_definition` | ✅ Implemented |
 | | `POST /api/card/` | `create_card` | ✅ Implemented |
-| | `PUT /api/card/{id}` | `update_card` | 📝 Planned |
+| | `PUT /api/card/{id}` | `update_card` | ✅ Implemented |
 | | `POST /api/card/{card-id}/query` | `execute_card_query` | ✅ Implemented (with dashboard context support) |
 | | `DELETE /api/card/{id}` | `delete_card` | 📝 Planned |
 | **Collection Operations** | `GET /api/collection/root/items` & `GET /api/collection/{id}/items` | `explore_collection_tree` & `view_collection_contents` | ✅ Implemented |
