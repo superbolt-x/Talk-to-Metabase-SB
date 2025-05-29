@@ -9,7 +9,7 @@ from typing import Dict, List, Optional
 from mcp.server.fastmcp import Context, FastMCP
 
 from ..server import get_server_instance
-from .common import format_error_response, get_metabase_client, check_response_size
+from .common import format_error_response, get_metabase_client, check_response_size, check_guidelines_enforcement
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -31,6 +31,12 @@ async def list_databases(ctx: Context) -> str:
         Simplified list of databases as JSON string with id, name, and engine only
     """
     logger.info("Tool called: list_databases()")
+    
+    # Check guidelines enforcement first
+    guidelines_error = check_guidelines_enforcement(ctx)
+    if guidelines_error:
+        return guidelines_error
+        
     client = get_metabase_client(ctx)
     
     try:
@@ -105,6 +111,12 @@ async def get_database_metadata(id: int, ctx: Context) -> str:
         Simplified database metadata as JSON string, including tables organized by schema
     """
     logger.info(f"Tool called: get_database_metadata({id})")
+    
+    # Check guidelines enforcement first
+    guidelines_error = check_guidelines_enforcement(ctx)
+    if guidelines_error:
+        return guidelines_error
+        
     client = get_metabase_client(ctx)
     
     try:
@@ -200,6 +212,12 @@ async def get_table_query_metadata(
         Table query metadata as JSON string with essential field information for query building
     """
     logger.info(f"Tool called: get_table_query_metadata(id={id}, include_sensitive_fields={include_sensitive_fields}, include_hidden_fields={include_hidden_fields}, include_editable_data_model={include_editable_data_model})")
+    
+    # Check guidelines enforcement first
+    guidelines_error = check_guidelines_enforcement(ctx)
+    if guidelines_error:
+        return guidelines_error
+        
     client = get_metabase_client(ctx)
     
     try:

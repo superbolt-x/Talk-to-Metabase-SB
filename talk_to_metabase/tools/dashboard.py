@@ -10,7 +10,7 @@ from typing import Dict, List, Optional, Any
 from mcp.server.fastmcp import Context, FastMCP
 
 from ..server import get_server_instance
-from .common import format_error_response, get_metabase_client, check_response_size
+from .common import format_error_response, get_metabase_client, check_response_size, check_guidelines_enforcement
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -31,7 +31,12 @@ async def get_dashboard(id: int, ctx: Context) -> str:
         
     Returns:
         Dashboard data as JSON string without card details
-    """
+    """    
+    # Check guidelines enforcement first
+    guidelines_error = check_guidelines_enforcement(ctx)
+    if guidelines_error:
+        return guidelines_error
+        
     client = get_metabase_client(ctx)
     
     try:
@@ -96,6 +101,11 @@ async def create_dashboard(
     Returns:
         Created dashboard data as JSON string
     """
+    # Check guidelines enforcement first
+    guidelines_error = check_guidelines_enforcement(ctx)
+    if guidelines_error:
+        return guidelines_error
+        
     client = get_metabase_client(ctx)
     
     # Build dashboard data
@@ -153,6 +163,11 @@ async def get_dashboard_tab(
     Returns:
         Dashboard tab data with paginated cards as JSON string
     """
+    # Check guidelines enforcement first
+    guidelines_error = check_guidelines_enforcement(ctx)
+    if guidelines_error:
+        return guidelines_error
+        
     # Validate pagination parameters
     if page < 1:
         return format_error_response(
@@ -350,6 +365,11 @@ async def execute_card_query(
     Returns:
         Query results as JSON string, potentially with dashboard context
     """
+    # Check guidelines enforcement first
+    guidelines_error = check_guidelines_enforcement(ctx)
+    if guidelines_error:
+        return guidelines_error
+        
     client = get_metabase_client(ctx)
     
     try:

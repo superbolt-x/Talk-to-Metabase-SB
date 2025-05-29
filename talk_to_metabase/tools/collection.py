@@ -9,7 +9,7 @@ from typing import Dict, List, Optional, Any, Union
 from mcp.server.fastmcp import Context, FastMCP
 
 from ..server import get_server_instance
-from .common import format_error_response, get_metabase_client, check_response_size
+from .common import format_error_response, get_metabase_client, check_response_size, check_guidelines_enforcement
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -35,6 +35,11 @@ async def explore_collection_tree(
     Returns:
         Child collections and content summary as JSON string
     """
+    # Check guidelines enforcement first
+    guidelines_error = check_guidelines_enforcement(ctx)
+    if guidelines_error:
+        return guidelines_error
+        
     client = get_metabase_client(ctx)
     
     # Build the endpoint path - different for root vs. specific collection
@@ -157,6 +162,11 @@ async def view_collection_contents(
     Returns:
         All collection items as JSON string with summary information
     """
+    # Check guidelines enforcement first
+    guidelines_error = check_guidelines_enforcement(ctx)
+    if guidelines_error:
+        return guidelines_error
+        
     client = get_metabase_client(ctx)
     
     # Build the endpoint path - different for root vs. specific collection

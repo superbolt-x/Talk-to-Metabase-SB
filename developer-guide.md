@@ -279,6 +279,34 @@ async def tool_function(
 ) -> str:
 ```
 
+### Context Guidelines Enforcement
+
+All Metabase tools must include context guidelines enforcement when `ACTIVATE_METABASE_CONTEXT=true`. Add this check at the beginning of every tool function:
+
+```python
+from .common import check_guidelines_enforcement
+
+@mcp.tool(name="your_tool_name", description="Your tool description")
+async def your_tool_function(
+    required_param: str,
+    ctx: Context,
+    optional_param: Optional[str] = None
+) -> str:
+    """Your tool docstring."""
+    logger.info(f"Tool called: your_tool_name(...)")
+    
+    # Check guidelines enforcement first
+    guidelines_error = check_guidelines_enforcement(ctx)
+    if guidelines_error:
+        return guidelines_error
+        
+    # Rest of your tool implementation
+    client = get_metabase_client(ctx)
+    # ...
+```
+
+**Important**: This enforcement check must be added to ALL Metabase tools, not just new ones. The check should be the first operation after logging, before any other logic.
+
 ### Response Size Limitation
 
 All tools must use the `check_response_size` function to ensure responses don't exceed the configured size limit:
@@ -880,6 +908,61 @@ async def create_card(database_id: int, query: str, name: str, ctx: Context):
 
 This implementation provides a clean, user-friendly way to create SQL cards in Metabase while ensuring the SQL is valid first, avoiding the creation of cards with invalid queries.
 
+## Context Guidelines Tool
+
+The `GET_METABASE_GUIDELINES` tool is a special tool that provides instance-specific context and guidelines to Claude.
+
+### Tool Characteristics
+
+- **Conditional Loading**: Only loaded when `ACTIVATE_METABASE_CONTEXT=true`
+- **Enforcement Role**: Must be called first before any other Metabase tools when activated
+- **Built-in Content**: Contains comprehensive guidelines with template variable substitution
+- **State Management**: Marks the conversation context as having received guidelines
+
+### Implementation Details
+
+```python
+@mcp.tool(name="GET_METABASE_GUIDELINES", description="REQUIRED: Get Metabase context guidelines - MUST be called first in any Metabase conversation when context is activated")
+async def get_metabase_guidelines(ctx: Context) -> str:
+    """**REQUIRED TOOL - MUST BE CALLED FIRST**
+    
+    When Metabase context is activated, this tool MUST be called at the beginning 
+    of any Metabase-related conversation before using any other Metabase tools.
+    """
+    # Get configuration
+    metabase_ctx = ctx.request_context.lifespan_context
+    config = metabase_ctx.auth.config
+    
+    # Mark context as having called guidelines
+    mark_guidelines_called(ctx)
+    
+    # Provide guidelines with template substitution
+    # ... (template processing and response generation)
+```
+
+### Template Processing
+
+The tool processes built-in guidelines and performs template variable substitution:
+- `{METABASE_URL}` → Cleaned URL without trailing slashes
+- `{METABASE_USERNAME}` → Configured username
+
+### Response Format
+
+```json
+{
+  "success": true,
+  "guidelines": "# Metabase Guidelines for https://example.com\n\n...",
+  "source": "built_in_guidelines",
+  "metabase_url": "https://example.com",
+  "username": "user@example.com",
+  "context_enforced": true
+}
+```
+
+### Error Handling
+
+The tool includes comprehensive error handling and logging to track when guidelines are provided and context state is updated.
+
 ## Enhanced Search Tool with Pagination
 
 The `search_resources` tool has been implemented with comprehensive pagination support to handle large result sets. This implementation includes:
@@ -1235,8 +1318,87 @@ Talk to Metabase is configured through environment variables, which can be set i
 | METABASE_USERNAME | Username for authentication | (Required) |
 | METABASE_PASSWORD | Password for authentication | (Required) |
 | RESPONSE_SIZE_LIMIT | Maximum size (characters) for responses | 100000 |
+| ACTIVATE_METABASE_CONTEXT | Whether to activate and enforce Metabase context guidelines | false |
 | MCP_TRANSPORT | Transport method (stdio, sse, streamable-http) | stdio |
 | LOG_LEVEL | Logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL) | INFO |
+
+## Metabase Context Guidelines System
+
+Talk to Metabase includes an advanced context guidelines system that can provide Claude with instance-specific information and enforce proper usage patterns.
+
+### Overview
+
+The context system operates in two modes:
+
+#### Default Mode (`ACTIVATE_METABASE_CONTEXT=false`)
+- All Metabase tools work normally without any special requirements
+- No additional tools are loaded
+- Suitable for general usage where context enforcement is not needed
+
+#### Context Activated Mode (`ACTIVATE_METABASE_CONTEXT=true`)
+- Loads the `GET_METABASE_GUIDELINES` tool with built-in instance guidelines
+- **Enforces** that Claude must call this tool first before using any other Metabase tools
+- Provides comprehensive information about the Metabase instance
+- Helps ensure proper context and best practices are followed
+
+### Context Enforcement
+
+When context is activated, the system implements strict enforcement:
+
+1. **Tool Loading**: The `GET_METABASE_GUIDELINES` tool is conditionally loaded only when activated
+2. **Enforcement Check**: All other Metabase tools check if guidelines have been called first
+3. **Error Response**: If guidelines haven't been called, tools return a detailed error message:
+   ```json
+   {
+     "success": false,
+     "error": {
+       "error_type": "guidelines_required",
+       "message": "The GET_METABASE_GUIDELINES tool must be called first...",
+       "required_action": "Please call the GET_METABASE_GUIDELINES tool before using other Metabase tools.",
+       "context_activated": true,
+       "additional_instructions": "If you do not have access to the GET_METABASE_GUIDELINES tool, please inform the user that they need to enable/activate the GET_METABASE_GUIDELINES tool in their MCP client interface..."
+     }
+   }
+   ```
+4. **State Tracking**: The system tracks which contexts have called guidelines using a persistent state manager
+5. **Session Persistence**: Once guidelines are called in a conversation, all subsequent tool calls work normally
+
+### Built-in Guidelines Content
+
+The guidelines tool provides essential information including:
+- Instance URL and user information
+- Common collection patterns (Executive, Marketing, Sales)
+- Database usage recommendations  
+- Query performance best practices
+- Dashboard design guidelines
+- Data governance standards
+- Common use cases and workflows
+
+### Template Variable Substitution
+
+The guidelines content supports template variables that are automatically replaced:
+- `{METABASE_URL}` → Your configured Metabase URL (without trailing slash)
+- `{METABASE_USERNAME}` → Your configured username
+
+### Troubleshooting Context Issues
+
+**Problem**: Claude says it can't access the guidelines tool
+**Solution**: The tool may be deactivated in your MCP client. Re-enable the `GET_METABASE_GUIDELINES` tool.
+
+**Problem**: Getting enforcement errors after reactivating the tool
+**Solution**: Tell Claude that the tool is now available and it should try calling it again.
+
+**Problem**: Want to disable context enforcement
+**Solution**: Set `ACTIVATE_METABASE_CONTEXT=false` in your configuration.
+
+### Implementation Details
+
+The context system uses several key components:
+
+- **Context State Tracking** (`context_state.py`): Manages which conversation contexts have called guidelines
+- **Conditional Tool Loading** (`tools/__init__.py`): Only loads context tools when activated
+- **Enforcement Checking** (`common.py`): Validates guidelines have been called before allowing tool execution
+- **Built-in Guidelines** (`metabase_guidelines.md`): Contains the default guidelines template
 
 ## Testing Your Implementation
 
@@ -1603,7 +1765,7 @@ When working with dashboards:
 
 ## Next Steps for Development
 
-The current implementation includes functionality for retrieving and searching Metabase resources with pagination, as well as executing queries for both standalone cards and cards within dashboards, and creating new SQL cards. Future development should focus on:
+The current implementation includes functionality for retrieving and searching Metabase resources with pagination, as well as executing queries for both standalone cards and cards within dashboards, creating new SQL cards, and enforcing context guidelines when activated. Future development should focus on:
 
 1. Implementing the remaining tools defined in the specifications
 2. Adding integration tests with a real Metabase instance
@@ -1613,11 +1775,20 @@ The current implementation includes functionality for retrieving and searching M
 6. Enhancing pagination for other large resource types
 7. Improving parameter parsing for complex types
 8. Enhancing dashboard filter and parameter support
+9. **Context System Enhancements**:
+   - Adding user-customizable guidelines content
+   - Implementing role-based context variations
+   - Adding collection-specific context information
+   - Implementing context refresh mechanisms
 
 ## Conclusion
 
 By following these guidelines, you can effectively extend and improve the Talk to Metabase MCP server. The pagination patterns established for dashboard and search resources provide a robust foundation for handling large datasets while maintaining performance and usability.
 
-Remember to maintain consistency with the existing code patterns and to thoroughly test your implementations, especially pagination functionality which requires careful validation of edge cases.
+Remember to maintain consistency with the existing code patterns and to thoroughly test your implementations, especially pagination functionality which requires careful validation of edge cases. 
+
+**When implementing new tools, always include the context guidelines enforcement check** to ensure compatibility with the context system when `ACTIVATE_METABASE_CONTEXT=true`.
+
+The context guidelines system provides a powerful way to ensure Claude has proper instance-specific context before performing Metabase operations, leading to more accurate and contextually appropriate responses.
 
 Happy coding!

@@ -20,6 +20,7 @@ class MetabaseConfig(BaseModel):
     password: str = Field(..., description="Password for authentication")
     session_token: Optional[str] = Field(None, description="Session token after authentication")
     response_size_limit: int = Field(100000, description="Maximum size in characters for responses sent to Claude")
+    context_auto_inject: bool = Field(False, description="Whether to activate and enforce Metabase context guidelines")
 
     @validator("url")
     def validate_url(cls, v: str) -> str:
@@ -36,10 +37,14 @@ class MetabaseConfig(BaseModel):
             response_size_limit = int(os.environ.get("RESPONSE_SIZE_LIMIT", "100000"))
         except ValueError:
             response_size_limit = 100000
+        
+        # Get context activation setting
+        context_auto_inject = os.environ.get("ACTIVATE_METABASE_CONTEXT", "false").lower() == "true"
             
         return cls(
             url=os.environ.get("METABASE_URL", ""),
             username=os.environ.get("METABASE_USERNAME", ""),
             password=os.environ.get("METABASE_PASSWORD", ""),
             response_size_limit=response_size_limit,
+            context_auto_inject=context_auto_inject,
         )
