@@ -9,7 +9,7 @@ from typing import Dict, Optional, Any, List, Union
 from mcp.server.fastmcp import Context, FastMCP
 
 from ..server import get_server_instance
-from .common import format_error_response, get_metabase_client, check_response_size, check_guidelines_enforcement
+from .common import format_error_response, get_metabase_client, check_response_size
 
 # Set up logging for this module
 logger = logging.getLogger(__name__)
@@ -264,11 +264,6 @@ async def get_card_definition(id: int, ctx: Context, ignore_view: Optional[bool]
     """
     logger.info(f"Tool called: get_card_definition(id={id}, ignore_view={ignore_view}, translate_mbql={translate_mbql})")
     
-    # Check guidelines enforcement first
-    guidelines_error = check_guidelines_enforcement(ctx)
-    if guidelines_error:
-        return guidelines_error
-    
     client = get_metabase_client(ctx)
     
     # Build query parameters
@@ -352,10 +347,6 @@ async def create_card(
     """
     logger.info(f"Tool called: create_card(database_id={database_id}, name={name}, card_type={card_type})")
     
-    # Check guidelines enforcement first
-    guidelines_error = check_guidelines_enforcement(ctx)
-    if guidelines_error:
-        return guidelines_error
     # Validate card type
     valid_card_types = ["question", "model", "metric"]
     if card_type not in valid_card_types:
@@ -469,11 +460,6 @@ async def update_card(
         JSON string with update result or error information
     """
     logger.info(f"Tool called: update_card(id={id}, name={name})")
-    
-    # Check guidelines enforcement first
-    guidelines_error = check_guidelines_enforcement(ctx)
-    if guidelines_error:
-        return guidelines_error
     
     client = get_metabase_client(ctx)
     

@@ -4,13 +4,11 @@ Context guidelines tool for Metabase MCP server.
 
 import json
 import logging
-import os
 
 from mcp.server.fastmcp import Context
 
 from ..server import get_server_instance
-from ..context_state import mark_guidelines_called
-from .common import get_metabase_client, format_error_response, check_response_size
+from .common import format_error_response, check_response_size
 
 logger = logging.getLogger(__name__)
 
@@ -18,22 +16,25 @@ logger = logging.getLogger(__name__)
 mcp = get_server_instance()
 
 
-@mcp.tool(name="GET_METABASE_GUIDELINES", description="REQUIRED: Get Metabase context guidelines - MUST be called first in any Metabase conversation when context is activated")
+@mcp.tool(name="GET_METABASE_GUIDELINES", description="IMPORTANT: Get essential Metabase context guidelines - Should be called first in any Metabase conversation")
 async def get_metabase_guidelines(ctx: Context) -> str:
     """
-    **REQUIRED TOOL - MUST BE CALLED FIRST**
+    **IMPORTANT: Call this tool first for best results**
     
     Get essential Metabase context guidelines for this instance.
     
-    When Metabase context is activated, this tool MUST be called at the beginning 
-    of any Metabase-related conversation before using any other Metabase tools.
+    This tool provides instance-specific information and best practices that help
+    ensure accurate and contextually appropriate responses when working with Metabase.
+    While not technically required, calling this tool at the beginning of Metabase
+    conversations will significantly improve response quality.
     
-    This tool provides:
-    - Instance-specific information and best practices
-    - Important collections and their purposes
+    Provides:
+    - Instance-specific information and URLs
+    - Important collections and their purposes  
     - Database information and usage guidelines
     - Query performance recommendations
     - Data governance standards
+    - Common use cases and workflows
     
     Args:
         ctx: MCP context
@@ -48,11 +49,7 @@ async def get_metabase_guidelines(ctx: Context) -> str:
         metabase_ctx = ctx.request_context.lifespan_context
         config = metabase_ctx.auth.config
         
-        # Mark that guidelines have been called for this context
-        mark_guidelines_called(ctx)
-        logger.info("Context marked as having called guidelines - enforcement should now pass")
-        
-        # Provide the default guidelines with template substitution
+        # Provide comprehensive guidelines with template substitution
         guidelines_template = f"""# Metabase Guidelines for {{METABASE_URL}}
 
 ## Instance Information
@@ -66,7 +63,7 @@ async def get_metabase_guidelines(ctx: Context) -> str:
 - Key metrics: Revenue, Growth, Customer Acquisition
 - Usually found in collections named "Executive", "Leadership", or "KPIs"
 
-### Marketing Analytics
+### Marketing Analytics  
 - Campaign performance, attribution analysis, and funnel metrics
 - Updated daily with fresh data
 - Look for collections named "Marketing", "Campaigns", or "Attribution"
@@ -147,11 +144,10 @@ For questions about this Metabase instance:
             "guidelines": guidelines_content,
             "source": "built_in_guidelines",
             "metabase_url": clean_url,
-            "username": config.username,
-            "context_enforced": True
+            "username": config.username
         }
         
-        logger.info("Guidelines provided and context marked as called")
+        logger.info("Guidelines provided successfully")
         
         # Convert to JSON string
         response = json.dumps(response_data, indent=2)

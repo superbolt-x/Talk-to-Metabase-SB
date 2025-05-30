@@ -20,7 +20,7 @@ class MetabaseConfig(BaseModel):
     password: str = Field(..., description="Password for authentication")
     session_token: Optional[str] = Field(None, description="Session token after authentication")
     response_size_limit: int = Field(100000, description="Maximum size in characters for responses sent to Claude")
-    context_auto_inject: bool = Field(False, description="Whether to activate and enforce Metabase context guidelines")
+    context_auto_inject: bool = Field(True, description="Whether to automatically load context guidelines")
 
     @validator("url")
     def validate_url(cls, v: str) -> str:
@@ -38,8 +38,8 @@ class MetabaseConfig(BaseModel):
         except ValueError:
             response_size_limit = 100000
         
-        # Get context activation setting
-        context_auto_inject = os.environ.get("ACTIVATE_METABASE_CONTEXT", "false").lower() == "true"
+        # Get context loading setting
+        context_auto_inject = os.environ.get("METABASE_CONTEXT_AUTO_INJECT", "true").lower() == "true"
             
         return cls(
             url=os.environ.get("METABASE_URL", ""),

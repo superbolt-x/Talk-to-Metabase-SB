@@ -9,7 +9,7 @@ from typing import Dict, Optional, Any
 from mcp.server.fastmcp import Context, FastMCP
 
 from ..server import get_server_instance
-from .common import format_error_response, get_metabase_client, check_response_size, check_guidelines_enforcement
+from .common import format_error_response, get_metabase_client, check_response_size
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -43,10 +43,6 @@ async def run_dataset_query(
     """
     logger.info(f"Tool called: run_dataset_query(database={database}, type={type})")
     
-    # Check guidelines enforcement first
-    guidelines_error = check_guidelines_enforcement(ctx)
-    if guidelines_error:
-        return guidelines_error
     # Validate parameters
     if type == "native" and not native:
         return format_error_response(

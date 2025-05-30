@@ -9,7 +9,7 @@ from typing import Dict, List, Optional, Any
 from mcp.server.fastmcp import Context, FastMCP
 
 from ..server import get_server_instance
-from .common import format_error_response, get_metabase_client, check_response_size, check_guidelines_enforcement
+from .common import format_error_response, get_metabase_client, check_response_size
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -77,11 +77,6 @@ async def search_resources(
         - The verified filter supports models and cards.
         A search query that has both filters applied will only return models and cards.
     """
-    # Check guidelines enforcement first
-    guidelines_error = check_guidelines_enforcement(ctx)
-    if guidelines_error:
-        return guidelines_error
-        
     client = get_metabase_client(ctx)
     
     try:

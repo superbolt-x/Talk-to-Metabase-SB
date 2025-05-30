@@ -10,7 +10,6 @@ from mcp.server.fastmcp import Context
 
 from ..client import MetabaseClient
 from ..server import MetabaseContext
-from ..context_state import enforce_guidelines_first
 
 logger = logging.getLogger(__name__)
 
@@ -49,20 +48,6 @@ def format_error_response(
         error_data["error"]["raw_response"] = raw_response
     
     return json.dumps(error_data, indent=2)
-
-
-def check_guidelines_enforcement(ctx: Context) -> Optional[str]:
-    """Check if guidelines must be called first and return error if needed.
-    
-    Args:
-        ctx: MCP context
-        
-    Returns:
-        Error message if guidelines enforcement fails, None if check passes
-    """
-    metabase_ctx: MetabaseContext = ctx.request_context.lifespan_context
-    config = metabase_ctx.auth.config
-    return enforce_guidelines_first(ctx, config)
 
 
 def check_response_size(response: str, config) -> str:

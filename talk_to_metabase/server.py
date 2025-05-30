@@ -98,15 +98,15 @@ def run_server() -> None:
     logger.info("- list_collections: List all collections")
     logger.info("- list_databases: List all databases")
     logger.info("- search_resources: Search for resources across Metabase")
-    logger.info("- GET_METABASE_GUIDELINES: Get customizable context guidelines (if activated)")
+    logger.info("- GET_METABASE_GUIDELINES: Get context guidelines (if enabled)")
     
     # Log context configuration status
     from .config import MetabaseConfig
     config = MetabaseConfig.from_env()
     if config.context_auto_inject:
-        logger.info("Metabase context feature ACTIVATED - Guidelines tool loaded and enforced")
+        logger.info("Metabase context guidelines enabled")
     else:
-        logger.info("Metabase context feature DISABLED - Guidelines tool not loaded")
+        logger.info("Metabase context guidelines disabled")
     
     # Determine the transport method from the environment
     transport = os.environ.get("MCP_TRANSPORT", "stdio").lower()

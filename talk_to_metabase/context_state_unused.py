@@ -14,18 +14,13 @@ _context_guidelines_called: Set[str] = set()
 
 def get_context_id(ctx: Context) -> str:
     """Get a unique identifier for the current context/session."""
-    # Use the lifespan context object as the primary identifier since it persists
-    # throughout the entire server session/conversation
+    # Use the lifespan context which should persist across tool calls
     try:
         lifespan_ctx = ctx.request_context.lifespan_context
-        if lifespan_ctx:
-            return f"lifespan_{id(lifespan_ctx)}"
-        else:
-            # Fallback to request context
-            return f"request_{id(ctx.request_context)}"
-    except Exception:
-        # Ultimate fallback
-        return f"fallback_{id(ctx)}"
+        return str(id(lifespan_ctx))
+    except AttributeError:
+        # Fallback to request context if lifespan context doesn't exist
+        return str(id(ctx.request_context))
 
 
 def debug_context_state(ctx: Context) -> str:
@@ -40,16 +35,16 @@ def mark_guidelines_called(ctx: Context) -> None:
     """Mark that the guidelines tool has been called for this context."""
     context_id = get_context_id(ctx)
     _context_guidelines_called.add(context_id)
-    logger.info(f"Guidelines marked as called for context: {context_id}")
-    logger.debug(f"All contexts with guidelines called: {list(_context_guidelines_called)}")
+    logger.info(f"[CONTEXT] Guidelines marked as called for context: {context_id}")
+    logger.info(f"[CONTEXT] All called contexts: {list(_context_guidelines_called)}")
 
 
 def has_guidelines_been_called(ctx: Context) -> bool:
     """Check if the guidelines tool has been called for this context."""
     context_id = get_context_id(ctx)
     called = context_id in _context_guidelines_called
-    logger.debug(f"Guidelines called check for context {context_id}: {called}")
-    logger.debug(f"All contexts with guidelines called: {list(_context_guidelines_called)}")
+    logger.info(f"[CONTEXT] Checking guidelines for context {context_id}: {called}")
+    logger.info(f"[CONTEXT] All called contexts: {list(_context_guidelines_called)}")
     return called
 
 
@@ -67,21 +62,13 @@ def enforce_guidelines_first(ctx: Context, config) -> str:
     """
     if not config.context_auto_inject:
         # Guidelines not activated, no enforcement
-        logger.debug("Guidelines enforcement not active - allowing tool call")
         return None
     
-    context_id = get_context_id(ctx)
-    has_called = has_guidelines_been_called(ctx)
-    
-    logger.debug(f"Guidelines enforcement check - Context: {context_id}, Has called: {has_called}")
-    
-    if has_called:
+    if has_guidelines_been_called(ctx):
         # Guidelines already called, proceed
-        logger.debug("Guidelines already called - allowing tool call")
         return None
     
     # Guidelines enforcement is active but guidelines haven't been called
-    logger.info(f"Guidelines enforcement blocking tool call - context {context_id} has not called guidelines")
     error_message = {
         "success": False,
         "error": {

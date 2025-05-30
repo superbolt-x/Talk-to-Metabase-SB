@@ -28,13 +28,13 @@ try:
     from . import dataset
     logger.info("Loaded dataset tools module")
     
-    # Only load context tools if context is activated
+    # Load context tools if enabled
     from ..config import MetabaseConfig
     config = MetabaseConfig.from_env()
     if config.context_auto_inject:
         from . import context
-        logger.info("Loaded context tools module (activated)")
+        logger.info("Loaded context tools module")
     else:
-        logger.info("Context tools module not loaded (not activated)")
+        logger.info("Context tools module not loaded (disabled)")
 except Exception as e:
     logger.error(f"Error loading tool modules: {e}")
