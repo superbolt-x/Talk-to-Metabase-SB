@@ -333,9 +333,19 @@ async def create_card(
     """
     Create a new SQL card after validating the query.
     
+    CUSTOMIZABLE FILTERS:
+    You can create SQL queries with customizable filters using Metabase's template syntax:
+    - Use {{variable_name}} for required parameters (e.g., WHERE status = {{order_status}})
+    - Use [[AND condition = {{variable}}]] for optional filters that can be turned on/off
+    - These will create placeholder parameters that users can configure later in Metabase
+    
+    Examples:
+    - SELECT * FROM orders WHERE date > {{start_date}}
+    - SELECT * FROM products WHERE true [[AND category = {{category}}]] [[AND price > {{min_price}}]]
+    
     Args:
         database_id: Database ID to run the query against
-        query: SQL query string
+        query: SQL query string (can include {{variable}} and [[optional]] syntax)
         name: Name for the new card
         ctx: MCP context
         card_type: Type of card (question, model, or metric)
@@ -447,10 +457,20 @@ async def update_card(
     """
     Update an existing card with a new SQL query or metadata.
     
+    CUSTOMIZABLE FILTERS:
+    When updating the query, you can use Metabase's template syntax for customizable filters:
+    - Use {{variable_name}} for required parameters (e.g., WHERE status = {{order_status}})
+    - Use [[AND condition = {{variable}}]] for optional filters that can be turned on/off
+    - These will create placeholder parameters that users can configure later in Metabase
+    
+    Examples:
+    - SELECT * FROM orders WHERE date > {{start_date}}
+    - SELECT * FROM products WHERE true [[AND category = {{category}}]] [[AND price > {{min_price}}]]
+    
     Args:
         id: Card ID to update (required, must be a positive integer)
         ctx: MCP context
-        query: New SQL query string (optional)
+        query: New SQL query string (optional, can include {{variable}} and [[optional]] syntax)
         name: New name for the card (optional)
         description: New description for the card (optional)
         collection_id: New collection ID to move the card to (optional)
