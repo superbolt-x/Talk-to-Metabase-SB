@@ -26,7 +26,7 @@ Configure the server through environment variables or directly in the Claude Des
         "METABASE_USERNAME": "user@example.com",
         "METABASE_PASSWORD": "your-password",
         "RESPONSE_SIZE_LIMIT": "100000",
-        "ACTIVATE_METABASE_CONTEXT": "false"
+        "METABASE_CONTEXT_AUTO_INJECT": "true"
       }
     }
   }
@@ -41,7 +41,7 @@ Configure the server through environment variables or directly in the Claude Des
 | METABASE_USERNAME | Username for authentication | (Required) |
 | METABASE_PASSWORD | Password for authentication | (Required) |
 | RESPONSE_SIZE_LIMIT | Maximum size (in characters) for responses sent to Claude | 100000 |
-| ACTIVATE_METABASE_CONTEXT | Whether to activate and enforce Metabase context guidelines | false |
+| METABASE_CONTEXT_AUTO_INJECT | Whether to automatically load context guidelines | true |
 | MCP_TRANSPORT | Transport method (stdio, sse, streamable-http) | stdio |
 | LOG_LEVEL | Logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL) | INFO |
 
@@ -49,14 +49,15 @@ Configure the server through environment variables or directly in the Claude Des
 
 The server includes an optional context guidelines system that provides Claude with instance-specific information and best practices:
 
-- **When `ACTIVATE_METABASE_CONTEXT=false` (default)**: All tools work normally without any requirements
-- **When `ACTIVATE_METABASE_CONTEXT=true`**: 
+- **When `METABASE_CONTEXT_AUTO_INJECT=true` (default)**: 
   - Loads the `GET_METABASE_GUIDELINES` tool with essential context information
-  - **Enforces** that this tool must be called first before using any other Metabase tools
   - Provides built-in guidelines with your instance URL and username automatically substituted
-  - Helps ensure Claude has proper context about your Metabase setup before performing operations
+  - Tool description recommends calling it first for best results
+  - No enforcement - all other tools work normally
 
-**Important**: When context is activated, Claude will be required to call `GET_METABASE_GUIDELINES` at the beginning of any Metabase-related conversation. If you see enforcement errors, make sure the guidelines tool is enabled in your MCP client interface.
+- **When `METABASE_CONTEXT_AUTO_INJECT=false`**: The guidelines tool is not loaded
+
+**Usage**: The guidelines tool is designed to be called at the beginning of Metabase conversations to provide Claude with helpful context about your instance, collections, databases, and best practices.
 
 ## Installation
 
