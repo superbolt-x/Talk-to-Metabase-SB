@@ -1,0 +1,1312 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Metabase Visualization Settings",
+  "description": "Complete JSON Schema documentation for Metabase visualization_settings by chart type",
+  "type": "object",
+  "definitions": {
+    "commonSettings": {
+      "type": "object",
+      "properties": {
+        "card.title": {
+          "type": "string",
+          "description": "Custom title for the card"
+        },
+        "card.description": {
+          "type": "string",
+          "description": "Custom description for the card"
+        },
+        "card.hide_empty": {
+          "type": "boolean",
+          "description": "Hide card when no results",
+          "default": false
+        },
+        "click_behavior": {
+          "$ref": "#/definitions/clickBehavior"
+        }
+      }
+    },
+    "clickBehavior": {
+      "type": "object",
+      "oneOf": [
+        {
+          "properties": {
+            "type": {"const": "crossfilter"},
+            "parameterMapping": {"$ref": "#/definitions/parameterMapping"}
+          },
+          "required": ["type"]
+        },
+        {
+          "properties": {
+            "type": {"const": "link"},
+            "linkType": {"enum": ["question", "dashboard", "url"]},
+            "targetId": {"type": "integer"},
+            "linkTemplate": {"type": "string"},
+            "linkTextTemplate": {"type": "string"},
+            "parameterMapping": {"$ref": "#/definitions/parameterMapping"}
+          },
+          "required": ["type", "linkType"]
+        },
+        {
+          "properties": {
+            "type": {"const": "none"}
+          },
+          "required": ["type"]
+        }
+      ]
+    },
+    "parameterMapping": {
+      "type": "object",
+      "patternProperties": {
+        ".*": {
+          "type": "object",
+          "properties": {
+            "id": {"type": "string"},
+            "source": {
+              "type": "object",
+              "properties": {
+                "type": {"enum": ["column", "parameter"]},
+                "id": {"type": "string"},
+                "name": {"type": "string"}
+              },
+              "required": ["type", "id"]
+            },
+            "target": {
+              "type": "object",
+              "properties": {
+                "type": {"enum": ["parameter", "dimension"]},
+                "id": {"type": "string"},
+                "dimension": {"type": "array"}
+              },
+              "required": ["type", "id"]
+            }
+          },
+          "required": ["source", "target"]
+        }
+      }
+    },
+    "columnSettings": {
+      "type": "object",
+      "patternProperties": {
+        "^\\[\"(ref|name)\",.*\\]$": {
+          "type": "object",
+          "properties": {
+            "column_title": {"type": "string"},
+            "show_mini_bar": {"type": "boolean"},
+            "number_style": {"enum": ["decimal", "currency", "percent", "scientific"]},
+            "currency": {"type": "string", "pattern": "^[A-Z]{3}$"},
+            "currency_style": {"enum": ["symbol", "code", "name"]},
+            "currency_in_header": {"type": "boolean"},
+            "number_separators": {"enum": [".,", ", ", ". ", ",.", " ."]},
+            "decimals": {"type": "integer", "minimum": 0, "maximum": 10},
+            "scale": {"type": "number"},
+            "prefix": {"type": "string"},
+            "suffix": {"type": "string"},
+            "date_style": {"type": "string"},
+            "time_style": {"type": "string"},
+            "date_separator": {"enum": ["-", "/", "."]},
+            "date_abbreviate": {"type": "boolean"},
+            "click_behavior": {"$ref": "#/definitions/clickBehavior"}
+          }
+        }
+      }
+    },
+    "seriesSettings": {
+      "type": "object",
+      "patternProperties": {
+        ".*": {
+          "type": "object",
+          "properties": {
+            "display": {"enum": ["line", "bar", "area"]},
+            "color": {"type": "string", "pattern": "^#[0-9A-Fa-f]{6}$"},
+            "name": {"type": "string"},
+            "axis": {"enum": ["left", "right"]},
+            "line.interpolate": {"enum": ["linear", "cardinal", "step-before", "step-after"]},
+            "line.marker_enabled": {"type": "boolean"},
+            "line.missing": {"enum": ["interpolate", "zero", "none"]}
+          }
+        }
+      }
+    },
+    "graphAxisSettings": {
+      "type": "object",
+      "properties": {
+        "graph.x_axis.scale": {"enum": ["linear", "log", "pow", "timeseries", "ordinal"]},
+        "graph.y_axis.scale": {"enum": ["linear", "log", "pow"]},
+        "graph.x_axis.axis_enabled": {"oneOf": [{"type": "boolean"}, {"enum": ["compact", "rotate-45", "rotate-90"]}]},
+        "graph.y_axis.axis_enabled": {"type": "boolean"},
+        "graph.x_axis.labels_enabled": {"type": "boolean"},
+        "graph.y_axis.labels_enabled": {"type": "boolean"},
+        "graph.x_axis.title_text": {"type": "string"},
+        "graph.y_axis.title_text": {"type": "string"},
+        "graph.y_axis.auto_range": {"type": "boolean"},
+        "graph.y_axis.min": {"type": "number"},
+        "graph.y_axis.max": {"type": "number"},
+        "graph.y_axis.auto_split": {"type": "boolean"},
+        "graph.y_axis.unpin_from_zero": {"type": "boolean"}
+      }
+    }
+  },
+  "chartTypes": {
+    "table": {
+      "allOf": [
+        {"$ref": "#/definitions/commonSettings"},
+        {
+          "type": "object",
+          "properties": {
+            "table.columns": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "name": {"type": "string"},
+                  "fieldRef": {"type": "array"},
+                  "enabled": {"type": "boolean"}
+                },
+                "required": ["name", "fieldRef", "enabled"]
+              }
+            },
+            "column_settings": {"$ref": "#/definitions/columnSettings"}
+          }
+        }
+      ],
+      "description": "Table visualization displaying data in rows and columns",
+      "examples": [
+        {
+          "table.columns": [
+            {"name": "ID", "fieldRef": ["field", 1, null], "enabled": true},
+            {"name": "Name", "fieldRef": ["expression", "Full Name"], "enabled": true}
+          ],
+          "column_settings": {
+            "[\"ref\",[\"field\",1,null]]": {
+              "column_title": "User ID",
+              "number_style": "decimal"
+            }
+          }
+        }
+      ]
+    },
+    "line": {
+      "allOf": [
+        {"$ref": "#/definitions/commonSettings"},
+        {"$ref": "#/definitions/graphAxisSettings"},
+        {
+          "type": "object",
+          "properties": {
+            "graph.dimensions": {
+              "type": "array",
+              "items": {"type": "string"},
+              "minItems": 1,
+              "description": "X-axis fields"
+            },
+            "graph.metrics": {
+              "type": "array",
+              "items": {"type": "string"},
+              "minItems": 1,
+              "description": "Y-axis fields"
+            },
+            "graph.show_values": {"type": "boolean"},
+            "graph.label_value_frequency": {"enum": ["fit", "all"]},
+            "graph.label_value_formatting": {"enum": ["auto", "compact", "full"]},
+            "graph.show_trendline": {"type": "boolean"},
+            "graph.tooltip_type": {"enum": ["series_comparison", "default"]},
+            "graph.tooltip_columns": {
+              "type": "array",
+              "items": {"type": "string"}
+            },
+            "series_settings": {"$ref": "#/definitions/seriesSettings"},
+            "column_settings": {"$ref": "#/definitions/columnSettings"}
+          },
+          "required": ["graph.dimensions", "graph.metrics"]
+        }
+      ],
+      "description": "Line chart visualization for showing trends over time or continuous data",
+      "examples": [
+        {
+          "graph.dimensions": ["created_at"],
+          "graph.metrics": ["count"],
+          "graph.show_values": false,
+          "graph.y_axis.title_text": "Number of Orders",
+          "series_settings": {
+            "count": {
+              "display": "line",
+              "color": "#509EE3",
+              "line.interpolate": "linear"
+            }
+          }
+        }
+      ]
+    },
+    "bar": {
+      "allOf": [
+        {"$ref": "#/definitions/commonSettings"},
+        {"$ref": "#/definitions/graphAxisSettings"},
+        {
+          "type": "object",
+          "properties": {
+            "graph.dimensions": {
+              "type": "array",
+              "items": {"type": "string"},
+              "minItems": 1
+            },
+            "graph.metrics": {
+              "type": "array",
+              "items": {"type": "string"},
+              "minItems": 1
+            },
+            "stackable.stack_type": {"enum": [null, "stacked", "normalized"]},
+            "graph.show_values": {"type": "boolean"},
+            "graph.show_stack_values": {"enum": ["total", "series", "all"]},
+            "graph.series_order": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "key": {"type": "string"},
+                  "enabled": {"type": "boolean"},
+                  "color": {"type": "string"},
+                  "name": {"type": "string"}
+                }
+              }
+            },
+            "series_settings": {"$ref": "#/definitions/seriesSettings"},
+            "column_settings": {"$ref": "#/definitions/columnSettings"}
+          },
+          "required": ["graph.dimensions", "graph.metrics"]
+        }
+      ],
+      "description": "Bar chart visualization for comparing categories",
+      "examples": [
+        {
+          "graph.dimensions": ["category"],
+          "graph.metrics": ["sum_of_sales"],
+          "stackable.stack_type": null,
+          "graph.show_values": true,
+          "column_settings": {
+            "[\"name\",\"sum_of_sales\"]": {
+              "number_style": "currency",
+              "currency": "USD"
+            }
+          }
+        }
+      ]
+    },
+    "area": {
+      "allOf": [
+        {"$ref": "#/definitions/commonSettings"},
+        {"$ref": "#/definitions/graphAxisSettings"},
+        {
+          "type": "object",
+          "properties": {
+            "graph.dimensions": {
+              "type": "array",
+              "items": {"type": "string"},
+              "minItems": 1
+            },
+            "graph.metrics": {
+              "type": "array",
+              "items": {"type": "string"},
+              "minItems": 1
+            },
+            "stackable.stack_type": {"enum": [null, "stacked", "normalized"]},
+            "series_settings": {"$ref": "#/definitions/seriesSettings"},
+            "column_settings": {"$ref": "#/definitions/columnSettings"}
+          },
+          "required": ["graph.dimensions", "graph.metrics"]
+        }
+      ],
+      "description": "Area chart visualization for showing volume over time",
+      "examples": [
+        {
+          "graph.dimensions": ["month"],
+          "graph.metrics": ["revenue", "profit"],
+          "stackable.stack_type": "stacked",
+          "series_settings": {
+            "revenue": {"display": "area", "color": "#509EE3"},
+            "profit": {"display": "area", "color": "#88BF4D"}
+          }
+        }
+      ]
+    },
+    "pie": {
+      "allOf": [
+        {"$ref": "#/definitions/commonSettings"},
+        {
+          "type": "object",
+          "properties": {
+            "pie.dimension": {"type": "string"},
+            "pie.metric": {"type": "string"},
+            "pie.show_legend": {"type": "boolean"},
+            "pie.show_total": {"type": "boolean"},
+            "pie.show_labels": {"type": "boolean"},
+            "pie.percent_visibility": {"enum": ["off", "legend", "inside", "both"]},
+            "pie.decimal_places": {"type": "integer", "minimum": 0, "maximum": 10},
+            "pie.slice_threshold": {"type": "number", "minimum": 0, "maximum": 100},
+            "pie.sort_rows": {"enum": ["asc", "desc"]},
+            "pie.rows": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "key": {"type": ["string", "number"]},
+                  "name": {"type": "string"},
+                  "color": {"type": "string"},
+                  "enabled": {"type": "boolean"}
+                }
+              }
+            },
+            "series_settings": {"$ref": "#/definitions/seriesSettings"},
+            "column_settings": {"$ref": "#/definitions/columnSettings"}
+          },
+          "required": ["pie.dimension", "pie.metric"]
+        }
+      ],
+      "description": "Pie chart visualization for showing proportions",
+      "examples": [
+        {
+          "pie.dimension": "category",
+          "pie.metric": "count",
+          "pie.show_legend": true,
+          "pie.percent_visibility": "legend",
+          "pie.slice_threshold": 2.5
+        }
+      ]
+    },
+    "scalar": {
+      "allOf": [
+        {"$ref": "#/definitions/commonSettings"},
+        {
+          "type": "object",
+          "properties": {
+            "scalar.field": {"type": "string"},
+            "scalar.locale": {"type": "string"},
+            "scalar.decimals": {"type": "integer"},
+            "scalar.prefix": {"type": "string"},
+            "scalar.suffix": {"type": "string"},
+            "scalar.scale": {"type": "number"},
+            "column_settings": {"$ref": "#/definitions/columnSettings"}
+          }
+        }
+      ],
+      "description": "Scalar visualization for displaying a single number",
+      "examples": [
+        {
+          "scalar.field": "total_revenue",
+          "column_settings": {
+            "[\"name\",\"total_revenue\"]": {
+              "number_style": "currency",
+              "currency": "USD",
+              "decimals": 0
+            }
+          }
+        }
+      ]
+    },
+    "smartscalar": {
+      "allOf": [
+        {"$ref": "#/definitions/commonSettings"},
+        {
+          "type": "object",
+          "properties": {
+            "scalar.field": {"type": "string"},
+            "scalar.comparisons": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "oneOf": [
+                  {
+                    "properties": {
+                      "id": {"type": "string"},
+                      "type": {"const": "previousValue"}
+                    },
+                    "required": ["id", "type"]
+                  },
+                  {
+                    "properties": {
+                      "id": {"type": "string"},
+                      "type": {"const": "previousPeriod"}
+                    },
+                    "required": ["id", "type"]
+                  },
+                  {
+                    "properties": {
+                      "id": {"type": "string"},
+                      "type": {"const": "periodsAgo"},
+                      "value": {"type": "number"}
+                    },
+                    "required": ["id", "type", "value"]
+                  },
+                  {
+                    "properties": {
+                      "id": {"type": "string"},
+                      "type": {"const": "staticNumber"},
+                      "value": {"type": "number"},
+                      "label": {"type": "string"}
+                    },
+                    "required": ["id", "type", "value", "label"]
+                  },
+                  {
+                    "properties": {
+                      "id": {"type": "string"},
+                      "type": {"const": "anotherColumn"},
+                      "column": {"type": "string"},
+                      "label": {"type": "string"}
+                    },
+                    "required": ["id", "type", "column", "label"]
+                  }
+                ]
+              }
+            },
+            "column_settings": {"$ref": "#/definitions/columnSettings"}
+          }
+        }
+      ],
+      "description": "Smart scalar with comparison values",
+      "examples": [
+        {
+          "scalar.field": "revenue",
+          "scalar.comparisons": [
+            {
+              "id": "comp1",
+              "type": "previousPeriod"
+            }
+          ]
+        }
+      ]
+    },
+    "gauge": {
+      "allOf": [
+        {"$ref": "#/definitions/commonSettings"},
+        {
+          "type": "object",
+          "properties": {
+            "gauge.field": {"type": "string"},
+            "gauge.min": {"type": "number"},
+            "gauge.max": {"type": "number"},
+            "gauge.segments": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "min": {"type": "number"},
+                  "max": {"type": "number"},
+                  "color": {"type": "string"},
+                  "label": {"type": "string"}
+                },
+                "required": ["min", "max", "color"]
+              }
+            },
+            "gauge.show_values": {"type": "boolean"},
+            "column_settings": {"$ref": "#/definitions/columnSettings"}
+          }
+        }
+      ],
+      "description": "Gauge chart for showing progress toward a goal",
+      "examples": [
+        {
+          "gauge.field": "completion_rate",
+          "gauge.min": 0,
+          "gauge.max": 100,
+          "gauge.segments": [
+            {"min": 0, "max": 50, "color": "#ED6E6E", "label": "Poor"},
+            {"min": 50, "max": 80, "color": "#F9CF48", "label": "Good"},
+            {"min": 80, "max": 100, "color": "#84BB4C", "label": "Excellent"}
+          ]
+        }
+      ]
+    },
+    "progress": {
+      "allOf": [
+        {"$ref": "#/definitions/commonSettings"},
+        {
+          "type": "object",
+          "properties": {
+            "progress.goal": {"type": "number"},
+            "progress.color": {"type": "string"},
+            "column_settings": {"$ref": "#/definitions/columnSettings"}
+          }
+        }
+      ],
+      "description": "Progress bar visualization",
+      "examples": [
+        {
+          "progress.goal": 1000,
+          "progress.color": "#84BB4C"
+        }
+      ]
+    },
+    "scatter": {
+      "allOf": [
+        {"$ref": "#/definitions/commonSettings"},
+        {"$ref": "#/definitions/graphAxisSettings"},
+        {
+          "type": "object",
+          "properties": {
+            "graph.dimensions": {
+              "type": "array",
+              "items": {"type": "string"},
+              "minItems": 1,
+              "maxItems": 1
+            },
+            "graph.metrics": {
+              "type": "array",
+              "items": {"type": "string"},
+              "minItems": 1,
+              "maxItems": 1
+            },
+            "scatter.bubble": {"type": "string"},
+            "column_settings": {"$ref": "#/definitions/columnSettings"}
+          },
+          "required": ["graph.dimensions", "graph.metrics"]
+        }
+      ],
+      "description": "Scatter plot for showing correlation between two variables",
+      "examples": [
+        {
+          "graph.dimensions": ["price"],
+          "graph.metrics": ["rating"],
+          "scatter.bubble": "review_count"
+        }
+      ]
+    },
+    "map": {
+      "allOf": [
+        {"$ref": "#/definitions/commonSettings"},
+        {
+          "type": "object",
+          "properties": {
+            "map.type": {"enum": ["region", "pin"]},
+            "map.region": {"enum": ["us_states", "world_countries", "custom"]},
+            "map.latitude_column": {"type": "string"},
+            "map.longitude_column": {"type": "string"},
+            "map.metric_column": {"type": "string"},
+            "map.heat_map": {"type": "boolean"},
+            "map.marker_style": {"enum": ["marker", "heat"]},
+            "column_settings": {"$ref": "#/definitions/columnSettings"}
+          }
+        }
+      ],
+      "description": "Geographic map visualization",
+      "examples": [
+        {
+          "map.type": "pin",
+          "map.latitude_column": "latitude",
+          "map.longitude_column": "longitude",
+          "map.metric_column": "sales"
+        }
+      ]
+    },
+    "funnel": {
+      "allOf": [
+        {"$ref": "#/definitions/commonSettings"},
+        {
+          "type": "object",
+          "properties": {
+            "funnel.dimension": {"type": "string"},
+            "funnel.metric": {"type": "string"},
+            "funnel.type": {"enum": ["funnel", "bar"]},
+            "column_settings": {"$ref": "#/definitions/columnSettings"}
+          },
+          "required": ["funnel.dimension", "funnel.metric"]
+        }
+      ],
+      "description": "Funnel chart for conversion analysis",
+      "examples": [
+        {
+          "funnel.dimension": "stage",
+          "funnel.metric": "count",
+          "funnel.type": "funnel"
+        }
+      ]
+    },
+    "combo": {
+      "allOf": [
+        {"$ref": "#/definitions/commonSettings"},
+        {"$ref": "#/definitions/graphAxisSettings"},
+        {
+          "type": "object",
+          "properties": {
+            "graph.dimensions": {
+              "type": "array",
+              "items": {"type": "string"},
+              "minItems": 1
+            },
+            "graph.metrics": {
+              "type": "array",
+              "items": {"type": "string"},
+              "minItems": 2
+            },
+            "series_settings": {"$ref": "#/definitions/seriesSettings"},
+            "column_settings": {"$ref": "#/definitions/columnSettings"}
+          },
+          "required": ["graph.dimensions", "graph.metrics"]
+        }
+      ],
+      "description": "Combination chart with multiple visualization types",
+      "examples": [
+        {
+          "graph.dimensions": ["month"],
+          "graph.metrics": ["revenue", "orders"],
+          "series_settings": {
+            "revenue": {"display": "line", "axis": "left", "color": "#509EE3"},
+            "orders": {"display": "bar", "axis": "right", "color": "#88BF4D"}
+          }
+        }
+      ]
+    },
+    "waterfall": {
+      "allOf": [
+        {"$ref": "#/definitions/commonSettings"},
+        {
+          "type": "object",
+          "properties": {
+            "waterfall.dimension": {"type": "string"},
+            "waterfall.metric": {"type": "string"},
+            "waterfall.increase_color": {"type": "string"},
+            "waterfall.decrease_color": {"type": "string"},
+            "waterfall.total_color": {"type": "string"},
+            "waterfall.show_total": {"type": "boolean"},
+            "column_settings": {"$ref": "#/definitions/columnSettings"}
+          },
+          "required": ["waterfall.dimension", "waterfall.metric"]
+        }
+      ],
+      "description": "Waterfall chart for showing cumulative changes",
+      "examples": [
+        {
+          "waterfall.dimension": "category",
+          "waterfall.metric": "change_in_revenue",
+          "waterfall.increase_color": "#84BB4C",
+          "waterfall.decrease_color": "#ED6E6E",
+          "waterfall.show_total": true
+        }
+      ]
+    },
+    "pivot": {
+      "allOf": [
+        {"$ref": "#/definitions/commonSettings"},
+        {
+          "type": "object",
+          "properties": {
+            "pivot_table.column_split": {
+              "type": "object",
+              "properties": {
+                "rows": {"type": "array", "items": {"type": "string"}},
+                "columns": {"type": "array", "items": {"type": "string"}},
+                "values": {"type": "array", "items": {"type": "string"}}
+              },
+              "required": ["rows", "columns", "values"]
+            },
+            "pivot.show_row_totals": {"type": "boolean"},
+            "pivot.show_column_totals": {"type": "boolean"},
+            "column_settings": {"$ref": "#/definitions/columnSettings"}
+          }
+        }
+      ],
+      "description": "Pivot table for cross-tabulation analysis",
+      "examples": [
+        {
+          "pivot_table.column_split": {
+            "rows": ["category"],
+            "columns": ["quarter"],
+            "values": ["sum_of_sales"]
+          },
+          "pivot.show_row_totals": true,
+          "pivot.show_column_totals": true
+        }
+      ]
+    },
+    "sankey": {
+      "allOf": [
+        {"$ref": "#/definitions/commonSettings"},
+        {
+          "type": "object",
+          "properties": {
+            "sankey.source": {"type": "string"},
+            "sankey.target": {"type": "string"},
+            "sankey.value": {"type": "string"},
+            "column_settings": {"$ref": "#/definitions/columnSettings"}
+          },
+          "required": ["sankey.source", "sankey.target", "sankey.value"]
+        }
+      ],
+      "description": "Sankey diagram for flow visualization",
+      "examples": [
+        {
+          "sankey.source": "from_stage",
+          "sankey.target": "to_stage", 
+          "sankey.value": "flow_amount"
+        }
+      ]
+    },
+    "row": {
+      "allOf": [
+        {"$ref": "#/definitions/commonSettings"},
+        {"$ref": "#/definitions/graphAxisSettings"},
+        {
+          "type": "object",
+          "properties": {
+            "graph.dimensions": {
+              "type": "array",
+              "items": {"type": "string"},
+              "minItems": 1
+            },
+            "graph.metrics": {
+              "type": "array", 
+              "items": {"type": "string"},
+              "minItems": 1
+            },
+            "graph.show_values": {"type": "boolean"},
+            "series_settings": {"$ref": "#/definitions/seriesSettings"},
+            "column_settings": {"$ref": "#/definitions/columnSettings"}
+          },
+          "required": ["graph.dimensions", "graph.metrics"]
+        }
+      ],
+      "description": "Horizontal bar chart (row chart)",
+      "examples": [
+        {
+          "graph.dimensions": ["product"],
+          "graph.metrics": ["sales"],
+          "graph.show_values": true
+        }
+      ]
+    },
+    "object": {
+      "allOf": [
+        {"$ref": "#/definitions/commonSettings"},
+        {
+          "type": "object",
+          "properties": {
+            "column_settings": {"$ref": "#/definitions/columnSettings"}
+          }
+        }
+      ],
+      "description": "Object detail view for single record display"
+    },
+    "heading": {
+      "allOf": [
+        {"$ref": "#/definitions/commonSettings"},
+        {
+          "type": "object",
+          "properties": {
+            "text": {"type": "string"},
+            "virtual_card": {
+              "type": "object",
+              "properties": {
+                "display": {"const": "heading"},
+                "archived": {"type": "boolean"},
+                "name": {"type": "null"},
+                "dataset_query": {"type": "object"},
+                                "visualization_settings": {"type": "object"}
+              }
+            }
+          }
+        }
+      ],
+      "description": "Embedded iframe for dashboards"
+    }
+  },
+  "validationExamples": {
+    "description": "Example validation usage",
+    "examples": [
+      {
+        "chartType": "line",
+        "validSettings": {
+          "graph.dimensions": ["created_at"],
+          "graph.metrics": ["revenue"],
+          "graph.show_values": false,
+          "graph.y_axis.title_text": "Revenue ($)",
+          "series_settings": {
+            "revenue": {
+              "color": "#509EE3",
+              "display": "line"
+            }
+          }
+        },
+        "invalidSettings": {
+          "graph.dimensions": [],
+          "graph.metrics": ["revenue"],
+          "graph.show_values": "invalid_boolean",
+          "series_settings": {
+            "revenue": {
+              "color": "invalid_color",
+              "display": "invalid_display_type"
+            }
+          }
+        }
+      },
+      {
+        "chartType": "pie",
+        "validSettings": {
+          "pie.dimension": "category", 
+          "pie.metric": "count",
+          "pie.show_legend": true,
+          "pie.percent_visibility": "legend"
+        },
+        "invalidSettings": {
+          "pie.metric": "count",
+          "pie.show_legend": "not_boolean",
+          "pie.percent_visibility": "invalid_option"
+        }
+      }
+    ]
+  },
+  "usageInstructions": {
+    "description": "How to use this schema for validation",
+    "steps": [
+      "1. Determine the chart type from the card's 'display' field",
+      "2. Get the corresponding schema from chartTypes[display]",
+      "3. Validate the visualization_settings object against that schema",
+      "4. Check that required fields like graph.dimensions and graph.metrics are present",
+      "5. Validate column_settings keys match the expected pattern"
+    ],
+    "codeExamples": {
+      "javascript": {
+        "ajv": `
+const Ajv = require('ajv');
+const ajv = new Ajv();
+
+// Load the schema
+const schema = require('./metabase-viz-schema.json');
+
+// Validate specific chart type
+function validateVisualizationSettings(display, settings) {
+  const chartSchema = schema.chartTypes[display];
+  if (!chartSchema) {
+    throw new Error(\`Unknown chart type: \${display}\`);
+  }
+  
+  const validate = ajv.compile(chartSchema);
+  const valid = validate(settings);
+  
+  if (!valid) {
+    return {
+      valid: false,
+      errors: validate.errors
+    };
+  }
+  
+  return { valid: true };
+}
+
+// Example usage
+const result = validateVisualizationSettings('line', {
+  'graph.dimensions': ['date'],
+  'graph.metrics': ['revenue'],
+  'graph.show_values': false
+});
+
+console.log(result); // { valid: true }
+        `,
+        "jsonSchema": `
+// Using a JSON Schema validator library
+import { validate } from 'jsonschema';
+import schema from './metabase-viz-schema.json';
+
+function validateCardSettings(card) {
+  const { display, visualization_settings } = card;
+  const chartSchema = schema.chartTypes[display];
+  
+  if (!chartSchema) {
+    return { valid: false, error: \`Unsupported chart type: \${display}\` };
+  }
+  
+  const result = validate(visualization_settings, chartSchema);
+  return {
+    valid: result.valid,
+    errors: result.errors
+  };
+}
+        `
+      },
+      "python": `
+import jsonschema
+import json
+
+# Load schema
+with open('metabase-viz-schema.json') as f:
+    schema = json.load(f)
+
+def validate_visualization_settings(display, settings):
+    chart_schema = schema['chartTypes'].get(display)
+    if not chart_schema:
+        raise ValueError(f"Unknown chart type: {display}")
+    
+    try:
+        jsonschema.validate(settings, chart_schema)
+        return {'valid': True}
+    except jsonschema.ValidationError as e:
+        return {
+            'valid': False,
+            'errors': [str(e)]
+        }
+
+# Example usage
+result = validate_visualization_settings('bar', {
+    'graph.dimensions': ['category'],
+    'graph.metrics': ['sales'],
+    'stackable.stack_type': 'stacked'
+})
+      `,
+      "curl": `
+# Using a JSON Schema validation API
+curl -X POST https://api.jsonschemavalidator.net/validate \\
+  -H "Content-Type: application/json" \\
+  -d '{
+    "schema": {
+      "$ref": "#/chartTypes/line"
+    },
+    "data": {
+      "graph.dimensions": ["date"],
+      "graph.metrics": ["revenue"]
+    }
+  }'
+      `
+    }
+  },
+  "bestPractices": {
+    "validation": [
+      "Always validate the chart type exists before validating settings",
+      "Check for required fields specific to each chart type",
+      "Validate column references match your database schema",
+      "Test with actual data to ensure field names are correct",
+      "Use strict validation in production environments"
+    ],
+    "errorHandling": [
+      "Provide clear error messages for validation failures",
+      "Fall back to default settings for non-critical validation errors",
+      "Log validation errors for debugging",
+      "Handle missing required fields gracefully"
+    ],
+    "performance": [
+      "Cache compiled schemas for repeated validation",
+      "Validate only changed settings in update operations",
+      "Use schema validation before API calls to reduce server errors"
+    ]
+  },
+  "commonValidationErrors": {
+    "missingRequiredFields": {
+      "error": "Missing required field 'graph.dimensions'",
+      "solution": "Ensure all required fields are present for the chart type",
+      "example": {
+        "invalid": {
+          "graph.metrics": ["revenue"]
+        },
+        "valid": {
+          "graph.dimensions": ["date"],
+          "graph.metrics": ["revenue"]
+        }
+      }
+    },
+    "invalidColorFormat": {
+      "error": "Color must be a valid hex code",
+      "solution": "Use 6-digit hex codes like #509EE3",
+      "example": {
+        "invalid": {
+          "series_settings": {
+            "revenue": {"color": "blue"}
+          }
+        },
+        "valid": {
+          "series_settings": {
+            "revenue": {"color": "#509EE3"}
+          }
+        }
+      }
+    },
+    "invalidColumnReference": {
+      "error": "Column reference format is invalid",
+      "solution": "Use proper JSON array format for column references",
+      "example": {
+        "invalid": {
+          "column_settings": {
+            "field_123": {"column_title": "Custom"}
+          }
+        },
+        "valid": {
+          "column_settings": {
+            "[\"ref\",[\"field\",123,null]]": {"column_title": "Custom"}
+          }
+        }
+      }
+    },
+    "invalidEnumValue": {
+      "error": "Value not in allowed enum list",
+      "solution": "Check the allowed values for the specific setting",
+      "example": {
+        "invalid": {
+          "stackable.stack_type": "invalid_stack_type"
+        },
+        "valid": {
+          "stackable.stack_type": "stacked"
+        }
+      }
+    }
+  },
+  "toolingSupport": {
+    "vscode": {
+      "description": "VS Code JSON Schema support",
+      "setup": "Add schema reference to settings.json or use $schema property",
+      "example": {
+        "$schema": "./metabase-viz-schema.json#/chartTypes/line",
+        "graph.dimensions": ["date"],
+        "graph.metrics": ["revenue"]
+      }
+    },
+    "ajv": {
+      "description": "AJV JSON Schema validator for JavaScript/Node.js",
+      "install": "npm install ajv",
+      "features": ["Fast validation", "Custom error messages", "Schema compilation"]
+    },
+    "jsonschema": {
+      "description": "Python jsonschema library",
+      "install": "pip install jsonschema", 
+      "features": ["Draft 7 support", "Format validation", "Custom validators"]
+    }
+  },
+  "validationFunctions": {
+    "validateByChartType": {
+      "description": "Main validation function that routes to appropriate chart schema",
+      "parameters": {
+        "chartType": {
+          "type": "string",
+          "enum": ["table", "line", "bar", "area", "pie", "scalar", "smartscalar", "gauge", "progress", "scatter", "map", "funnel", "combo", "waterfall", "pivot", "sankey", "row", "object", "heading", "text", "link", "action", "iframe"]
+        },
+        "settings": {
+          "type": "object",
+          "description": "The visualization_settings object to validate"
+        }
+      },
+      "returns": {
+        "type": "object",
+        "properties": {
+          "valid": {"type": "boolean"},
+          "errors": {"type": "array", "items": {"type": "string"}},
+          "warnings": {"type": "array", "items": {"type": "string"}}
+        }
+      }
+    },
+    "validateColumnReferences": {
+      "description": "Validates column reference format",
+      "parameters": {
+        "columnRef": {"type": "string"}
+      },
+      "returns": {
+        "type": "object",
+        "properties": {
+          "valid": {"type": "boolean"},
+          "type": {"enum": ["field_ref", "column_name", "expression_ref"]},
+          "parsed": {"type": "object"}
+        }
+      }
+    }
+  },
+  "migrationGuide": {
+    "description": "Guide for migrating from unvalidated to validated settings",
+    "steps": [
+      {
+        "step": 1,
+        "title": "Audit existing cards",
+        "description": "Run validation against existing visualization_settings to identify issues",
+        "code": "SELECT id, display, visualization_settings FROM report_card WHERE visualization_settings IS NOT NULL"
+      },
+      {
+        "step": 2,
+        "title": "Fix common issues",
+        "description": "Address most common validation errors",
+        "commonFixes": {
+          "missingDimensions": "Add required graph.dimensions array",
+          "invalidColors": "Convert color names to hex codes",
+          "wrongColumnRefs": "Update column reference format"
+        }
+      },
+      {
+        "step": 3,
+        "title": "Implement validation",
+        "description": "Add validation to your card creation/update workflow",
+        "code": "validate_before_save(card.display, card.visualization_settings)"
+      },
+      {
+        "step": 4,
+        "title": "Monitor and iterate",
+        "description": "Track validation errors and update schema as needed"
+      }
+    ]
+  },
+  "apiIntegration": {
+    "description": "How to integrate with Metabase API endpoints",
+    "endpoints": {
+      "createCard": {
+        "method": "POST",
+        "url": "/api/card",
+        "validation": "Validate visualization_settings before sending request",
+        "example": {
+          "name": "Sales by Month",
+          "display": "line",
+          "visualization_settings": {
+            "graph.dimensions": ["created_at"],
+            "graph.metrics": ["total"]
+          },
+          "dataset_query": {
+            "type": "query",
+            "query": {"source-table": 1},
+            "database": 1
+          }
+        }
+      },
+      "updateCard": {
+        "method": "PUT", 
+        "url": "/api/card/{id}",
+        "validation": "Validate only changed visualization_settings",
+        "example": {
+          "visualization_settings": {
+            "graph.show_values": true,
+            "graph.y_axis.title_text": "Revenue ($)"
+          }
+        }
+      }
+    }
+  },
+  "extendingSchema": {
+    "description": "How to extend the schema for custom visualizations or new Metabase features",
+    "steps": [
+      {
+        "title": "Add new chart type",
+        "description": "Define schema for new visualization type",
+        "example": {
+          "customChart": {
+            "allOf": [
+              {"$ref": "#/definitions/commonSettings"},
+              {
+                "type": "object",
+                "properties": {
+                  "custom.setting": {"type": "string"},
+                  "custom.options": {
+                    "type": "array",
+                    "items": {"type": "string"}
+                  }
+                },
+                "required": ["custom.setting"]
+              }
+            ]
+          }
+        }
+      },
+      {
+        "title": "Extend existing chart types", 
+        "description": "Add new settings to existing visualizations",
+        "example": {
+          "newLineSetting": {
+            "line.new_feature": {
+              "type": "boolean",
+              "description": "Enable new line chart feature"
+            }
+          }
+        }
+      }
+    ]
+  },
+  "changelog": {
+    "description": "Track schema changes and version compatibility",
+    "versions": {
+      "1.0.0": {
+        "date": "2024-01-01",
+        "changes": ["Initial schema creation", "Support for all major chart types"],
+        "metabaseVersion": "0.48.x"
+      },
+      "1.1.0": {
+        "date": "2024-02-01", 
+        "changes": ["Added sankey chart support", "Enhanced click behavior validation"],
+        "metabaseVersion": "0.49.x"
+      }
+    }
+  }
+}
+              }
+            }
+          }
+        }
+      ],
+      "description": "Text heading for dashboards"
+    },
+    "text": {
+      "allOf": [
+        {"$ref": "#/definitions/commonSettings"},
+        {
+          "type": "object",
+          "properties": {
+            "text": {"type": "string"},
+            "virtual_card": {
+              "type": "object",
+              "properties": {
+                "display": {"const": "text"},
+                "archived": {"type": "boolean"},
+                "name": {"type": "null"},
+                "dataset_query": {"type": "object"},
+                "visualization_settings": {"type": "object"}
+              }
+            }
+          }
+        }
+      ],
+      "description": "Rich text block for dashboards"
+    },
+    "link": {
+      "allOf": [
+        {"$ref": "#/definitions/commonSettings"},
+        {
+          "type": "object",
+          "properties": {
+            "link.url": {"type": "string"},
+            "link.text": {"type": "string"},
+            "virtual_card": {
+              "type": "object",
+              "properties": {
+                "display": {"const": "link"},
+                "archived": {"type": "boolean"},
+                "name": {"type": "null"},
+                "dataset_query": {"type": "object"},
+                "visualization_settings": {"type": "object"}
+              }
+            }
+          }
+        }
+      ],
+      "description": "Link card for dashboards"
+    },
+    "action": {
+      "allOf": [
+        {"$ref": "#/definitions/commonSettings"},
+        {
+          "type": "object",
+          "properties": {
+            "action.id": {"type": "integer"},
+            "virtual_card": {
+              "type": "object",
+              "properties": {
+                "display": {"const": "action"},
+                "archived": {"type": "boolean"},
+                "name": {"type": "null"},
+                "dataset_query": {"type": "object"},
+                "visualization_settings": {"type": "object"}
+              }
+            }
+          }
+        }
+      ],
+      "description": "Action button for dashboards"
+    },
+    "iframe": {
+      "allOf": [
+        {"$ref": "#/definitions/commonSettings"},
+        {
+          "type": "object",
+          "properties": {
+            "iframe.src": {"type": "string"},
+            "virtual_card": {
+              "type": "object",
+              "properties": {
+                "display": {"const": "iframe"},
+                "archived": {"type": "boolean"},
+                "name": {"type": "null"},
+                "dataset_query": {"type": "object"},
