@@ -10,6 +10,7 @@ from mcp.server.fastmcp import Context, FastMCP
 
 from ..server import get_server_instance
 from .common import format_error_response, get_metabase_client, check_response_size
+from .visualization import validate_visualization_settings
 
 # Set up logging for this module
 logger = logging.getLogger(__name__)
@@ -320,18 +321,20 @@ async def get_card_definition(id: int, ctx: Context, ignore_view: Optional[bool]
         )
 
 
-@mcp.tool(name="create_card", description="Create a new SQL card after validating the query")
+@mcp.tool(name="create_card", description="Create a new SQL card with optional visualization settings")
 async def create_card(
     database_id: int,
     query: str,
     name: str,
     ctx: Context,
+    display: str = "table",
+    visualization_settings: Optional[Dict[str, Any]] = None,
     card_type: str = "question",
     collection_id: Optional[int] = None,
     description: Optional[str] = None
 ) -> str:
     """
-    Create a new SQL card after validating the query.
+    Create a new SQL card with optional visualization settings.
     
     CUSTOMIZABLE FILTERS:
     You can create SQL queries with customizable filters using Metabase's template syntax:
@@ -348,14 +351,47 @@ async def create_card(
         query: SQL query string (can include {{variable}} and [[optional]] syntax)
         name: Name for the new card
         ctx: MCP context
-        card_type: Type of card (question, model, or metric)
+        display: Chart display type - must be one of: table, bar, line, combo (default: table)
+        visualization_settings: Optional visualization settings object
+        card_type: Type of card (question, model, or metric) - default: question
         collection_id: ID of the collection to place the card in (optional)
         description: Optional description for the card
         
     Returns:
         JSON string with creation result or error information
     """
-    logger.info(f"Tool called: create_card(database_id={database_id}, name={name}, card_type={card_type})")
+    logger.info(f"Tool called: create_card(database_id={database_id}, name={name}, display={display}, card_type={card_type})")
+    
+    # Validate chart display type
+    valid_display_types = ["table", "bar", "line", "combo"]
+    if display not in valid_display_types:
+        return json.dumps({
+            "success": False,
+            "error": f"Invalid display type: {display}. Must be one of: {', '.join(valid_display_types)}"
+        }, indent=2)
+    
+    # Validate visualization settings if provided
+    if visualization_settings is not None:
+        try:
+            # Import here to avoid circular imports if visualization tools are disabled
+            from .visualization import validate_visualization_settings
+            is_valid, validation_errors = validate_visualization_settings(visualization_settings, display)
+            
+            if not is_valid:
+                return json.dumps({
+                    "success": False,
+                    "error": "Visualization settings validation failed",
+                    "validation_errors": validation_errors,
+                    "suggestion": f"Call GET_VISUALIZATION_DOCUMENT with chart_types=['{display}'] to see correct syntax"
+                }, indent=2)
+        except ImportError:
+            logger.warning("Visualization validation not available - visualization tools may be disabled")
+        except Exception as e:
+            logger.error(f"Error validating visualization settings: {e}")
+            return json.dumps({
+                "success": False,
+                "error": f"Error validating visualization settings: {str(e)}"
+            }, indent=2)
     
     # Validate card type
     valid_card_types = ["question", "model", "metric"]
@@ -392,9 +428,9 @@ async def create_card(
                 },
                 "type": "native"
             },
-            "display": "table",  # Default display type
+            "display": display,
             "type": card_type,
-            "visualization_settings": {}  # Required field, even if empty
+            "visualization_settings": visualization_settings if visualization_settings is not None else {}
         }
         
         # Add optional fields if provided
@@ -444,18 +480,20 @@ async def create_card(
         )
 
 
-@mcp.tool(name="update_card", description="Update an existing card with a new SQL query")
+@mcp.tool(name="update_card", description="Update an existing card with optional visualization settings")
 async def update_card(
     id: int,
     ctx: Context,
     query: Optional[str] = None,
     name: Optional[str] = None,
     description: Optional[str] = None,
+    display: Optional[str] = None,
+    visualization_settings: Optional[Dict[str, Any]] = None,
     collection_id: Optional[int] = None,
     archived: Optional[bool] = None
 ) -> str:
     """
-    Update an existing card with a new SQL query or metadata.
+    Update an existing card with optional visualization settings.
     
     CUSTOMIZABLE FILTERS:
     When updating the query, you can use Metabase's template syntax for customizable filters:
@@ -473,15 +511,62 @@ async def update_card(
         query: New SQL query string (optional, can include {{variable}} and [[optional]] syntax)
         name: New name for the card (optional)
         description: New description for the card (optional)
+        display: New chart display type - must be one of: table, bar, line, combo (optional)
+        visualization_settings: New visualization settings object (optional)
         collection_id: New collection ID to move the card to (optional)
         archived: Whether the card is archived (optional)
         
     Returns:
         JSON string with update result or error information
     """
-    logger.info(f"Tool called: update_card(id={id}, name={name})")
+    logger.info(f"Tool called: update_card(id={id}, name={name}, display={display})")
     
     client = get_metabase_client(ctx)
+    
+    # Validate chart display type if provided
+    if display is not None:
+        valid_display_types = ["table", "bar", "line", "combo"]
+        if display not in valid_display_types:
+            return json.dumps({
+                "success": False,
+                "error": f"Invalid display type: {display}. Must be one of: {', '.join(valid_display_types)}"
+            }, indent=2)
+    
+    # Validate visualization settings if provided
+    if visualization_settings is not None:
+        # We need the display type for validation
+        effective_display = display
+        if effective_display is None:
+            # If display not provided, we need to get current display type
+            try:
+                current_data, status, error = await client.auth.make_request("GET", f"card/{id}")
+                if not error:
+                    effective_display = current_data.get("display", "table")
+                else:
+                    effective_display = "table"  # Default fallback
+            except:
+                effective_display = "table"  # Default fallback
+        
+        try:
+            # Import here to avoid circular imports if visualization tools are disabled
+            from .visualization import validate_visualization_settings
+            is_valid, validation_errors = validate_visualization_settings(visualization_settings, effective_display)
+            
+            if not is_valid:
+                return json.dumps({
+                    "success": False,
+                    "error": "Visualization settings validation failed",
+                    "validation_errors": validation_errors,
+                    "suggestion": f"Call GET_VISUALIZATION_DOCUMENT with chart_types=['{effective_display}'] to see correct syntax"
+                }, indent=2)
+        except ImportError:
+            logger.warning("Visualization validation not available - visualization tools may be disabled")
+        except Exception as e:
+            logger.error(f"Error validating visualization settings: {e}")
+            return json.dumps({
+                "success": False,
+                "error": f"Error validating visualization settings: {str(e)}"
+            }, indent=2)
     
     try:
         # First, fetch the current card to ensure it exists
@@ -513,6 +598,10 @@ async def update_card(
             update_data["name"] = name
         if description is not None:
             update_data["description"] = description
+        if display is not None:
+            update_data["display"] = display
+        if visualization_settings is not None:
+            update_data["visualization_settings"] = visualization_settings
         if collection_id is not None:
             update_data["collection_id"] = collection_id
         if archived is not None:
