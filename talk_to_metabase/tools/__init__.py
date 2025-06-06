@@ -28,6 +28,9 @@ try:
     from . import dataset
     logger.info("Loaded dataset tools module")
     
+    from . import visualization
+    logger.info("Loaded visualization tools module")
+    
     # Load context tools if enabled
     from ..config import MetabaseConfig
     config = MetabaseConfig.from_env()

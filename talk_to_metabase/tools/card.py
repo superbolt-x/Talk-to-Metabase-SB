@@ -10,6 +10,7 @@ from mcp.server.fastmcp import Context, FastMCP
 
 from ..server import get_server_instance
 from .common import format_error_response, get_metabase_client, check_response_size
+from .visualization import validate_visualization_settings_helper
 
 # Set up logging for this module
 logger = logging.getLogger(__name__)
@@ -328,7 +329,9 @@ async def create_card(
     ctx: Context,
     card_type: str = "question",
     collection_id: Optional[int] = None,
-    description: Optional[str] = None
+    description: Optional[str] = None,
+    display: str = "table",
+    visualization_settings: Optional[Dict[str, Any]] = None
 ) -> str:
     """
     Create a new SQL card after validating the query.
@@ -343,6 +346,9 @@ async def create_card(
     - SELECT * FROM orders WHERE date > {{start_date}}
     - SELECT * FROM products WHERE true [[AND category = {{category}}]] [[AND price > {{min_price}}]]
     
+    VISUALIZATION SETTINGS:
+    **IMPORTANT: Call GET_VISUALIZATION_DOCUMENT first to understand the visualization settings format**
+    
     Args:
         database_id: Database ID to run the query against
         query: SQL query string (can include {{variable}} and [[optional]] syntax)
@@ -351,11 +357,13 @@ async def create_card(
         card_type: Type of card (question, model, or metric)
         collection_id: ID of the collection to place the card in (optional)
         description: Optional description for the card
+        display: Visualization type (default: "table")
+        visualization_settings: Visualization settings dictionary (optional, call GET_VISUALIZATION_DOCUMENT for format)
         
     Returns:
         JSON string with creation result or error information
     """
-    logger.info(f"Tool called: create_card(database_id={database_id}, name={name}, card_type={card_type})")
+    logger.info(f"Tool called: create_card(database_id={database_id}, name={name}, card_type={card_type}, display={display})")
     
     # Validate card type
     valid_card_types = ["question", "model", "metric"]
@@ -366,6 +374,18 @@ async def create_card(
             message=f"Invalid card type: {card_type}. Must be one of: {', '.join(valid_card_types)}",
             request_info={"database_id": database_id, "name": name}
         )
+    
+    # Validate visualization settings if provided
+    if visualization_settings is not None:
+        validation_result = validate_visualization_settings_helper(display, visualization_settings)
+        if not validation_result["valid"]:
+            return json.dumps({
+                "success": False,
+                "error": "Invalid visualization settings",
+                "validation_errors": validation_result["errors"],
+                "chart_type": display,
+                "help": "Call GET_VISUALIZATION_DOCUMENT first to understand the correct format"
+            }, indent=2)
     
     client = get_metabase_client(ctx)
     
@@ -392,9 +412,9 @@ async def create_card(
                 },
                 "type": "native"
             },
-            "display": "table",  # Default display type
+            "display": display,
             "type": card_type,
-            "visualization_settings": {}  # Required field, even if empty
+            "visualization_settings": visualization_settings or {}  # Use provided settings or empty dict
         }
         
         # Add optional fields if provided
@@ -452,7 +472,9 @@ async def update_card(
     name: Optional[str] = None,
     description: Optional[str] = None,
     collection_id: Optional[int] = None,
-    archived: Optional[bool] = None
+    archived: Optional[bool] = None,
+    display: Optional[str] = None,
+    visualization_settings: Optional[Dict[str, Any]] = None
 ) -> str:
     """
     Update an existing card with a new SQL query or metadata.
@@ -467,6 +489,9 @@ async def update_card(
     - SELECT * FROM orders WHERE date > {{start_date}}
     - SELECT * FROM products WHERE true [[AND category = {{category}}]] [[AND price > {{min_price}}]]
     
+    VISUALIZATION SETTINGS:
+    **IMPORTANT: Call GET_VISUALIZATION_DOCUMENT first to understand the visualization settings format**
+    
     Args:
         id: Card ID to update (required, must be a positive integer)
         ctx: MCP context
@@ -475,30 +500,80 @@ async def update_card(
         description: New description for the card (optional)
         collection_id: New collection ID to move the card to (optional)
         archived: Whether the card is archived (optional)
+        display: New visualization type (optional)
+        visualization_settings: New visualization settings dictionary (optional, call GET_VISUALIZATION_DOCUMENT for format)
         
     Returns:
         JSON string with update result or error information
     """
-    logger.info(f"Tool called: update_card(id={id}, name={name})")
+    logger.info(f"Tool called: update_card(id={id}, name={name}, display={display})")
     
     client = get_metabase_client(ctx)
     
-    try:
-        # First, fetch the current card to ensure it exists
-        current_data, status, error = await client.auth.make_request(
-            "GET", f"card/{id}"
-        )
+    # Initialize current_data as None
+    current_data = None
+    
+    # Validate visualization settings if provided
+    if visualization_settings is not None:
+        # If display is provided, use it for validation
+        chart_type = display
+        # If display is not provided, get it from the existing card
+        if chart_type is None:
+            try:
+                current_data, status, error = await client.auth.make_request(
+                    "GET", f"card/{id}"
+                )
+                
+                if error:
+                    return format_error_response(
+                        status_code=status,
+                        error_type="retrieval_error",
+                        message=f"Cannot validate visualization settings for card {id}: {error}",
+                        request_info={
+                            "endpoint": f"/api/card/{id}", 
+                            "method": "GET"
+                        }
+                    )
+                
+                chart_type = current_data.get("display", "table")
+            except Exception as e:
+                return format_error_response(
+                    status_code=500,
+                    error_type="validation_error",
+                    message=f"Error getting card display type for validation: {str(e)}",
+                    request_info={
+                        "endpoint": f"/api/card/{id}", 
+                        "method": "GET"
+                    }
+                )
         
-        if error:
-            return format_error_response(
-                status_code=status,
-                error_type="retrieval_error",
-                message=f"Cannot update card {id}: {error}",
-                request_info={
-                    "endpoint": f"/api/card/{id}", 
-                    "method": "GET"
-                }
+        validation_result = validate_visualization_settings_helper(chart_type, visualization_settings)
+        if not validation_result["valid"]:
+            return json.dumps({
+                "success": False,
+                "error": "Invalid visualization settings",
+                "validation_errors": validation_result["errors"],
+                "chart_type": chart_type,
+                "help": "Call GET_VISUALIZATION_DOCUMENT first to understand the correct format"
+            }, indent=2)
+    
+    try:
+        # Fetch the current card data if not already fetched during validation
+        if current_data is None:
+            current_data, status, error = await client.auth.make_request(
+                "GET", f"card/{id}"
             )
+            
+            if error:
+                return format_error_response(
+                    status_code=status,
+                    error_type="retrieval_error",
+                    message=f"Cannot update card {id}: {error}",
+                    request_info={
+                        "endpoint": f"/api/card/{id}", 
+                        "method": "GET"
+                    }
+                )
         
         # Get the database ID from the existing card for SQL validation
         database_id = None
@@ -517,6 +592,10 @@ async def update_card(
             update_data["collection_id"] = collection_id
         if archived is not None:
             update_data["archived"] = archived
+        if display is not None:
+            update_data["display"] = display
+        if visualization_settings is not None:
+            update_data["visualization_settings"] = visualization_settings
         
         # If query is provided, validate it and update the dataset_query
         if query is not None:

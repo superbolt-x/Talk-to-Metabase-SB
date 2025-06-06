@@ -1,0 +1,549 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Metabase Table Visualization Settings",
+  "description": "JSON schema for table visualization settings in Metabase cards",
+  "type": "object",
+  "properties": {
+    "card.title": {
+      "type": ["string", "null"],
+      "description": "Custom title for the table card"
+    },
+    "card.description": {
+      "type": ["string", "null"],
+      "description": "Custom description for the table card"
+    },
+    "card.hide_empty": {
+      "type": "boolean",
+      "description": "Hide this card if there are no results",
+      "default": false
+    },
+    "table.columns": {
+      "type": "array",
+      "description": "Configuration for table columns visibility and order",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Column name as it appears in the data"
+          },
+          "fieldRef": {
+            "description": "Field reference for the column",
+            "oneOf": [
+              {
+                "type": "array",
+                "description": "Field reference array [\"field\", field_id, options]",
+                "minItems": 2,
+                "maxItems": 3,
+                "items": [
+                  {
+                    "type": "string",
+                    "enum": ["field"]
+                  },
+                  {
+                    "type": "integer",
+                    "description": "Field ID"
+                  },
+                  {
+                    "type": ["object", "null"],
+                    "description": "Field options",
+                    "properties": {
+                      "base-type": {
+                        "type": "string",
+                        "description": "Base type of the field"
+                      },
+                      "source-field": {
+                        "type": "integer",
+                        "description": "Source field ID for foreign keys"
+                      }
+                    },
+                    "additionalProperties": true
+                  }
+                ]
+              },
+              {
+                "type": "array",
+                "description": "Expression reference [\"expression\", expression_name]",
+                "items": [
+                  {
+                    "type": "string",
+                    "enum": ["expression"]
+                  },
+                  {
+                    "type": "string",
+                    "description": "Expression name"
+                  }
+                ]
+              },
+              {
+                "type": "array",
+                "description": "Aggregation reference [\"aggregation\", index]",
+                "items": [
+                  {
+                    "type": "string",
+                    "enum": ["aggregation"]
+                  },
+                  {
+                    "type": "integer",
+                    "description": "Aggregation index"
+                  }
+                ]
+              }
+            ]
+          },
+          "enabled": {
+            "type": "boolean",
+            "description": "Whether the column is visible in the table",
+            "default": true
+          }
+        },
+        "required": ["name", "fieldRef", "enabled"],
+        "additionalProperties": false
+      }
+    },
+    "table.column_formatting": {
+      "type": "array",
+      "description": "Global column formatting rules",
+      "items": {
+        "type": "object",
+        "properties": {
+          "columns": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Column names to apply formatting to"
+          },
+          "type": {
+            "type": "string",
+            "enum": ["single", "range"],
+            "description": "Formatting type"
+          },
+          "operator": {
+            "type": "string",
+            "enum": ["<", ">", "<=", ">=", "=", "!=", "is-null", "not-null"],
+            "description": "Comparison operator for conditional formatting"
+          },
+          "value": {
+            "description": "Value to compare against",
+            "oneOf": [
+              {"type": "number"},
+              {"type": "string"},
+              {"type": "null"}
+            ]
+          },
+          "color": {
+            "type": "string",
+            "pattern": "^#[0-9A-Fa-f]{6}$",
+            "description": "Hex color code for highlighting"
+          },
+          "highlight_row": {
+            "type": "boolean",
+            "description": "Whether to highlight the entire row",
+            "default": false
+          }
+        },
+        "required": ["columns", "type"],
+        "additionalProperties": false
+      }
+    },
+    "column_settings": {
+      "type": "object",
+      "description": "Settings for individual columns using column reference keys",
+      "patternProperties": {
+        "^\\[\"(ref|name)\",.*\\]$": {
+          "type": "object",
+          "description": "Column-specific settings",
+          "properties": {
+            "column_title": {
+              "type": "string",
+              "description": "Custom display name for the column"
+            },
+            "show_mini_bar": {
+              "type": "boolean",
+              "description": "Show mini bar chart in numeric columns",
+              "default": false
+            },
+            "number_style": {
+              "type": "string",
+              "enum": ["decimal", "currency", "percent", "scientific"],
+              "description": "Number formatting style"
+            },
+            "currency": {
+              "type": "string",
+              "description": "Currency code (e.g., USD, EUR, GBP)",
+              "pattern": "^[A-Z]{3}$"
+            },
+            "currency_style": {
+              "type": "string",
+              "enum": ["symbol", "code", "name"],
+              "description": "How to display currency",
+              "default": "symbol"
+            },
+            "currency_in_header": {
+              "type": "boolean",
+              "description": "Show currency in column header instead of each cell",
+              "default": false
+            },
+            "number_separators": {
+              "type": "string",
+              "enum": [".,", ", ", ". ", ",."],
+              "description": "Number separators (thousands, decimal)",
+              "default": ".,"
+            },
+            "decimals": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 10,
+              "description": "Number of decimal places to show"
+            },
+            "scale": {
+              "type": "number",
+              "description": "Multiply numbers by this factor before display",
+              "default": 1
+            },
+            "prefix": {
+              "type": "string",
+              "description": "Text to prepend to values"
+            },
+            "suffix": {
+              "type": "string",
+              "description": "Text to append to values"
+            },
+            "date_style": {
+              "type": "string",
+              "description": "Date formatting style",
+              "enum": [
+                "YYYY-MM-DD",
+                "MM/DD/YYYY", 
+                "DD/MM/YYYY",
+                "MMMM D, YYYY",
+                "MMM D, YYYY",
+                "M/D/YYYY",
+                "dddd, MMMM D, YYYY"
+              ]
+            },
+            "time_style": {
+              "type": "string",
+              "description": "Time formatting style",
+              "enum": [
+                "HH:mm",
+                "HH:mm:ss",
+                "h:mm A",
+                "h:mm:ss A",
+                "k:mm",
+                "k:mm:ss"
+              ]
+            },
+            "date_separator": {
+              "type": "string",
+              "enum": ["-", "/", "."],
+              "description": "Separator for date components",
+              "default": "/"
+            },
+            "date_abbreviate": {
+              "type": "boolean",
+              "description": "Use abbreviated month names",
+              "default": false
+            },
+            "link_text": {
+              "type": "string",
+              "description": "Custom text for link columns"
+            },
+            "link_url": {
+              "type": "string",
+              "description": "URL template for link columns with {{value}} placeholder"
+            },
+            "view_as": {
+              "type": "string",
+              "enum": ["auto", "link", "email", "image"],
+              "description": "How to display the column values",
+              "default": "auto"
+            },
+            "markdown_template": {
+              "type": "string",
+              "description": "Markdown template for rich text formatting"
+            },
+            "click_behavior": {
+              "type": "object",
+              "description": "Click behavior for this specific column",
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "enum": ["crossfilter", "link", "none"],
+                  "description": "Type of click behavior"
+                },
+                "linkType": {
+                  "type": "string",
+                  "enum": ["question", "dashboard", "url"],
+                  "description": "Type of link (when type is 'link')"
+                },
+                "targetId": {
+                  "type": "integer",
+                  "description": "Target question or dashboard ID"
+                },
+                "linkTemplate": {
+                  "type": "string",
+                  "description": "URL template with column value placeholders"
+                },
+                "linkTextTemplate": {
+                  "type": "string",
+                  "description": "Custom link text template"
+                },
+                "parameterMapping": {
+                  "type": "object",
+                  "description": "Parameter mappings for crossfilter or parameterized links",
+                  "patternProperties": {
+                    ".*": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "description": "Parameter mapping ID"
+                        },
+                        "source": {
+                          "type": "object",
+                          "properties": {
+                            "type": {
+                              "type": "string",
+                              "enum": ["column", "parameter"],
+                              "description": "Source type"
+                            },
+                            "id": {
+                              "type": "string",
+                              "description": "Source column or parameter ID"
+                            },
+                            "name": {
+                              "type": "string",
+                              "description": "Source display name"
+                            }
+                          },
+                          "required": ["type", "id", "name"],
+                          "additionalProperties": false
+                        },
+                        "target": {
+                          "type": "object",
+                          "properties": {
+                            "type": {
+                              "type": "string",
+                              "enum": ["parameter", "dimension"],
+                              "description": "Target type"
+                            },
+                            "id": {
+                              "description": "Target parameter ID or dimension",
+                              "oneOf": [
+                                {"type": "string"},
+                                {"type": "array"}
+                              ]
+                            },
+                            "dimension": {
+                              "type": "array",
+                              "description": "Target dimension array"
+                            }
+                          },
+                          "required": ["type", "id"],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": ["id", "source", "target"],
+                      "additionalProperties": false
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              },
+              "required": ["type"],
+              "additionalProperties": false,
+              "if": {
+                "properties": {
+                  "type": {"const": "link"}
+                }
+              },
+              "then": {
+                "required": ["linkType"]
+              }
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "click_behavior": {
+      "type": "object",
+      "description": "Default click behavior for the entire table",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["crossfilter", "link", "none"],
+          "description": "Type of click behavior"
+        },
+        "linkType": {
+          "type": "string",
+          "enum": ["question", "dashboard", "url"],
+          "description": "Type of link (when type is 'link')"
+        },
+        "targetId": {
+          "type": "integer",
+          "description": "Target question or dashboard ID"
+        },
+        "linkTemplate": {
+          "type": "string",
+          "description": "URL template with column value placeholders like {{column:ColumnName}}"
+        },
+        "linkTextTemplate": {
+          "type": "string",
+          "description": "Custom link text template"
+        },
+        "parameterMapping": {
+          "type": "object",
+          "description": "Parameter mappings for crossfilter or parameterized links",
+          "patternProperties": {
+            ".*": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "description": "Parameter mapping ID"
+                },
+                "source": {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "enum": ["column", "parameter"],
+                      "description": "Source type"
+                    },
+                    "id": {
+                      "type": "string",
+                      "description": "Source column or parameter ID"
+                    },
+                    "name": {
+                      "type": "string",
+                      "description": "Source display name"
+                    }
+                  },
+                  "required": ["type", "id", "name"],
+                  "additionalProperties": false
+                },
+                "target": {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "enum": ["parameter", "dimension"],
+                      "description": "Target type"
+                    },
+                    "id": {
+                      "description": "Target parameter ID or dimension",
+                      "oneOf": [
+                        {"type": "string"},
+                        {"type": "array"}
+                      ]
+                    },
+                    "dimension": {
+                      "type": "array",
+                      "description": "Target dimension array"
+                    }
+                  },
+                  "required": ["type", "id"],
+                  "additionalProperties": false
+                }
+              },
+              "required": ["id", "source", "target"],
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "required": ["type"],
+      "additionalProperties": false,
+      "if": {
+        "properties": {
+          "type": {"const": "link"}
+        }
+      },
+      "then": {
+        "required": ["linkType"]
+      }
+    }
+  },
+  "additionalProperties": false,
+  "examples": [
+    {
+      "card.title": "Sales Report",
+      "card.description": "Monthly sales data by region",
+      "table.columns": [
+        {
+          "name": "ID",
+          "fieldRef": ["field", 1, null],
+          "enabled": true
+        },
+        {
+          "name": "Region",
+          "fieldRef": ["field", 2, null],
+          "enabled": true
+        },
+        {
+          "name": "Sales",
+          "fieldRef": ["field", 3, null],
+          "enabled": true
+        },
+        {
+          "name": "Total Revenue",
+          "fieldRef": ["expression", "Total Revenue"],
+          "enabled": true
+        }
+      ],
+      "column_settings": {
+        "[\"ref\",[\"field\",3,null]]": {
+          "column_title": "Sales Amount",
+          "number_style": "currency",
+          "currency": "USD",
+          "currency_style": "symbol",
+          "decimals": 2,
+          "show_mini_bar": true
+        },
+        "[\"name\",\"Total Revenue\"]": {
+          "column_title": "Revenue",
+          "number_style": "currency",
+          "currency": "USD",
+          "prefix": "$",
+          "decimals": 0
+        },
+        "[\"ref\",[\"field\",2,null]]": {
+          "click_behavior": {
+            "type": "link",
+            "linkType": "dashboard",
+            "targetId": 123,
+            "parameterMapping": {
+              "region_param": {
+                "id": "region_param",
+                "source": {
+                  "type": "column",
+                  "id": "Region",
+                  "name": "Region"
+                },
+                "target": {
+                  "type": "parameter",
+                  "id": "region_param"
+                }
+              }
+            }
+          }
+        }
+      },
+      "table.column_formatting": [
+        {
+          "columns": ["Sales"],
+          "type": "single",
+          "operator": ">",
+          "value": 10000,
+          "color": "#84BB4C",
+          "highlight_row": false
+        }
+      ]
+    }
+  ]
+}
