@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 mcp = get_server_instance()
 
 # Supported chart types
-SUPPORTED_CHART_TYPES = ["table", "line", "bar", "combo"]
+SUPPORTED_CHART_TYPES = ["table", "line", "bar", "combo", "pie", "row", "area"]
 
 def load_schema(chart_type: str) -> Optional[Dict[str, Any]]:
     """Load JSON schema for a specific chart type."""
@@ -107,9 +107,12 @@ async def get_visualization_document(chart_type: str, ctx: Context) -> str:
     - line: Line charts with series settings, axes configuration, and trend lines
     - bar: Bar charts with stacking, series configuration, and value labels
     - combo: Combination charts mixing lines, bars, and areas with dual axes
+    - pie: Pie charts with slice customization, legends, and percentage displays
+    - row: Horizontal bar charts with category management and goal lines
+    - area: Area charts with stacking, series blending, and trend visualization
     
     Args:
-        chart_type: Type of chart visualization (currently supports: "table", "line", "bar", "combo")
+        chart_type: Type of chart visualization (currently supports: "table", "line", "bar", "combo", "pie", "row", "area")
         ctx: MCP context
         
     Returns:

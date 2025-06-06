@@ -1,0 +1,415 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Metabase Pie Chart Visualization Settings",
+  "description": "JSON schema for pie chart visualization settings in Metabase cards",
+  "type": "object",
+  "properties": {
+    "card.title": {
+      "type": ["string", "null"],
+      "description": "Custom title for the pie chart card"
+    },
+    "card.description": {
+      "type": ["string", "null"],
+      "description": "Custom description for the pie chart card"
+    },
+    "card.hide_empty": {
+      "type": "boolean",
+      "description": "Hide this card if there are no results",
+      "default": false
+    },
+    "pie.dimension": {
+      "type": ["string", "array"],
+      "description": "Dimension field (categories) for pie slices",
+      "oneOf": [
+        {
+          "type": "string",
+          "description": "Single dimension field name"
+        },
+        {
+          "type": "array",
+          "description": "Multiple dimensions for nested pie charts",
+          "items": {
+            "type": ["string", "null"]
+          },
+          "maxItems": 2
+        }
+      ]
+    },
+    "pie.metric": {
+      "type": "string",
+      "description": "Metric field (values) for pie slice sizes"
+    },
+    "pie.show_legend": {
+      "type": "boolean",
+      "description": "Whether to display the legend",
+      "default": true
+    },
+    "pie.show_total": {
+      "type": "boolean",
+      "description": "Whether to show total value in center of pie",
+      "default": false
+    },
+    "pie.show_labels": {
+      "type": "boolean",
+      "description": "Whether to show labels on pie slices",
+      "default": true
+    },
+    "pie.percent_visibility": {
+      "type": "string",
+      "enum": ["off", "legend", "inside", "both"],
+      "description": "Where to show percentage values",
+      "default": "legend"
+    },
+    "pie.decimal_places": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 10,
+      "description": "Number of decimal places for percentages"
+    },
+    "pie.slice_threshold": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 50,
+      "description": "Minimum percentage for a slice to be shown separately",
+      "default": 2.5
+    },
+    "pie.sort_rows": {
+      "type": "string",
+      "enum": ["asc", "desc"],
+      "description": "Sort order for pie slices by value",
+      "default": "desc"
+    },
+    "pie.sort_rows_dimension": {
+      "type": ["string", "null"],
+      "description": "Dimension used for sorting rows"
+    },
+    "pie.rows": {
+      "type": "array",
+      "description": "Processed pie slice data with custom names and colors",
+      "items": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "description": "Unique identifier for the slice",
+            "oneOf": [
+              {"type": "string"},
+              {"type": "number"}
+            ]
+          },
+          "name": {
+            "type": "string",
+            "description": "Display name for the slice"
+          },
+          "color": {
+            "type": "string",
+            "pattern": "^#[0-9A-Fa-f]{6}$",
+            "description": "Hex color code for the slice"
+          },
+          "enabled": {
+            "type": "boolean",
+            "description": "Whether this slice is visible",
+            "default": true
+          },
+          "value": {
+            "type": "number",
+            "description": "Numeric value of the slice"
+          },
+          "percentage": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100,
+            "description": "Percentage of total this slice represents"
+          }
+        },
+        "required": ["key", "name"],
+        "additionalProperties": false
+      }
+    },
+    "pie.colors": {
+      "type": "object",
+      "description": "Color mapping for pie slices by dimension value",
+      "patternProperties": {
+        ".*": {
+          "type": "string",
+          "pattern": "^#[0-9A-Fa-f]{6}$",
+          "description": "Hex color code"
+        }
+      },
+      "additionalProperties": false
+    },
+    "series_settings": {
+      "type": "object",
+      "description": "Individual slice customization settings",
+      "patternProperties": {
+        ".*": {
+          "type": "object",
+          "description": "Settings for a specific pie slice",
+          "properties": {
+            "name": {
+              "type": "string",
+              "description": "Custom display name for this slice"
+            },
+            "color": {
+              "type": "string",
+              "pattern": "^#[0-9A-Fa-f]{6}$",
+              "description": "Hex color code for this slice"
+            },
+            "enabled": {
+              "type": "boolean",
+              "description": "Whether this slice is visible",
+              "default": true
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "column_settings": {
+      "type": "object",
+      "description": "Settings for dimension and metric columns",
+      "patternProperties": {
+        "^\\[\"(ref|name)\",.*\\]$": {
+          "type": "object",
+          "description": "Column-specific formatting settings",
+          "properties": {
+            "column_title": {
+              "type": "string",
+              "description": "Custom display name for the column"
+            },
+            "number_style": {
+              "type": "string",
+              "enum": ["decimal", "currency", "percent", "scientific"],
+              "description": "Number formatting style for metric values"
+            },
+            "currency": {
+              "type": "string",
+              "description": "Currency code (e.g., USD, EUR, GBP)",
+              "pattern": "^[A-Z]{3}$"
+            },
+            "currency_style": {
+              "type": "string",
+              "enum": ["symbol", "code", "name"],
+              "description": "How to display currency",
+              "default": "symbol"
+            },
+            "number_separators": {
+              "type": "string",
+              "enum": [".,", ", ", ". ", ",."],
+              "description": "Number separators (thousands, decimal)",
+              "default": ".,"
+            },
+            "decimals": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 10,
+              "description": "Number of decimal places to show"
+            },
+            "scale": {
+              "type": "number",
+              "description": "Multiply numbers by this factor before display",
+              "default": 1
+            },
+            "prefix": {
+              "type": "string",
+              "description": "Text to prepend to values"
+            },
+            "suffix": {
+              "type": "string",
+              "description": "Text to append to values"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "click_behavior": {
+      "type": "object",
+      "description": "Click behavior for pie slices",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["crossfilter", "link", "none"],
+          "description": "Type of click behavior"
+        },
+        "linkType": {
+          "type": "string",
+          "enum": ["question", "dashboard", "url"],
+          "description": "Type of link (when type is 'link')"
+        },
+        "targetId": {
+          "type": "integer",
+          "description": "Target question or dashboard ID"
+        },
+        "linkTemplate": {
+          "type": "string",
+          "description": "URL template with slice value placeholders"
+        },
+        "linkTextTemplate": {
+          "type": "string",
+          "description": "Custom link text template"
+        },
+        "parameterMapping": {
+          "type": "object",
+          "description": "Parameter mappings for crossfilter or parameterized links",
+          "patternProperties": {
+            ".*": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "description": "Parameter mapping ID"
+                },
+                "source": {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "enum": ["column", "parameter"],
+                      "description": "Source type"
+                    },
+                    "id": {
+                      "type": "string",
+                      "description": "Source column or parameter ID"
+                    },
+                    "name": {
+                      "type": "string",
+                      "description": "Source display name"
+                    }
+                  },
+                  "required": ["type", "id", "name"],
+                  "additionalProperties": false
+                },
+                "target": {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "enum": ["parameter", "dimension"],
+                      "description": "Target type"
+                    },
+                    "id": {
+                      "description": "Target parameter ID or dimension",
+                      "oneOf": [
+                        {"type": "string"},
+                        {"type": "array"}
+                      ]
+                    }
+                  },
+                  "required": ["type", "id"],
+                  "additionalProperties": false
+                }
+              },
+              "required": ["id", "source", "target"],
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "required": ["type"],
+      "additionalProperties": false,
+      "if": {
+        "properties": {
+          "type": {"const": "link"}
+        }
+      },
+      "then": {
+        "required": ["linkType"]
+      }
+    }
+  },
+  "required": ["pie.dimension", "pie.metric"],
+  "additionalProperties": false,
+  "examples": [
+    {
+      "card.title": "Sales by Category",
+      "card.description": "Distribution of sales across product categories",
+      "pie.dimension": "category",
+      "pie.metric": "total_sales",
+      "pie.show_legend": true,
+      "pie.show_total": true,
+      "pie.show_labels": false,
+      "pie.percent_visibility": "legend",
+      "pie.decimal_places": 1,
+      "pie.slice_threshold": 5.0,
+      "pie.sort_rows": "desc",
+      "series_settings": {
+        "Electronics": {
+          "name": "Electronics & Gadgets",
+          "color": "#509EE3"
+        },
+        "Clothing": {
+          "name": "Apparel",
+          "color": "#88BF4D"
+        },
+        "Books": {
+          "color": "#F9CF48"
+        }
+      },
+      "column_settings": {
+        "[\"name\",\"total_sales\"]": {
+          "number_style": "currency",
+          "currency": "USD",
+          "currency_style": "symbol",
+          "decimals": 0
+        }
+      },
+      "click_behavior": {
+        "type": "crossfilter",
+        "parameterMapping": {
+          "category_filter": {
+            "id": "category_filter",
+            "source": {
+              "type": "column",
+              "id": "category",
+              "name": "Category"
+            },
+            "target": {
+              "type": "parameter",
+              "id": "category_filter"
+            }
+          }
+        }
+      }
+    },
+    {
+      "card.title": "Market Share Analysis",
+      "pie.dimension": "company",
+      "pie.metric": "market_share_percent",
+      "pie.show_legend": true,
+      "pie.show_total": false,
+      "pie.show_labels": true,
+      "pie.percent_visibility": "both",
+      "pie.decimal_places": 2,
+      "pie.slice_threshold": 1.0,
+      "pie.rows": [
+        {
+          "key": "Company A",
+          "name": "Company A",
+          "color": "#509EE3",
+          "enabled": true,
+          "value": 45.5,
+          "percentage": 45.5
+        },
+        {
+          "key": "Company B", 
+          "name": "Company B",
+          "color": "#88BF4D",
+          "enabled": true,
+          "value": 32.1,
+          "percentage": 32.1
+        },
+        {
+          "key": "Others",
+          "name": "Other Companies",
+          "color": "#ED6E6E",
+          "enabled": true,
+          "value": 22.4,
+          "percentage": 22.4
+        }
+      ]
+    }
+  ]
+}
