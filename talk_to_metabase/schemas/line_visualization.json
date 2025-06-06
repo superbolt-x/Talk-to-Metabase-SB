@@ -1,0 +1,570 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Metabase Line Chart Visualization Settings",
+  "description": "JSON schema for line chart visualization settings in Metabase cards",
+  "type": "object",
+  "properties": {
+    "card.title": {
+      "type": ["string", "null"],
+      "description": "Custom title for the line chart card"
+    },
+    "card.description": {
+      "type": ["string", "null"],
+      "description": "Custom description for the line chart card"
+    },
+    "card.hide_empty": {
+      "type": "boolean",
+      "description": "Hide this card if there are no results",
+      "default": false
+    },
+    "graph.dimensions": {
+      "type": "array",
+      "description": "X-axis dimensions (usually 1-2 fields)",
+      "items": {
+        "type": ["string", "null"],
+        "description": "Column name for X-axis dimension"
+      },
+      "minItems": 1,
+      "maxItems": 2
+    },
+    "graph.metrics": {
+      "type": "array",
+      "description": "Y-axis metrics (data series)",
+      "items": {
+        "type": ["string", "null"],
+        "description": "Column name for Y-axis metric"
+      },
+      "minItems": 1
+    },
+    "graph.series_order_dimension": {
+      "type": ["string", "null"],
+      "description": "Dimension used for series ordering"
+    },
+    "graph.series_order": {
+      "type": "array",
+      "description": "Order and visibility settings for data series",
+      "items": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string",
+            "description": "Series identifier"
+          },
+          "enabled": {
+            "type": "boolean",
+            "description": "Whether this series is visible",
+            "default": true
+          },
+          "color": {
+            "type": "string",
+            "pattern": "^#[0-9A-Fa-f]{6}$",
+            "description": "Hex color code for the series"
+          },
+          "name": {
+            "type": "string",
+            "description": "Custom display name for the series"
+          }
+        },
+        "required": ["key", "enabled"],
+        "additionalProperties": false
+      }
+    },
+    "graph.x_axis.scale": {
+      "type": "string",
+      "enum": ["linear", "log", "pow", "timeseries", "ordinal"],
+      "description": "X-axis scale type",
+      "default": "linear"
+    },
+    "graph.y_axis.scale": {
+      "type": "string",
+      "enum": ["linear", "log", "pow"],
+      "description": "Y-axis scale type",
+      "default": "linear"
+    },
+    "graph.x_axis.axis_enabled": {
+      "description": "X-axis display options",
+      "oneOf": [
+        {"type": "boolean"},
+        {
+          "type": "string",
+          "enum": ["compact", "rotate-45", "rotate-90"]
+        }
+      ],
+      "default": true
+    },
+    "graph.y_axis.axis_enabled": {
+      "type": "boolean",
+      "description": "Whether to show Y-axis lines and marks",
+      "default": true
+    },
+    "graph.x_axis.labels_enabled": {
+      "type": "boolean",
+      "description": "Whether to show X-axis label",
+      "default": true
+    },
+    "graph.y_axis.labels_enabled": {
+      "type": "boolean",
+      "description": "Whether to show Y-axis label",
+      "default": true
+    },
+    "graph.x_axis.title_text": {
+      "type": "string",
+      "description": "Custom X-axis label text"
+    },
+    "graph.y_axis.title_text": {
+      "type": "string",
+      "description": "Custom Y-axis label text"
+    },
+    "graph.y_axis.auto_range": {
+      "type": "boolean",
+      "description": "Automatically determine Y-axis range",
+      "default": true
+    },
+    "graph.y_axis.min": {
+      "type": "number",
+      "description": "Manual Y-axis minimum value (when auto_range is false)"
+    },
+    "graph.y_axis.max": {
+      "type": "number",
+      "description": "Manual Y-axis maximum value (when auto_range is false)"
+    },
+    "graph.y_axis.auto_split": {
+      "type": "boolean",
+      "description": "Split Y-axis when series have very different scales",
+      "default": false
+    },
+    "graph.y_axis.unpin_from_zero": {
+      "type": "boolean",
+      "description": "Allow Y-axis to not start from zero",
+      "default": false
+    },
+    "stackable.stack_type": {
+      "type": ["string", "null"],
+      "enum": [null, "stacked", "normalized"],
+      "description": "Stacking type for area charts under lines",
+      "default": null
+    },
+    "graph.show_values": {
+      "type": "boolean",
+      "description": "Show values on data points",
+      "default": false
+    },
+    "graph.label_value_frequency": {
+      "type": "string",
+      "enum": ["fit", "all"],
+      "description": "How many data point labels to show",
+      "default": "fit"
+    },
+    "graph.label_value_formatting": {
+      "type": "string",
+      "enum": ["auto", "compact", "full"],
+      "description": "Data label formatting style",
+      "default": "auto"
+    },
+    "graph.show_trendline": {
+      "type": "boolean",
+      "description": "Show trend line overlay",
+      "default": false
+    },
+    "graph.tooltip_type": {
+      "type": "string",
+      "enum": ["series_comparison", "default"],
+      "description": "Tooltip display style",
+      "default": "series_comparison"
+    },
+    "graph.tooltip_columns": {
+      "type": "array",
+      "description": "Additional columns to show in tooltips",
+      "items": {
+        "type": "string",
+        "description": "Column name to include in tooltip"
+      }
+    },
+    "legend.is_reversed": {
+      "type": "boolean",
+      "description": "Reverse the order of legend items",
+      "default": false
+    },
+    "series_settings": {
+      "type": "object",
+      "description": "Individual settings for each data series",
+      "patternProperties": {
+        ".*": {
+          "type": "object",
+          "description": "Settings for a specific series",
+          "properties": {
+            "display": {
+              "type": "string",
+              "enum": ["line", "bar", "area"],
+              "description": "How to display this series",
+              "default": "line"
+            },
+            "color": {
+              "type": "string",
+              "pattern": "^#[0-9A-Fa-f]{6}$",
+              "description": "Hex color code for this series"
+            },
+            "name": {
+              "type": "string",
+              "description": "Custom display name for this series"
+            },
+            "axis": {
+              "type": "string",
+              "enum": ["left", "right"],
+              "description": "Which Y-axis to use for this series",
+              "default": "left"
+            },
+            "line.interpolate": {
+              "type": "string",
+              "enum": ["linear", "cardinal", "step-before", "step-after"],
+              "description": "Line interpolation method",
+              "default": "linear"
+            },
+            "line.marker_enabled": {
+              "type": "boolean",
+              "description": "Show markers at data points",
+              "default": true
+            },
+            "line.missing": {
+              "type": "string",
+              "enum": ["interpolate", "zero", "none"],
+              "description": "How to handle missing values",
+              "default": "interpolate"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "series_settings.colors": {
+      "type": "object",
+      "description": "Color mappings for series",
+      "patternProperties": {
+        ".*": {
+          "type": "string",
+          "pattern": "^#[0-9A-Fa-f]{6}$",
+          "description": "Hex color code"
+        }
+      },
+      "additionalProperties": false
+    },
+    "column_settings": {
+      "type": "object",
+      "description": "Settings for individual columns using column reference keys",
+      "patternProperties": {
+        "^\\[\"(ref|name)\",.*\\]$": {
+          "type": "object",
+          "description": "Column-specific settings",
+          "properties": {
+            "column_title": {
+              "type": "string",
+              "description": "Custom display name for the column"
+            },
+            "number_style": {
+              "type": "string",
+              "enum": ["decimal", "currency", "percent", "scientific"],
+              "description": "Number formatting style"
+            },
+            "currency": {
+              "type": "string",
+              "description": "Currency code (e.g., USD, EUR, GBP)",
+              "pattern": "^[A-Z]{3}$"
+            },
+            "currency_style": {
+              "type": "string",
+              "enum": ["symbol", "code", "name"],
+              "description": "How to display currency",
+              "default": "symbol"
+            },
+            "currency_in_header": {
+              "type": "boolean",
+              "description": "Show currency in axis label instead of each value",
+              "default": false
+            },
+            "number_separators": {
+              "type": "string",
+              "enum": [".,", ", ", ". ", ",."],
+              "description": "Number separators (thousands, decimal)",
+              "default": ".,"
+            },
+            "decimals": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 10,
+              "description": "Number of decimal places to show"
+            },
+            "scale": {
+              "type": "number",
+              "description": "Multiply numbers by this factor before display",
+              "default": 1
+            },
+            "prefix": {
+              "type": "string",
+              "description": "Text to prepend to values"
+            },
+            "suffix": {
+              "type": "string",
+              "description": "Text to append to values"
+            },
+            "date_style": {
+              "type": "string",
+              "description": "Date formatting style",
+              "enum": [
+                "YYYY-MM-DD",
+                "MM/DD/YYYY",
+                "DD/MM/YYYY",
+                "MMMM D, YYYY",
+                "MMM D, YYYY",
+                "M/D/YYYY",
+                "dddd, MMMM D, YYYY"
+              ]
+            },
+            "time_style": {
+              "type": "string",
+              "description": "Time formatting style",
+              "enum": [
+                "HH:mm",
+                "HH:mm:ss",
+                "h:mm A",
+                "h:mm:ss A",
+                "k:mm",
+                "k:mm:ss"
+              ]
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "click_behavior": {
+      "type": "object",
+      "description": "Click behavior for chart elements",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["crossfilter", "link", "none"],
+          "description": "Type of click behavior"
+        },
+        "linkType": {
+          "type": "string",
+          "enum": ["question", "dashboard", "url"],
+          "description": "Type of link (when type is 'link')"
+        },
+        "targetId": {
+          "type": "integer",
+          "description": "Target question or dashboard ID"
+        },
+        "linkTemplate": {
+          "type": "string",
+          "description": "URL template with column value placeholders like {{column:ColumnName}}"
+        },
+        "linkTextTemplate": {
+          "type": "string",
+          "description": "Custom link text template"
+        },
+        "parameterMapping": {
+          "type": "object",
+          "description": "Parameter mappings for crossfilter or parameterized links",
+          "patternProperties": {
+            ".*": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "description": "Parameter mapping ID"
+                },
+                "source": {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "enum": ["column", "parameter"],
+                      "description": "Source type"
+                    },
+                    "id": {
+                      "type": "string",
+                      "description": "Source column or parameter ID"
+                    },
+                    "name": {
+                      "type": "string",
+                      "description": "Source display name"
+                    }
+                  },
+                  "required": ["type", "id", "name"],
+                  "additionalProperties": false
+                },
+                "target": {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "enum": ["parameter", "dimension"],
+                      "description": "Target type"
+                    },
+                    "id": {
+                      "description": "Target parameter ID or dimension",
+                      "oneOf": [
+                        {"type": "string"},
+                        {"type": "array"}
+                      ]
+                    },
+                    "dimension": {
+                      "type": "array",
+                      "description": "Target dimension array"
+                    }
+                  },
+                  "required": ["type", "id"],
+                  "additionalProperties": false
+                }
+              },
+              "required": ["id", "source", "target"],
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "required": ["type"],
+      "additionalProperties": false,
+      "if": {
+        "properties": {
+          "type": {"const": "link"}
+        }
+      },
+      "then": {
+        "required": ["linkType"]
+      }
+    },
+    "graph.goal_line": {
+      "type": "object",
+      "description": "Goal line settings",
+      "properties": {
+        "value": {
+          "type": "number",
+          "description": "Goal line value"
+        },
+        "label": {
+          "type": "string",
+          "description": "Goal line label"
+        },
+        "color": {
+          "type": "string",
+          "pattern": "^#[0-9A-Fa-f]{6}$",
+          "description": "Goal line color"
+        }
+      },
+      "required": ["value"],
+      "additionalProperties": false
+    }
+  },
+  "required": ["graph.dimensions", "graph.metrics"],
+  "additionalProperties": false,
+  "examples": [
+    {
+      "card.title": "Monthly Revenue Trend",
+      "card.description": "Revenue and profit trends over time",
+      "graph.dimensions": ["created_at"],
+      "graph.metrics": ["total_revenue", "total_profit"],
+      "graph.x_axis.title_text": "Month",
+      "graph.y_axis.title_text": "Amount ($)",
+      "graph.x_axis.scale": "timeseries",
+      "graph.y_axis.scale": "linear",
+      "graph.show_values": false,
+      "graph.show_trendline": true,
+      "series_settings": {
+        "total_revenue": {
+          "display": "line",
+          "color": "#509EE3",
+          "name": "Revenue",
+          "line.interpolate": "linear",
+          "line.marker_enabled": true,
+          "line.missing": "interpolate"
+        },
+        "total_profit": {
+          "display": "line",
+          "color": "#88BF4D",
+          "name": "Profit",
+          "line.interpolate": "linear",
+          "line.marker_enabled": true,
+          "line.missing": "zero"
+        }
+      },
+      "column_settings": {
+        "[\"name\",\"total_revenue\"]": {
+          "number_style": "currency",
+          "currency": "USD",
+          "currency_style": "symbol",
+          "decimals": 0
+        },
+        "[\"name\",\"total_profit\"]": {
+          "number_style": "currency",
+          "currency": "USD",
+          "currency_style": "symbol",
+          "decimals": 0
+        }
+      },
+      "graph.goal_line": {
+        "value": 50000,
+        "label": "Target Revenue",
+        "color": "#ED6E6E"
+      },
+      "click_behavior": {
+        "type": "link",
+        "linkType": "dashboard",
+        "targetId": 123,
+        "parameterMapping": {
+          "date_param": {
+            "id": "date_param",
+            "source": {
+              "type": "column",
+              "id": "created_at",
+              "name": "Created At"
+            },
+            "target": {
+              "type": "parameter",
+              "id": "date_param"
+            }
+          }
+        }
+      }
+    },
+    {
+      "graph.dimensions": ["category"],
+      "graph.metrics": ["sales"],
+      "graph.x_axis.scale": "ordinal",
+      "series_settings": {
+        "sales": {
+          "display": "line",
+          "color": "#509EE3",
+          "line.interpolate": "cardinal",
+          "line.marker_enabled": true
+        }
+      }
+    },
+    {
+      "graph.dimensions": ["date", "region"],
+      "graph.metrics": ["revenue"],
+      "graph.series_order": [
+        {
+          "key": "North",
+          "enabled": true,
+          "color": "#509EE3",
+          "name": "North Region"
+        },
+        {
+          "key": "South",
+          "enabled": true,
+          "color": "#88BF4D",
+          "name": "South Region"
+        },
+        {
+          "key": "East",
+          "enabled": false,
+          "color": "#F9CF48"
+        }
+      ]
+    }
+  ]
+}
