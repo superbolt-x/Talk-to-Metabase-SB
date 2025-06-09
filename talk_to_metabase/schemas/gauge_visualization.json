@@ -1,0 +1,211 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Metabase Gauge Chart Visualization Settings",
+  "description": "JSON schema for gauge chart visualization settings in Metabase cards",
+  "type": "object",
+  "properties": {
+    "card.title": {
+      "type": ["string", "null"],
+      "description": "Custom title for the gauge chart card"
+    },
+    "card.description": {
+      "type": ["string", "null"],
+      "description": "Custom description for the gauge chart card"
+    },
+    "card.hide_empty": {
+      "type": "boolean",
+      "description": "Hide this card if there are no results",
+      "default": false
+    },
+    "gauge.field": {
+      "type": "string",
+      "description": "Field to display as the gauge value"
+    },
+    "gauge.min": {
+      "type": "number",
+      "description": "Minimum value for the gauge scale",
+      "default": 0
+    },
+    "gauge.max": {
+      "type": "number",
+      "description": "Maximum value for the gauge scale",
+      "default": 100
+    },
+    "gauge.segments": {
+      "type": "array",
+      "description": "Color segments for the gauge arc",
+      "items": {
+        "type": "object",
+        "properties": {
+          "min": {
+            "type": "number",
+            "description": "Minimum value for this segment"
+          },
+          "max": {
+            "type": "number",
+            "description": "Maximum value for this segment"
+          },
+          "color": {
+            "type": "string",
+            "pattern": "^#[0-9A-Fa-f]{6}$",
+            "description": "Hex color code for this segment"
+          },
+          "label": {
+            "type": "string",
+            "description": "Label for this segment (e.g., 'Poor', 'Good', 'Excellent')"
+          }
+        },
+        "required": ["min", "max", "color"],
+        "additionalProperties": false
+      },
+      "minItems": 1
+    },
+    "gauge.show_values": {
+      "type": "boolean",
+      "description": "Whether to show the numeric value on the gauge",
+      "default": true
+    },
+    "gauge.auto_range": {
+      "type": "boolean",
+      "description": "Automatically determine gauge range from data",
+      "default": false
+    },
+    "column_settings": {
+      "type": "object",
+      "description": "Column formatting settings",
+      "patternProperties": {
+        "^\\[\"(ref|name)\",.*\\]$": {
+          "type": "object",
+          "description": "Column-specific formatting settings",
+          "properties": {
+            "column_title": {
+              "type": "string",
+              "description": "Custom display name for the value"
+            },
+            "number_style": {
+              "type": "string",
+              "enum": ["decimal", "currency", "percent", "scientific"],
+              "description": "Number formatting style"
+            },
+            "currency": {
+              "type": "string",
+              "description": "Currency code (e.g., USD, EUR, GBP)",
+              "pattern": "^[A-Z]{3}$"
+            },
+            "currency_style": {
+              "type": "string",
+              "enum": ["symbol", "code", "name"],
+              "description": "How to display currency",
+              "default": "symbol"
+            },
+            "number_separators": {
+              "type": "string",
+              "enum": [".,", ", ", ". ", ",."],
+              "description": "Number separators (thousands, decimal)",
+              "default": ".,"
+            },
+            "decimals": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 10,
+              "description": "Number of decimal places to show"
+            },
+            "scale": {
+              "type": "number",
+              "description": "Multiply numbers by this factor before display",
+              "default": 1
+            },
+            "prefix": {
+              "type": "string",
+              "description": "Text to prepend to values"
+            },
+            "suffix": {
+              "type": "string",
+              "description": "Text to append to values"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "click_behavior": {
+      "type": "object",
+      "description": "Click behavior for the gauge",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["crossfilter", "link", "none"],
+          "description": "Type of click behavior"
+        },
+        "linkType": {
+          "type": "string",
+          "enum": ["question", "dashboard", "url"],
+          "description": "Type of link (when type is 'link')"
+        },
+        "targetId": {
+          "type": "integer",
+          "description": "Target question or dashboard ID"
+        },
+        "linkTemplate": {
+          "type": "string",
+          "description": "URL template with value placeholders"
+        },
+        "parameterMapping": {
+          "type": "object",
+          "description": "Parameter mappings for crossfilter or parameterized links",
+          "patternProperties": {
+            ".*": {
+              "type": "object",
+              "properties": {
+                "id": {"type": "string"},
+                "source": {
+                  "type": "object",
+                  "properties": {
+                    "type": {"type": "string", "enum": ["column", "parameter"]},
+                    "id": {"type": "string"},
+                    "name": {"type": "string"}
+                  },
+                  "required": ["type", "id", "name"]
+                },
+                "target": {
+                  "type": "object",
+                  "properties": {
+                    "type": {"type": "string", "enum": ["parameter", "dimension"]},
+                    "id": {"oneOf": [{"type": "string"}, {"type": "array"}]}
+                  },
+                  "required": ["type", "id"]
+                }
+              },
+              "required": ["id", "source", "target"]
+            }
+          }
+        }
+      },
+      "required": ["type"]
+    }
+  },
+  "required": ["gauge.field"],
+  "additionalProperties": false,
+  "examples": [
+    {
+      "card.title": "Customer Satisfaction Score",
+      "gauge.field": "satisfaction_score",
+      "gauge.min": 0,
+      "gauge.max": 100,
+      "gauge.show_values": true,
+      "gauge.segments": [
+        {"min": 0, "max": 30, "color": "#ED6E6E", "label": "Poor"},
+        {"min": 30, "max": 70, "color": "#F9CF48", "label": "Average"},
+        {"min": 70, "max": 100, "color": "#84BB4C", "label": "Excellent"}
+      ],
+      "column_settings": {
+        "[\"name\",\"satisfaction_score\"]": {
+          "number_style": "decimal",
+          "decimals": 1,
+          "suffix": "%"
+        }
+      }
+    }
+  ]
+}

@@ -18,17 +18,33 @@ logger = logging.getLogger(__name__)
 # Register tools with the server
 mcp = get_server_instance()
 
-# Supported chart types
-SUPPORTED_CHART_TYPES = ["table", "line", "bar", "combo", "pie", "row", "area"]
+# Supported chart types (using API names)
+SUPPORTED_CHART_TYPES = ["table", "line", "bar", "combo", "pie", "row", "area", "object", "funnel", "gauge"]
+
+# Mapping of common UI names to API names
+UI_TO_API_MAPPING = {
+    "detail": "object",
+}
+
+# Mapping of API names to UI names for documentation
+API_TO_UI_MAPPING = {
+    "object": "detail",
+}
 
 def load_schema(chart_type: str) -> Optional[Dict[str, Any]]:
     """Load JSON schema for a specific chart type."""
     try:
+        # Convert UI name to API name if needed
+        api_chart_type = UI_TO_API_MAPPING.get(chart_type, chart_type)
+        
+        # Use the schema file name (which should match the API name)
+        schema_file_name = api_chart_type
+        
         schema_path = os.path.join(
             os.path.dirname(__file__), 
             "..", 
             "schemas", 
-            f"{chart_type}_visualization.json"
+            f"{schema_file_name}_visualization.json"
         )
         
         if not os.path.exists(schema_path):
@@ -44,11 +60,17 @@ def load_schema(chart_type: str) -> Optional[Dict[str, Any]]:
 def load_documentation(chart_type: str) -> Optional[str]:
     """Load documentation for a specific chart type."""
     try:
+        # Convert UI name to API name if needed
+        api_chart_type = UI_TO_API_MAPPING.get(chart_type, chart_type)
+        
+        # Use the schema file name for documentation (which should match the API name)
+        docs_file_name = api_chart_type
+        
         docs_path = os.path.join(
             os.path.dirname(__file__), 
             "..", 
             "schemas", 
-            f"{chart_type}_visualization_docs.md"
+            f"{docs_file_name}_visualization_docs.md"
         )
         
         if not os.path.exists(docs_path):
@@ -66,16 +88,20 @@ def validate_visualization_settings(chart_type: str, settings: Dict[str, Any]) -
     Validate visualization settings against the JSON schema.
     
     Args:
-        chart_type: Type of chart (e.g., "table")
+        chart_type: Type of chart (UI name or API name)
         settings: Visualization settings dictionary
         
     Returns:
         Tuple of (is_valid, error_messages)
     """
-    if chart_type not in SUPPORTED_CHART_TYPES:
-        return False, [f"Unsupported chart type: {chart_type}. Supported types: {', '.join(SUPPORTED_CHART_TYPES)}"]
+    # Convert UI name to API name if needed
+    api_chart_type = UI_TO_API_MAPPING.get(chart_type, chart_type)
     
-    schema = load_schema(chart_type)
+    if api_chart_type not in SUPPORTED_CHART_TYPES:
+        supported_types = SUPPORTED_CHART_TYPES + list(UI_TO_API_MAPPING.keys())
+        return False, [f"Unsupported chart type: {chart_type}. Supported types: {', '.join(supported_types)}"]
+    
+    schema = load_schema(api_chart_type)
     if schema is None:
         return False, [f"Could not load schema for chart type: {chart_type}"]
     
@@ -110,9 +136,15 @@ async def get_visualization_document(chart_type: str, ctx: Context) -> str:
     - pie: Pie charts with slice customization, legends, and percentage displays
     - row: Horizontal bar charts with category management and goal lines
     - area: Area charts with stacking, series blending, and trend visualization
+    - object: Object detail views for displaying single record information (UI name: detail)
+    - funnel: Funnel charts for conversion analysis with stage progression
+    - gauge: Gauge charts for single KPI display with color-coded segments
+    
+    Note: Some chart types have different names in the Metabase UI vs API.
+    Both names are supported - use either the API name (e.g., "object") or UI name (e.g., "detail").
     
     Args:
-        chart_type: Type of chart visualization (currently supports: "table", "line", "bar", "combo", "pie", "row", "area")
+        chart_type: Type of chart visualization. Supports both API names ("table", "line", "bar", "combo", "pie", "row", "area", "object", "funnel", "gauge") and UI names ("detail" for "object")
         ctx: MCP context
         
     Returns:
@@ -122,12 +154,14 @@ async def get_visualization_document(chart_type: str, ctx: Context) -> str:
     
     try:
         # Validate chart type
-        if chart_type not in SUPPORTED_CHART_TYPES:
+        api_chart_type = UI_TO_API_MAPPING.get(chart_type, chart_type)
+        if api_chart_type not in SUPPORTED_CHART_TYPES:
+            supported_types = SUPPORTED_CHART_TYPES + list(UI_TO_API_MAPPING.keys())
             return format_error_response(
                 status_code=400,
                 error_type="unsupported_chart_type",
-                message=f"Chart type '{chart_type}' is not supported. Supported types: {', '.join(SUPPORTED_CHART_TYPES)}",
-                request_info={"chart_type": chart_type, "supported_types": SUPPORTED_CHART_TYPES}
+                message=f"Chart type '{chart_type}' is not supported. Supported types: {', '.join(sorted(supported_types))}",
+                request_info={"chart_type": chart_type, "supported_types": sorted(supported_types)}
             )
         
         # Load documentation
@@ -154,15 +188,19 @@ async def get_visualization_document(chart_type: str, ctx: Context) -> str:
         examples = schema.get("examples", [])
         
         # Create response
+        ui_name = API_TO_UI_MAPPING.get(api_chart_type, api_chart_type)
         response_data = {
             "success": True,
             "chart_type": chart_type,
+            "api_name": api_chart_type,
+            "ui_name": ui_name,
             "documentation": documentation,
             "json_schema": schema,
             "examples": examples,
             "validation_info": {
                 "use_validate_visualization_settings": "Call validate_visualization_settings() before using settings in create_card or update_card",
-                "supported_properties": list(schema.get("properties", {}).keys()) if "properties" in schema else []
+                "supported_properties": list(schema.get("properties", {}).keys()) if "properties" in schema else [],
+                "note": f"This chart type uses API name '{api_chart_type}' and UI name '{ui_name}'"
             }
         }
         

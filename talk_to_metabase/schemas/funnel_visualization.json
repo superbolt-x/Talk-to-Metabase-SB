@@ -1,0 +1,205 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Metabase Funnel Chart Visualization Settings",
+  "description": "JSON schema for funnel chart visualization settings in Metabase cards",
+  "type": "object",
+  "properties": {
+    "card.title": {
+      "type": ["string", "null"],
+      "description": "Custom title for the funnel chart card"
+    },
+    "card.description": {
+      "type": ["string", "null"],
+      "description": "Custom description for the funnel chart card"
+    },
+    "card.hide_empty": {
+      "type": "boolean",
+      "description": "Hide this card if there are no results",
+      "default": false
+    },
+    "funnel.dimension": {
+      "type": "string",
+      "description": "Step/stage field for funnel levels"
+    },
+    "funnel.metric": {
+      "type": "string",
+      "description": "Count/value field for funnel quantities"
+    },
+    "funnel.type": {
+      "type": "string",
+      "enum": ["funnel", "bar"],
+      "description": "Visual style of the funnel",
+      "default": "funnel"
+    },
+    "funnel.show_values": {
+      "type": "boolean",
+      "description": "Show values on funnel segments",
+      "default": true
+    },
+    "funnel.show_percentages": {
+      "type": "boolean",
+      "description": "Show conversion percentages between steps",
+      "default": true
+    },
+    "funnel.colors": {
+      "type": "array",
+      "description": "Color palette for funnel segments",
+      "items": {
+        "type": "string",
+        "pattern": "^#[0-9A-Fa-f]{6}$",
+        "description": "Hex color code"
+      }
+    },
+    "column_settings": {
+      "type": "object",
+      "description": "Settings for individual columns using column reference keys",
+      "patternProperties": {
+        "^\\[\"(ref|name)\",.*\\]$": {
+          "type": "object",
+          "description": "Column-specific formatting settings",
+          "properties": {
+            "column_title": {
+              "type": "string",
+              "description": "Custom display name for the column"
+            },
+            "number_style": {
+              "type": "string",
+              "enum": ["decimal", "currency", "percent", "scientific"],
+              "description": "Number formatting style"
+            },
+            "currency": {
+              "type": "string",
+              "description": "Currency code (e.g., USD, EUR, GBP)",
+              "pattern": "^[A-Z]{3}$"
+            },
+            "currency_style": {
+              "type": "string",
+              "enum": ["symbol", "code", "name"],
+              "description": "How to display currency",
+              "default": "symbol"
+            },
+            "number_separators": {
+              "type": "string",
+              "enum": [".,", ", ", ". ", ",."],
+              "description": "Number separators (thousands, decimal)",
+              "default": ".,"
+            },
+            "decimals": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 10,
+              "description": "Number of decimal places to show"
+            },
+            "scale": {
+              "type": "number",
+              "description": "Multiply numbers by this factor before display",
+              "default": 1
+            },
+            "prefix": {
+              "type": "string",
+              "description": "Text to prepend to values"
+            },
+            "suffix": {
+              "type": "string",
+              "description": "Text to append to values"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "click_behavior": {
+      "type": "object",
+      "description": "Click behavior for funnel segments",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["crossfilter", "link", "none"],
+          "description": "Type of click behavior"
+        },
+        "linkType": {
+          "type": "string",
+          "enum": ["question", "dashboard", "url"],
+          "description": "Type of link (when type is 'link')"
+        },
+        "targetId": {
+          "type": "integer",
+          "description": "Target question or dashboard ID"
+        },
+        "linkTemplate": {
+          "type": "string",
+          "description": "URL template with column value placeholders"
+        },
+        "parameterMapping": {
+          "type": "object",
+          "description": "Parameter mappings for crossfilter or parameterized links",
+          "patternProperties": {
+            ".*": {
+              "type": "object",
+              "properties": {
+                "id": {"type": "string"},
+                "source": {
+                  "type": "object",
+                  "properties": {
+                    "type": {"type": "string", "enum": ["column", "parameter"]},
+                    "id": {"type": "string"},
+                    "name": {"type": "string"}
+                  },
+                  "required": ["type", "id", "name"]
+                },
+                "target": {
+                  "type": "object",
+                  "properties": {
+                    "type": {"type": "string", "enum": ["parameter", "dimension"]},
+                    "id": {"oneOf": [{"type": "string"}, {"type": "array"}]}
+                  },
+                  "required": ["type", "id"]
+                }
+              },
+              "required": ["id", "source", "target"]
+            }
+          }
+        }
+      },
+      "required": ["type"]
+    }
+  },
+  "required": ["funnel.dimension", "funnel.metric"],
+  "additionalProperties": false,
+  "examples": [
+    {
+      "card.title": "Sales Conversion Funnel",
+      "card.description": "Lead to customer conversion stages",
+      "funnel.dimension": "stage",
+      "funnel.metric": "count",
+      "funnel.type": "funnel",
+      "funnel.show_values": true,
+      "funnel.show_percentages": true,
+      "funnel.colors": ["#509EE3", "#88BF4D", "#F9CF48", "#ED6E6E"],
+      "column_settings": {
+        "[\"name\",\"count\"]": {
+          "number_style": "decimal",
+          "decimals": 0
+        }
+      },
+      "click_behavior": {
+        "type": "crossfilter",
+        "parameterMapping": {
+          "stage_filter": {
+            "id": "stage_filter",
+            "source": {
+              "type": "column",
+              "id": "stage",
+              "name": "Stage"
+            },
+            "target": {
+              "type": "parameter",
+              "id": "stage_filter"
+            }
+          }
+        }
+      }
+    }
+  ]
+}
