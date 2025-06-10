@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 mcp = get_server_instance()
 
 # Supported chart types (using API names)
-SUPPORTED_CHART_TYPES = ["table", "line", "bar", "combo", "pie", "row", "area", "object", "funnel", "gauge", "progress", "sankey", "scalar", "scatter", "smartscalar"]
+SUPPORTED_CHART_TYPES = ["table", "line", "bar", "combo", "pie", "row", "area", "object", "funnel", "gauge", "progress", "sankey", "scalar", "scatter", "smartscalar", "map", "waterfall"]
 
 # Mapping of common UI names to API names
 UI_TO_API_MAPPING = {
@@ -148,12 +148,14 @@ async def get_visualization_document(chart_type: str, ctx: Context) -> str:
     - scalar: Single number displays with formatting (UI name: number)
     - scatter: Scatter plots for analyzing relationships between two variables
     - smartscalar: Trend numbers with comparison values and indicators (UI name: trend)
+    - map: Geographic maps for location-based data visualization
+    - waterfall: Waterfall charts for showing cumulative effects of sequential changes
     
     Note: Some chart types have different names in the Metabase UI vs API.
     Both names are supported - use either the API name (e.g., "scalar") or UI name (e.g., "number").
     
     Args:
-        chart_type: Type of chart visualization. Supports API names ("table", "line", "bar", "combo", "pie", "row", "area", "object", "funnel", "gauge", "progress", "sankey", "scalar", "scatter", "smartscalar") and UI names ("detail" for "object", "number" for "scalar", "trend" for "smartscalar")
+        chart_type: Type of chart visualization. Supports API names ("table", "line", "bar", "combo", "pie", "row", "area", "object", "funnel", "gauge", "progress", "sankey", "scalar", "scatter", "smartscalar", "map", "waterfall") and UI names ("detail" for "object", "number" for "scalar", "trend" for "smartscalar")
         ctx: MCP context
         
     Returns:

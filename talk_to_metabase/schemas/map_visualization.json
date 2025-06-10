@@ -1,0 +1,286 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Metabase Map Chart Visualization Settings",
+  "description": "JSON schema for map visualization settings in Metabase cards",
+  "type": "object",
+  "properties": {
+    "card.title": {
+      "type": ["string", "null"],
+      "description": "Custom title for the map chart card"
+    },
+    "card.description": {
+      "type": ["string", "null"],
+      "description": "Custom description for the map chart card"
+    },
+    "card.hide_empty": {
+      "type": "boolean",
+      "description": "Hide this card if there are no results",
+      "default": false
+    },
+    "map.type": {
+      "type": "string",
+      "enum": ["region", "pin", "heat", "grid"],
+      "description": "Type of map visualization",
+      "default": "pin"
+    },
+    "map.pin_type": {
+      "type": "string",
+      "enum": ["tiles", "markers", "heat", "grid"],
+      "description": "Pin visualization style for pin maps",
+      "default": "markers"
+    },
+    "map.region": {
+      "type": ["string", "null"],
+      "description": "Geographic region for region maps (custom GeoJSON key or built-in region)",
+      "examples": ["us_states", "world_countries", "custom_region_key"]
+    },
+    "map.latitude_column": {
+      "type": ["string", "null"],
+      "description": "Column containing latitude values (for pin maps)"
+    },
+    "map.longitude_column": {
+      "type": ["string", "null"],
+      "description": "Column containing longitude values (for pin maps)"
+    },
+    "map.metric_column": {
+      "type": ["string", "null"],
+      "description": "Column containing values for heat/grid intensity (for pin maps)"
+    },
+    "map.metric": {
+      "type": ["string", "null"],
+      "description": "Metric field for region map coloring/values"
+    },
+    "map.dimension": {
+      "type": ["string", "null"],
+      "description": "Dimension field containing geographic identifiers for region maps"
+    },
+    "map.colors": {
+      "type": "array",
+      "description": "Color scale for region maps",
+      "items": {
+        "type": "string",
+        "pattern": "^#[0-9A-Fa-f]{6}$",
+        "description": "Hex color code"
+      }
+    },
+    "map.zoom": {
+      "type": ["number", "null"],
+      "description": "Default zoom level for the map"
+    },
+    "map.center_latitude": {
+      "type": ["number", "null"],
+      "minimum": -90,
+      "maximum": 90,
+      "description": "Center latitude for map view"
+    },
+    "map.center_longitude": {
+      "type": ["number", "null"],
+      "minimum": -180,
+      "maximum": 180,
+      "description": "Center longitude for map view"
+    },
+    "map.heat.radius": {
+      "type": "number",
+      "description": "Radius for heat map visualization",
+      "default": 30
+    },
+    "map.heat.blur": {
+      "type": "number",
+      "description": "Blur amount for heat map",
+      "default": 60
+    },
+    "map.heat.min-opacity": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1,
+      "description": "Minimum opacity for heat map",
+      "default": 0
+    },
+    "map.heat.max-zoom": {
+      "type": "number",
+      "description": "Maximum zoom level for heat map",
+      "default": 1
+    },
+    "column_settings": {
+      "type": "object",
+      "description": "Settings for individual columns using column reference keys",
+      "patternProperties": {
+        "^\\[\"(ref|name)\",.*\\]$": {
+          "type": "object",
+          "description": "Column-specific formatting settings",
+          "properties": {
+            "column_title": {
+              "type": "string",
+              "description": "Custom display name for the column"
+            },
+            "number_style": {
+              "type": "string",
+              "enum": ["decimal", "currency", "percent", "scientific"],
+              "description": "Number formatting style"
+            },
+            "currency": {
+              "type": "string",
+              "description": "Currency code (e.g., USD, EUR, GBP)",
+              "pattern": "^[A-Z]{3}$"
+            },
+            "currency_style": {
+              "type": "string",
+              "enum": ["symbol", "code", "name"],
+              "description": "How to display currency",
+              "default": "symbol"
+            },
+            "number_separators": {
+              "type": "string",
+              "enum": [".,", ", ", ". ", ",."],
+              "description": "Number separators (thousands, decimal)",
+              "default": ".,"
+            },
+            "decimals": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 10,
+              "description": "Number of decimal places to show"
+            },
+            "scale": {
+              "type": "number",
+              "description": "Multiply numbers by this factor before display",
+              "default": 1
+            },
+            "prefix": {
+              "type": "string",
+              "description": "Text to prepend to values"
+            },
+            "suffix": {
+              "type": "string",
+              "description": "Text to append to values"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "click_behavior": {
+      "type": "object",
+      "description": "Click behavior for map elements",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["crossfilter", "link", "none"],
+          "description": "Type of click behavior"
+        },
+        "linkType": {
+          "type": "string",
+          "enum": ["question", "dashboard", "url"],
+          "description": "Type of link (when type is 'link')"
+        },
+        "targetId": {
+          "type": "integer",
+          "description": "Target question or dashboard ID"
+        },
+        "linkTemplate": {
+          "type": "string",
+          "description": "URL template with column value placeholders"
+        },
+        "parameterMapping": {
+          "type": "object",
+          "description": "Parameter mappings for crossfilter or parameterized links",
+          "patternProperties": {
+            ".*": {
+              "type": "object",
+              "properties": {
+                "id": {"type": "string"},
+                "source": {
+                  "type": "object",
+                  "properties": {
+                    "type": {"type": "string", "enum": ["column", "parameter"]},
+                    "id": {"type": "string"},
+                    "name": {"type": "string"}
+                  },
+                  "required": ["type", "id", "name"]
+                },
+                "target": {
+                  "type": "object",
+                  "properties": {
+                    "type": {"type": "string", "enum": ["parameter", "dimension"]},
+                    "id": {"oneOf": [{"type": "string"}, {"type": "array"}]}
+                  },
+                  "required": ["type", "id"]
+                }
+              },
+              "required": ["id", "source", "target"]
+            }
+          }
+        }
+      },
+      "required": ["type"]
+    }
+  },
+  "additionalProperties": false,
+  "examples": [
+    {
+      "card.title": "Sales by State",
+      "card.description": "Geographic distribution of sales across US states",
+      "map.type": "region",
+      "map.region": "us_states",
+      "map.dimension": "state",
+      "map.metric": "total_sales",
+      "map.colors": ["#FEF0D9", "#FDD49E", "#FDBB84", "#FC8D59", "#EF6548", "#D7301F", "#990000"],
+      "column_settings": {
+        "[\"name\",\"total_sales\"]": {
+          "number_style": "currency",
+          "currency": "USD",
+          "decimals": 0
+        }
+      },
+      "click_behavior": {
+        "type": "crossfilter",
+        "parameterMapping": {
+          "state_filter": {
+            "id": "state_filter",
+            "source": {
+              "type": "column",
+              "id": "state",
+              "name": "State"
+            },
+            "target": {
+              "type": "parameter",
+              "id": "state_filter"
+            }
+          }
+        }
+      }
+    },
+    {
+      "card.title": "Store Locations",
+      "card.description": "Pin map showing store locations and performance",
+      "map.type": "pin",
+      "map.pin_type": "markers",
+      "map.latitude_column": "latitude",
+      "map.longitude_column": "longitude",
+      "map.metric_column": "monthly_revenue",
+      "map.zoom": 8,
+      "map.center_latitude": 40.7128,
+      "map.center_longitude": -74.0060,
+      "column_settings": {
+        "[\"name\",\"monthly_revenue\"]": {
+          "number_style": "currency",
+          "currency": "USD",
+          "decimals": 0
+        }
+      }
+    },
+    {
+      "card.title": "Customer Density Heat Map", 
+      "map.type": "heat",
+      "map.pin_type": "heat",
+      "map.latitude_column": "customer_lat",
+      "map.longitude_column": "customer_lng",
+      "map.metric_column": "customer_count",
+      "map.heat.radius": 25,
+      "map.heat.blur": 40,
+      "map.heat.min-opacity": 0.2,
+      "map.heat.max-zoom": 10
+    }
+  ]
+}
