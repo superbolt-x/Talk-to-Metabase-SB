@@ -19,16 +19,18 @@ logger = logging.getLogger(__name__)
 mcp = get_server_instance()
 
 # Supported chart types (using API names)
-SUPPORTED_CHART_TYPES = ["table", "line", "bar", "combo", "pie", "row", "area", "object", "funnel", "gauge"]
+SUPPORTED_CHART_TYPES = ["table", "line", "bar", "combo", "pie", "row", "area", "object", "funnel", "gauge", "progress", "sankey", "scalar"]
 
 # Mapping of common UI names to API names
 UI_TO_API_MAPPING = {
     "detail": "object",
+    "number": "scalar",
 }
 
 # Mapping of API names to UI names for documentation
 API_TO_UI_MAPPING = {
     "object": "detail",
+    "scalar": "number",
 }
 
 def load_schema(chart_type: str) -> Optional[Dict[str, Any]]:
@@ -139,12 +141,15 @@ async def get_visualization_document(chart_type: str, ctx: Context) -> str:
     - object: Object detail views for displaying single record information (UI name: detail)
     - funnel: Funnel charts for conversion analysis with stage progression
     - gauge: Gauge charts for single KPI display with color-coded segments
+    - progress: Progress bars showing completion toward a goal
+    - sankey: Sankey diagrams for visualizing flow between nodes
+    - scalar: Single number displays with formatting (UI name: number)
     
     Note: Some chart types have different names in the Metabase UI vs API.
-    Both names are supported - use either the API name (e.g., "object") or UI name (e.g., "detail").
+    Both names are supported - use either the API name (e.g., "scalar") or UI name (e.g., "number").
     
     Args:
-        chart_type: Type of chart visualization. Supports both API names ("table", "line", "bar", "combo", "pie", "row", "area", "object", "funnel", "gauge") and UI names ("detail" for "object")
+        chart_type: Type of chart visualization. Supports API names ("table", "line", "bar", "combo", "pie", "row", "area", "object", "funnel", "gauge", "progress", "sankey", "scalar") and UI names ("detail" for "object", "number" for "scalar")
         ctx: MCP context
         
     Returns:

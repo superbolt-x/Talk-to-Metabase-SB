@@ -1,0 +1,251 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Metabase Sankey Chart Visualization Settings",
+  "description": "JSON schema for Sankey diagram visualization settings in Metabase cards",
+  "type": "object",
+  "properties": {
+    "card.title": {
+      "type": ["string", "null"],
+      "description": "Custom title for the Sankey chart card"
+    },
+    "card.description": {
+      "type": ["string", "null"],
+      "description": "Custom description for the Sankey chart card"
+    },
+    "card.hide_empty": {
+      "type": "boolean",
+      "description": "Hide this card if there are no results",
+      "default": false
+    },
+    "sankey.source": {
+      "type": "string",
+      "description": "Source node column (where flow originates)"
+    },
+    "sankey.target": {
+      "type": "string",
+      "description": "Target node column (where flow ends)"
+    },
+    "sankey.value": {
+      "type": "string",
+      "description": "Value column (flow quantity/weight)"
+    },
+    "sankey.show_values": {
+      "type": "boolean",
+      "description": "Show values on flow links",
+      "default": true
+    },
+    "sankey.show_percentages": {
+      "type": "boolean",
+      "description": "Show percentages instead of absolute values",
+      "default": false
+    },
+    "sankey.node_width": {
+      "type": "integer",
+      "minimum": 10,
+      "maximum": 100,
+      "description": "Width of node rectangles in pixels",
+      "default": 20
+    },
+    "sankey.node_padding": {
+      "type": "integer",
+      "minimum": 5,
+      "maximum": 50,
+      "description": "Vertical spacing between nodes in pixels",
+      "default": 10
+    },
+    "sankey.link_opacity": {
+      "type": "number",
+      "minimum": 0.1,
+      "maximum": 1.0,
+      "description": "Opacity of flow links",
+      "default": 0.6
+    },
+    "sankey.color_palette": {
+      "type": "array",
+      "description": "Color palette for nodes and flows",
+      "items": {
+        "type": "string",
+        "pattern": "^#[0-9A-Fa-f]{6}$",
+        "description": "Hex color code"
+      },
+      "minItems": 1
+    },
+    "sankey.node_alignment": {
+      "type": "string",
+      "enum": ["left", "right", "center", "justify"],
+      "description": "How to align nodes within their columns",
+      "default": "justify"
+    },
+    "column_settings": {
+      "type": "object",
+      "description": "Settings for individual columns using column reference keys",
+      "patternProperties": {
+        "^\\[\"(ref|name)\",.*\\]$": {
+          "type": "object",
+          "description": "Column-specific formatting settings",
+          "properties": {
+            "column_title": {
+              "type": "string",
+              "description": "Custom display name for the column"
+            },
+            "number_style": {
+              "type": "string",
+              "enum": ["decimal", "currency", "percent", "scientific"],
+              "description": "Number formatting style for values"
+            },
+            "currency": {
+              "type": "string",
+              "description": "Currency code (e.g., USD, EUR, GBP)",
+              "pattern": "^[A-Z]{3}$"
+            },
+            "currency_style": {
+              "type": "string",
+              "enum": ["symbol", "code", "name"],
+              "description": "How to display currency",
+              "default": "symbol"
+            },
+            "number_separators": {
+              "type": "string",
+              "enum": [".,", ", ", ". ", ",."],
+              "description": "Number separators (thousands, decimal)",
+              "default": ".,"
+            },
+            "decimals": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 10,
+              "description": "Number of decimal places to show"
+            },
+            "scale": {
+              "type": "number",
+              "description": "Multiply numbers by this factor before display",
+              "default": 1
+            },
+            "prefix": {
+              "type": "string",
+              "description": "Text to prepend to values"
+            },
+            "suffix": {
+              "type": "string",
+              "description": "Text to append to values"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "click_behavior": {
+      "type": "object",
+      "description": "Click behavior for Sankey nodes and links",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["crossfilter", "link", "none"],
+          "description": "Type of click behavior"
+        },
+        "linkType": {
+          "type": "string",
+          "enum": ["question", "dashboard", "url"],
+          "description": "Type of link (when type is 'link')"
+        },
+        "targetId": {
+          "type": "integer",
+          "description": "Target question or dashboard ID"
+        },
+        "linkTemplate": {
+          "type": "string",
+          "description": "URL template with column value placeholders"
+        },
+        "parameterMapping": {
+          "type": "object",
+          "description": "Parameter mappings for crossfilter or parameterized links",
+          "patternProperties": {
+            ".*": {
+              "type": "object",
+              "properties": {
+                "id": {"type": "string"},
+                "source": {
+                  "type": "object",
+                  "properties": {
+                    "type": {"type": "string", "enum": ["column", "parameter"]},
+                    "id": {"type": "string"},
+                    "name": {"type": "string"}
+                  },
+                  "required": ["type", "id", "name"]
+                },
+                "target": {
+                  "type": "object",
+                  "properties": {
+                    "type": {"type": "string", "enum": ["parameter", "dimension"]},
+                    "id": {"oneOf": [{"type": "string"}, {"type": "array"}]}
+                  },
+                  "required": ["type", "id"]
+                }
+              },
+              "required": ["id", "source", "target"]
+            }
+          }
+        }
+      },
+      "required": ["type"]
+    }
+  },
+  "required": ["sankey.source", "sankey.target", "sankey.value"],
+  "additionalProperties": false,
+  "examples": [
+    {
+      "card.title": "Customer Journey Flow",
+      "card.description": "Flow of customers through different touchpoints",
+      "sankey.source": "from_touchpoint",
+      "sankey.target": "to_touchpoint", 
+      "sankey.value": "customer_count",
+      "sankey.show_values": true,
+      "sankey.show_percentages": false,
+      "sankey.node_width": 25,
+      "sankey.node_padding": 15,
+      "sankey.link_opacity": 0.7,
+      "sankey.node_alignment": "justify",
+      "sankey.color_palette": ["#509EE3", "#88BF4D", "#F9CF48", "#ED6E6E", "#A989C5"],
+      "column_settings": {
+        "[\"name\",\"customer_count\"]": {
+          "number_style": "decimal",
+          "decimals": 0,
+          "suffix": " customers"
+        }
+      },
+      "click_behavior": {
+        "type": "crossfilter",
+        "parameterMapping": {
+          "touchpoint_filter": {
+            "id": "touchpoint_filter",
+            "source": {
+              "type": "column",
+              "id": "from_touchpoint",
+              "name": "From Touchpoint"
+            },
+            "target": {
+              "type": "parameter",
+              "id": "touchpoint_filter"
+            }
+          }
+        }
+      }
+    },
+    {
+      "card.title": "Budget Allocation Flow",
+      "sankey.source": "department",
+      "sankey.target": "expense_category",
+      "sankey.value": "amount",
+      "sankey.show_values": true,
+      "sankey.show_percentages": true,
+      "column_settings": {
+        "[\"name\",\"amount\"]": {
+          "number_style": "currency",
+          "currency": "USD",
+          "decimals": 0
+        }
+      }
+    }
+  ]
+}
