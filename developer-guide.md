@@ -1,3 +1,154 @@
+## Visualization Settings Support
+
+Talk to Metabase provides comprehensive support for customizing chart visualization settings across 17 different chart types. This functionality enables users to create sophisticated, well-formatted visualizations directly through Claude.
+
+### Supported Chart Types
+
+The implementation supports all major Metabase visualization types with full JSON schema validation:
+
+| API Name | UI Name | Description | Status |
+|----------|---------|-------------|--------|
+| `table` | table | Data tables with formatting, conditional formatting, and click behaviors | ✅ Implemented |
+| `line` | line | Line charts with series settings, axes configuration, and trend lines | ✅ Implemented |
+| `bar` | bar | Vertical bar charts with stacking, series configuration, and value labels | ✅ Implemented |
+| `combo` | combo | Combination charts mixing lines, bars, and areas with dual axes | ✅ Implemented |
+| `pie` | pie | Pie charts with slice customization, legends, and percentage displays | ✅ Implemented |
+| `row` | row | Horizontal bar charts with category management and goal lines | ✅ Implemented |
+| `area` | area | Area charts with stacking, series blending, and trend visualization | ✅ Implemented |
+| `object` | detail | Object detail views for displaying single record information | ✅ Implemented |
+| `funnel` | funnel | Funnel charts for conversion analysis with stage progression | ✅ Implemented |
+| `gauge` | gauge | Gauge charts for single KPI display with color-coded segments | ✅ Implemented |
+| `progress` | progress | Progress bars showing completion toward a goal | ✅ Implemented |
+| `sankey` | sankey | Sankey diagrams for visualizing flow between nodes | ✅ Implemented |
+| `scalar` | number | Single number displays with formatting | ✅ Implemented |
+| `scatter` | scatter | Scatter plots for analyzing relationships between two variables | ✅ Implemented |
+| `smartscalar` | trend | Trend numbers with comparison values and indicators | ✅ Implemented |
+| `map` | map | Geographic maps for location-based data visualization | ✅ Implemented |
+| `waterfall` | waterfall | Waterfall charts for showing cumulative effects of sequential changes | ✅ Implemented |
+
+### UI vs API Name Mapping
+
+Some chart types have different names in the Metabase UI versus the API. The system handles this automatically:
+
+```python
+# UI to API name mappings
+UI_TO_API_MAPPING = {
+    "detail": "object",     # Object detail views
+    "number": "scalar",     # Single number displays
+    "trend": "smartscalar",  # Trend indicators
+}
+```
+
+Users can use either name - the system automatically converts UI names to API names internally.
+
+### Key Tools
+
+#### GET_VISUALIZATION_DOCUMENT
+
+The primary tool for working with visualization settings:
+
+```python
+@mcp.tool(name="GET_VISUALIZATION_DOCUMENT")
+async def get_visualization_document(chart_type: str, ctx: Context) -> str:
+    """Get comprehensive documentation and schema for a chart type."""
+```
+
+**Features:**
+- Complete documentation with examples for each chart type
+- JSON schema for validation
+- API/UI name mapping information
+- Common patterns and use cases
+
+#### Enhanced create_card and update_card
+
+Both tools now support visualization settings with validation:
+
+```python
+async def create_card(
+    database_id: int,
+    query: str,
+    name: str,
+    ctx: Context,
+    display: str = "table",
+    visualization_settings: Optional[Dict[str, Any]] = None
+) -> str:
+```
+
+**Validation Process:**
+1. Validates visualization_settings against JSON schema
+2. Returns clear error messages if validation fails
+3. Suggests calling GET_VISUALIZATION_DOCUMENT for help
+
+### Implementation Architecture
+
+#### Schema and Documentation Structure
+
+```
+talk_to_metabase/schemas/
+├── table_visualization.json
+├── table_visualization_docs.md
+├── line_visualization.json
+├── line_visualization_docs.md
+├── object_visualization.json     # API name used for files
+├── object_visualization_docs.md
+└── ... (all chart types)
+```
+
+#### Core Functions
+
+```python
+def validate_visualization_settings(chart_type: str, settings: Dict[str, Any]) -> Tuple[bool, List[str]]:
+    """Validate settings against JSON schema with UI/API name conversion."""
+    
+def load_schema(chart_type: str) -> Optional[Dict[str, Any]]:
+    """Load JSON schema with automatic name mapping."""
+    
+def load_documentation(chart_type: str) -> Optional[str]:
+    """Load documentation with automatic name mapping."""
+```
+
+### Usage Workflow
+
+The intended workflow for users:
+
+1. **Get Documentation**: Call `GET_VISUALIZATION_DOCUMENT` with desired chart type
+2. **Review Examples**: Examine the provided examples and schema
+3. **Build Settings**: Create visualization_settings object
+4. **Create/Update Card**: Use settings in `create_card` or `update_card`
+5. **Validation**: System automatically validates and provides feedback
+
+### Example Implementation
+
+```python
+# User calls: GET_VISUALIZATION_DOCUMENT(chart_type="table")
+# System returns: Complete documentation + JSON schema + examples
+
+# User then calls: create_card with visualization_settings
+await create_card(
+    database_id=195,
+    query="SELECT * FROM products",
+    name="Product List",
+    display="table",
+    visualization_settings={
+        "column_settings": {
+            "[\"name\",\"price\"]": {
+                "number_style": "currency",
+                "currency": "USD"
+            }
+        }
+    }
+)
+```
+
+### Benefits
+
+1. **Complete Coverage**: All 17 chart types supported with full customization
+2. **Type Safety**: JSON schema validation prevents invalid configurations
+3. **User-Friendly**: Supports both UI and API names seamlessly
+4. **Self-Documenting**: Comprehensive examples and documentation
+5. **Error Handling**: Clear validation errors with helpful guidance
+6. **Extensible**: Easy to add new chart types following the same pattern
+
 # Talk to Metabase MCP Developer Guide
 
 This document provides comprehensive guidance for developers who will be implementing or modifying tools in the Talk to Metabase MCP server project.
@@ -641,6 +792,7 @@ The following table shows the Metabase API endpoints that correspond to existing
 | | `GET /api/table/{id}/query_metadata` | `get_table_query_metadata` | ✅ Implemented (essential fields only) |
 | **Query Operations** | `POST /api/dataset/` | `run_dataset_query` | ✅ Implemented |
 | **Search Operations** | `GET /api/search/` | `search_resources` | ✅ Implemented with pagination |
+| **Visualization Operations** | Various | `GET_VISUALIZATION_DOCUMENT` | ✅ Implemented (17 chart types) |
 
 Implementation Legend:
 - ✅ Implemented: Tool is fully implemented and available in the current version
