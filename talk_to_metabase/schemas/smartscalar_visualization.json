@@ -1,0 +1,253 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Metabase Smart Scalar Chart Visualization Settings",
+  "description": "JSON schema for smart scalar (trend) visualization settings in Metabase cards",
+  "type": "object",
+  "properties": {
+    "card.title": {
+      "type": ["string", "null"],
+      "description": "Custom title for the smart scalar card"
+    },
+    "card.description": {
+      "type": ["string", "null"],
+      "description": "Custom description for the smart scalar card"
+    },
+    "card.hide_empty": {
+      "type": "boolean",
+      "description": "Hide this card if there are no results",
+      "default": false
+    },
+    "scalar.field": {
+      "type": "string",
+      "description": "Primary field to display as the main scalar value"
+    },
+    "scalar.comparisons": {
+      "type": "array",
+      "description": "Comparison values to show alongside the main value",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Unique identifier for this comparison (client-generated)"
+          },
+          "type": {
+            "type": "string",
+            "enum": ["anotherColumn", "previousValue", "previousPeriod", "periodsAgo", "staticNumber"],
+            "description": "Type of comparison to perform"
+          },
+          "column": {
+            "type": "string",
+            "description": "Column name for comparison (when type is 'anotherColumn')"
+          },
+          "label": {
+            "type": "string",
+            "description": "Custom label for the comparison"
+          },
+          "value": {
+            "type": "number",
+            "description": "Static number value (for 'staticNumber' type) or periods count (for 'periodsAgo')"
+          }
+        },
+        "required": ["id", "type"],
+        "additionalProperties": false,
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "type": {"const": "anotherColumn"}
+              }
+            },
+            "then": {
+              "required": ["column", "label"]
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "type": {"const": "staticNumber"}
+              }
+            },
+            "then": {
+              "required": ["value", "label"]
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "type": {"const": "periodsAgo"}
+              }
+            },
+            "then": {
+              "required": ["value"]
+            }
+          }
+        ]
+      }
+    },
+    "column_settings": {
+      "type": "object",
+      "description": "Column formatting settings",
+      "patternProperties": {
+        "^\\[\"(ref|name)\",.*\\]$": {
+          "type": "object",
+          "description": "Column-specific formatting settings",
+          "properties": {
+            "column_title": {
+              "type": "string",
+              "description": "Custom display name for the value"
+            },
+            "number_style": {
+              "type": "string",
+              "enum": ["decimal", "currency", "percent", "scientific"],
+              "description": "Number formatting style"
+            },
+            "currency": {
+              "type": "string",
+              "description": "Currency code (e.g., USD, EUR, GBP)",
+              "pattern": "^[A-Z]{3}$"
+            },
+            "currency_style": {
+              "type": "string",
+              "enum": ["symbol", "code", "name"],
+              "description": "How to display currency",
+              "default": "symbol"
+            },
+            "currency_in_header": {
+              "type": "boolean",
+              "description": "Show currency in title instead of with value",
+              "default": false
+            },
+            "number_separators": {
+              "type": "string",
+              "enum": [".,", ", ", ". ", ",."],
+              "description": "Number separators (thousands, decimal)",
+              "default": ".,"
+            },
+            "decimals": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 10,
+              "description": "Number of decimal places to show"
+            },
+            "scale": {
+              "type": "number",
+              "description": "Multiply numbers by this factor before display",
+              "default": 1
+            },
+            "prefix": {
+              "type": "string",
+              "description": "Text to prepend to values"
+            },
+            "suffix": {
+              "type": "string",
+              "description": "Text to append to values"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "click_behavior": {
+      "type": "object",
+      "description": "Click behavior for the smart scalar value",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["crossfilter", "link", "none"],
+          "description": "Type of click behavior"
+        },
+        "linkType": {
+          "type": "string",
+          "enum": ["question", "dashboard", "url"],
+          "description": "Type of link (when type is 'link')"
+        },
+        "targetId": {
+          "type": "integer",
+          "description": "Target question or dashboard ID"
+        },
+        "linkTemplate": {
+          "type": "string",
+          "description": "URL template with value placeholders"
+        },
+        "linkTextTemplate": {
+          "type": "string",
+          "description": "Custom link text template"
+        },
+        "parameterMapping": {
+          "type": "object",
+          "description": "Parameter mappings for crossfilter or parameterized links",
+          "patternProperties": {
+            ".*": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "source": {
+                  "type": "object",
+                  "properties": {
+                    "type": {"type": "string", "enum": ["column", "parameter"]},
+                    "id": {"type": "string"},
+                    "name": {"type": "string"}
+                  },
+                  "required": ["type", "id", "name"],
+                  "additionalProperties": false
+                },
+                "target": {
+                  "type": "object",
+                  "properties": {
+                    "type": {"type": "string", "enum": ["parameter", "dimension"]},
+                    "id": {"oneOf": [{"type": "string"}, {"type": "array"}]}
+                  },
+                  "required": ["type", "id"],
+                  "additionalProperties": false
+                }
+              },
+              "required": ["id", "source", "target"],
+              "additionalProperties": false
+            }
+          }
+        }
+      },
+      "required": ["type"],
+      "additionalProperties": false
+    }
+  },
+  "required": ["scalar.field"],
+  "additionalProperties": false,
+  "examples": [
+    {
+      "card.title": "Monthly Revenue Trend",
+      "card.description": "Current month revenue vs previous periods",
+      "scalar.field": "current_revenue",
+      "scalar.comparisons": [
+        {
+          "id": "comp1",
+          "type": "previousPeriod",
+          "label": "vs Last Month"
+        },
+        {
+          "id": "comp2", 
+          "type": "periodsAgo",
+          "value": 12,
+          "label": "vs Same Month Last Year"
+        },
+        {
+          "id": "comp3",
+          "type": "staticNumber",
+          "value": 100000,
+          "label": "vs Target"
+        }
+      ],
+      "column_settings": {
+        "[\"name\",\"current_revenue\"]": {
+          "number_style": "currency",
+          "currency": "USD",
+          "decimals": 0
+        }
+      }
+    }
+  ]
+}

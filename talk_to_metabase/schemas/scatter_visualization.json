@@ -1,0 +1,320 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Metabase Scatter Plot Visualization Settings",
+  "description": "JSON schema for scatter plot visualization settings in Metabase cards",
+  "type": "object",
+  "properties": {
+    "card.title": {
+      "type": ["string", "null"],
+      "description": "Custom title for the scatter plot card"
+    },
+    "card.description": {
+      "type": ["string", "null"],
+      "description": "Custom description for the scatter plot card"
+    },
+    "card.hide_empty": {
+      "type": "boolean",
+      "description": "Hide this card if there are no results",
+      "default": false
+    },
+    "graph.dimensions": {
+      "type": "array",
+      "description": "X-axis field (typically numeric or categorical)",
+      "items": {
+        "type": ["string", "null"],
+        "description": "Field name for X-axis dimension"
+      },
+      "minItems": 1,
+      "maxItems": 1
+    },
+    "graph.metrics": {
+      "type": "array",
+      "description": "Y-axis field (numeric values)",
+      "items": {
+        "type": ["string", "null"],
+        "description": "Field name for Y-axis metric"
+      },
+      "minItems": 1,
+      "maxItems": 1
+    },
+    "scatter.bubble": {
+      "type": ["string", "null"],
+      "description": "Optional field for bubble size (creates bubble chart)"
+    },
+    "graph.x_axis.scale": {
+      "type": "string",
+      "enum": ["linear", "log", "pow"],
+      "description": "X-axis scale type",
+      "default": "linear"
+    },
+    "graph.y_axis.scale": {
+      "type": "string",
+      "enum": ["linear", "log", "pow"],
+      "description": "Y-axis scale type",
+      "default": "linear"
+    },
+    "graph.x_axis.axis_enabled": {
+      "type": "boolean",
+      "description": "Whether to show X-axis lines and marks",
+      "default": true
+    },
+    "graph.y_axis.axis_enabled": {
+      "type": "boolean",
+      "description": "Whether to show Y-axis lines and marks",
+      "default": true
+    },
+    "graph.x_axis.labels_enabled": {
+      "type": "boolean",
+      "description": "Whether to show X-axis label",
+      "default": true
+    },
+    "graph.y_axis.labels_enabled": {
+      "type": "boolean",
+      "description": "Whether to show Y-axis label",
+      "default": true
+    },
+    "graph.x_axis.title_text": {
+      "type": "string",
+      "description": "Custom X-axis label text"
+    },
+    "graph.y_axis.title_text": {
+      "type": "string",
+      "description": "Custom Y-axis label text"
+    },
+    "graph.x_axis.auto_range": {
+      "type": "boolean",
+      "description": "Automatically determine X-axis range",
+      "default": true
+    },
+    "graph.x_axis.min": {
+      "type": "number",
+      "description": "Minimum X-axis value (when auto_range is false)"
+    },
+    "graph.x_axis.max": {
+      "type": "number",
+      "description": "Maximum X-axis value (when auto_range is false)"
+    },
+    "graph.y_axis.auto_range": {
+      "type": "boolean",
+      "description": "Automatically determine Y-axis range",
+      "default": true
+    },
+    "graph.y_axis.min": {
+      "type": "number",
+      "description": "Minimum Y-axis value (when auto_range is false)"
+    },
+    "graph.y_axis.max": {
+      "type": "number",
+      "description": "Maximum Y-axis value (when auto_range is false)"
+    },
+    "graph.show_trendline": {
+      "type": "boolean",
+      "description": "Show trend line on the scatter plot",
+      "default": false
+    },
+    "graph.tooltip_type": {
+      "type": "string",
+      "enum": ["default"],
+      "description": "Tooltip display style",
+      "default": "default"
+    },
+    "graph.tooltip_columns": {
+      "type": "array",
+      "description": "Additional columns to show in tooltips",
+      "items": {
+        "type": "string",
+        "description": "Column name to include in tooltip"
+      }
+    },
+    "series_settings": {
+      "type": "object",
+      "description": "Point styling and series customization",
+      "patternProperties": {
+        ".*": {
+          "type": "object",
+          "description": "Settings for data points",
+          "properties": {
+            "color": {
+              "type": "string",
+              "pattern": "^#[0-9A-Fa-f]{6}$",
+              "description": "Hex color code for data points"
+            },
+            "name": {
+              "type": "string",
+              "description": "Custom display name for the series"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "column_settings": {
+      "type": "object",
+      "description": "Settings for individual columns using column reference keys",
+      "patternProperties": {
+        "^\\[\"(ref|name)\",.*\\]$": {
+          "type": "object",
+          "description": "Column-specific formatting settings",
+          "properties": {
+            "column_title": {
+              "type": "string",
+              "description": "Custom display name for the column"
+            },
+            "number_style": {
+              "type": "string",
+              "enum": ["decimal", "currency", "percent", "scientific"],
+              "description": "Number formatting style"
+            },
+            "currency": {
+              "type": "string",
+              "description": "Currency code (e.g., USD, EUR, GBP)",
+              "pattern": "^[A-Z]{3}$"
+            },
+            "currency_style": {
+              "type": "string",
+              "enum": ["symbol", "code", "name"],
+              "description": "How to display currency",
+              "default": "symbol"
+            },
+            "number_separators": {
+              "type": "string",
+              "enum": [".,", ", ", ". ", ",."],
+              "description": "Number separators (thousands, decimal)",
+              "default": ".,"
+            },
+            "decimals": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 10,
+              "description": "Number of decimal places to show"
+            },
+            "scale": {
+              "type": "number",
+              "description": "Multiply numbers by this factor before display",
+              "default": 1
+            },
+            "prefix": {
+              "type": "string",
+              "description": "Text to prepend to values"
+            },
+            "suffix": {
+              "type": "string",
+              "description": "Text to append to values"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "click_behavior": {
+      "type": "object",
+      "description": "Click behavior for scatter plot points",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["crossfilter", "link", "none"],
+          "description": "Type of click behavior"
+        },
+        "linkType": {
+          "type": "string",
+          "enum": ["question", "dashboard", "url"],
+          "description": "Type of link (when type is 'link')"
+        },
+        "targetId": {
+          "type": "integer",
+          "description": "Target question or dashboard ID"
+        },
+        "linkTemplate": {
+          "type": "string",
+          "description": "URL template with column value placeholders"
+        },
+        "parameterMapping": {
+          "type": "object",
+          "description": "Parameter mappings for crossfilter or parameterized links",
+          "patternProperties": {
+            ".*": {
+              "type": "object",
+              "properties": {
+                "id": {"type": "string"},
+                "source": {
+                  "type": "object",
+                  "properties": {
+                    "type": {"type": "string", "enum": ["column", "parameter"]},
+                    "id": {"type": "string"},
+                    "name": {"type": "string"}
+                  },
+                  "required": ["type", "id", "name"]
+                },
+                "target": {
+                  "type": "object",
+                  "properties": {
+                    "type": {"type": "string", "enum": ["parameter", "dimension"]},
+                    "id": {"oneOf": [{"type": "string"}, {"type": "array"}]}
+                  },
+                  "required": ["type", "id"]
+                }
+              },
+              "required": ["id", "source", "target"]
+            }
+          }
+        }
+      },
+      "required": ["type"]
+    }
+  },
+  "required": ["graph.dimensions", "graph.metrics"],
+  "additionalProperties": false,
+  "examples": [
+    {
+      "card.title": "Sales vs Marketing Spend",
+      "card.description": "Correlation between marketing investment and sales results",
+      "graph.dimensions": ["marketing_spend"],
+      "graph.metrics": ["sales_revenue"],
+      "scatter.bubble": "profit_margin",
+      "graph.x_axis.title_text": "Marketing Spend ($)",
+      "graph.y_axis.title_text": "Sales Revenue ($)",
+      "graph.show_trendline": true,
+      "series_settings": {
+        "sales_revenue": {
+          "color": "#509EE3",
+          "name": "Sales Performance"
+        }
+      },
+      "column_settings": {
+        "[\"name\",\"marketing_spend\"]": {
+          "number_style": "currency",
+          "currency": "USD",
+          "decimals": 0
+        },
+        "[\"name\",\"sales_revenue\"]": {
+          "number_style": "currency",
+          "currency": "USD",
+          "decimals": 0
+        },
+        "[\"name\",\"profit_margin\"]": {
+          "number_style": "percent",
+          "decimals": 1
+        }
+      },
+      "click_behavior": {
+        "type": "crossfilter",
+        "parameterMapping": {
+          "region_filter": {
+            "id": "region_filter",
+            "source": {
+              "type": "column",
+              "id": "region",
+              "name": "Region"
+            },
+            "target": {
+              "type": "parameter",
+              "id": "region_filter"
+            }
+          }
+        }
+      }
+    }
+  ]
+}
