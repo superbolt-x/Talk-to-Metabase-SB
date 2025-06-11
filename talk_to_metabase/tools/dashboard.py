@@ -11,6 +11,7 @@ from mcp.server.fastmcp import Context, FastMCP
 
 from ..server import get_server_instance
 from .common import format_error_response, get_metabase_client, check_response_size
+from .dashcards import validate_dashcards_helper, validate_tabs_helper
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -128,6 +129,161 @@ async def create_dashboard(
                 "endpoint": "/api/dashboard", 
                 "method": "POST",
                 "params": dashboard_data
+            }
+        )
+
+
+@mcp.tool(name="update_dashboard", description="Update a dashboard with new cards and tabs using dashcards and tabs parameters")
+async def update_dashboard(
+    id: int,
+    ctx: Context,
+    dashcards: Optional[List[Dict[str, Any]]] = None,
+    tabs: Optional[List[Dict[str, Any]]] = None,
+    name: Optional[str] = None,
+    description: Optional[str] = None,
+    collection_id: Optional[int] = None,
+    archived: Optional[bool] = None
+) -> str:
+    """
+    Update a dashboard with new cards, tabs, and/or metadata.
+    
+    **IMPORTANT: Call GET_DASHCARDS_SCHEMA first to understand the dashcards format**
+    
+    This tool allows you to:
+    - Add new cards to a dashboard using the dashcards parameter
+    - Update existing cards by providing their existing ID
+    - Add/update dashboard tabs using the tabs parameter
+    - Update dashboard metadata (name, description, collection, archived status)
+    
+    DASHCARDS FORMAT:
+    The dashcards parameter must be a list of objects with the following structure:
+    {
+        "id": integer,           // Existing ID for updates, negative (-1, -2, -3) for new cards
+        "card_id": integer,      // Required: 5-digit card ID from Metabase
+        "col": integer,          // Required: Column position (0-23)
+        "row": integer,          // Required: Row position (0+)
+        "size_x": integer,       // Required: Width in columns (1-24)
+        "size_y": integer,       // Required: Height in rows (1+)
+        "dashboard_tab_id": int  // Optional: Tab ID for multi-tab dashboards
+    }
+    
+    TABS FORMAT:
+    The tabs parameter must be a list of objects with the following structure:
+    {
+        "id": integer,           // Existing ID for updates, negative (-1, -2, -3) for new tabs
+        "name": string           // Required: Tab name
+    }
+    
+    FORBIDDEN KEYS (dashcards only):
+    The following keys are forbidden in dashcards and will cause validation errors:
+    - action_id
+    - series
+    - visualization_settings
+    - parameter_mappings
+    
+    GRID CONSTRAINTS:
+    - Dashboard grid has 24 columns (col: 0-23)
+    - col + size_x must not exceed 24
+    - Cards cannot overlap (you must manage positioning)
+    
+    Args:
+        id: Dashboard ID to update
+        ctx: MCP context
+        dashcards: List of dashboard cards to add/update (call GET_DASHCARDS_SCHEMA for format)
+        tabs: List of dashboard tabs to add/update (format: [{"id": int, "name": string}])
+        name: New dashboard name (optional)
+        description: New dashboard description (optional)
+        collection_id: New collection ID (optional)
+        archived: Whether the dashboard is archived (optional)
+        
+    Returns:
+        JSON string with update result or error information
+    """
+    logger.info(f"Tool called: update_dashboard(id={id}, name={name})")
+    
+    # Validate dashcards if provided
+    if dashcards is not None:
+        validation_result = validate_dashcards_helper(dashcards)
+        if not validation_result["valid"]:
+            return json.dumps({
+                "success": False,
+                "error": "Invalid dashcards format",
+                "validation_errors": validation_result["errors"],
+                "help": "Call GET_DASHCARDS_SCHEMA to understand the correct format. Forbidden keys: action_id, series, visualization_settings, parameter_mappings"
+            }, indent=2)
+    
+    # Validate tabs if provided
+    if tabs is not None:
+        tabs_validation_result = validate_tabs_helper(tabs)
+        if not tabs_validation_result["valid"]:
+            return json.dumps({
+                "success": False,
+                "error": "Invalid tabs format",
+                "validation_errors": tabs_validation_result["errors"],
+                "help": "Tabs must have 'name' field (string) and optional 'id' field (integer). Use negative IDs for new tabs."
+            }, indent=2)
+    
+    client = get_metabase_client(ctx)
+    
+    try:
+        # Prepare update payload with only the fields to be updated
+        update_data = {}
+        
+        # Add fields that are provided
+        if name is not None:
+            update_data["name"] = name
+        if description is not None:
+            update_data["description"] = description
+        if collection_id is not None:
+            update_data["collection_id"] = collection_id
+        if archived is not None:
+            update_data["archived"] = archived
+        if dashcards is not None:
+            update_data["dashcards"] = dashcards
+        if tabs is not None:
+            update_data["tabs"] = tabs
+        
+        # If no fields were provided to update, return early
+        if not update_data:
+            return json.dumps({
+                "success": False,
+                "error": "No fields provided for update"
+            }, indent=2)
+        
+        # Perform the update
+        data, status, error = await client.auth.make_request(
+            "PUT", f"dashboard/{id}", json=update_data
+        )
+        
+        if error:
+            return format_error_response(
+                status_code=status,
+                error_type="update_error",
+                message=error,
+                request_info={
+                    "endpoint": f"/api/dashboard/{id}", 
+                    "method": "PUT"
+                }
+            )
+        
+        # Return a concise success response with essential info
+        return json.dumps({
+            "success": True,
+            "dashboard_id": data.get("id"),
+            "name": data.get("name"),
+            "dashcard_count": len(data.get("dashcards", [])) if "dashcards" in data else None,
+            "tab_count": len(data.get("tabs", [])) if "tabs" in data else None
+        }, indent=2)
+        
+    except Exception as e:
+        logger.error(f"Error updating dashboard {id}: {e}")
+        return format_error_response(
+            status_code=500,
+            error_type="update_error",
+            message=str(e),
+            request_info={
+                "endpoint": f"/api/dashboard/{id}", 
+                "method": "PUT"
             }
         )
 

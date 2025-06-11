@@ -1,0 +1,105 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Metabase Dashboard Cards Schema",
+  "description": "JSON schema for dashboard cards (dashcards) in Metabase dashboard updates",
+  "type": "array",
+  "description": "Array of dashboard cards to be added to the dashboard",
+  "items": {
+    "type": "object",
+    "properties": {
+      "id": {
+        "type": "integer",
+        "description": "Dashboard card ID. Use existing ID for updating existing cards, or negative values (-1, -2, -3, etc.) for new cards"
+      },
+      "card_id": {
+        "type": "integer",
+        "minimum": 1,
+        "description": "ID of the card (question/chart) to add to the dashboard. Must be a valid 5-digit card ID from Metabase"
+      },
+      "col": {
+        "type": "integer",
+        "minimum": 0,
+        "maximum": 23,
+        "description": "Column position on the dashboard grid (0-23). Dashboard grid has 24 columns"
+      },
+      "row": {
+        "type": "integer",
+        "minimum": 0,
+        "description": "Row position on the dashboard grid (0-based)"
+      },
+      "size_x": {
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 24,
+        "description": "Width of the card in grid columns (1-24). Must not exceed grid boundaries when combined with col"
+      },
+      "size_y": {
+        "type": "integer",
+        "minimum": 1,
+        "description": "Height of the card in grid rows (1 or more)"
+      },
+      "dashboard_tab_id": {
+        "type": ["integer", "null"],
+        "description": "ID of the dashboard tab this card belongs to. Use null for single-tab dashboards"
+      }
+    },
+    "required": ["card_id", "col", "row", "size_x", "size_y"],
+    "additionalProperties": false,
+    "allOf": [
+      {
+        "description": "Ensure card doesn't exceed grid boundaries",
+        "properties": {
+          "col": true,
+          "size_x": true
+        },
+        "if": {
+          "properties": {
+            "col": {"type": "integer"},
+            "size_x": {"type": "integer"}
+          }
+        },
+        "then": {
+          "properties": {
+            "col": {"minimum": 0},
+            "size_x": {"minimum": 1}
+          },
+          "additionalProperties": true,
+          "description": "col + size_x must not exceed 24"
+        }
+      }
+    ]
+  },
+  "examples": [
+    [
+      {
+        "id": -1,
+        "card_id": 53832,
+        "col": 0,
+        "row": 0,
+        "size_x": 12,
+        "size_y": 8,
+        "dashboard_tab_id": null
+      },
+      {
+        "id": -2,
+        "card_id": 53845,
+        "col": 12,
+        "row": 0,
+        "size_x": 12,
+        "size_y": 8,
+        "dashboard_tab_id": null
+      }
+    ],
+    [
+      {
+        "id": 61945,
+        "card_id": 53832,
+        "col": 0,
+        "row": 0,
+        "size_x": 24,
+        "size_y": 12,
+        "dashboard_tab_id": 15
+      }
+    ]
+  ]
+}

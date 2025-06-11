@@ -31,6 +31,9 @@ try:
     from . import visualization
     logger.info("Loaded visualization tools module")
     
+    from . import dashcards
+    logger.info("Loaded dashcards tools module")
+    
     # Load context tools if enabled
     from ..config import MetabaseConfig
     config = MetabaseConfig.from_env()

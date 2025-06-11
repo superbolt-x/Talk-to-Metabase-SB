@@ -774,7 +774,7 @@ The following table shows the Metabase API endpoints that correspond to existing
 | **Dashboard Operations** | `GET /api/dashboard/{id}` | `get_dashboard` | ✅ Implemented |
 | | `GET /api/dashboard/{id}` | `get_dashboard_tab` | ✅ Implemented (with client-side pagination) |
 | | `POST /api/dashboard/` | `create_dashboard` | ✅ Implemented |
-| | `PUT /api/dashboard/{id}` | `update_dashboard` | 📝 Planned |
+| | `PUT /api/dashboard/{id}` | `update_dashboard` | ✅ Implemented (with dashcards and tabs support) |
 | | `POST /api/dashboard/{dashboard-id}/cards` | `add_card_to_dashboard` | 📝 Planned |
 | | `DELETE /api/dashboard/{id}` | `delete_dashboard` | 📝 Planned |
 | **Card Operations** | `GET /api/card/{id}` | `get_card_definition` | ✅ Implemented |
@@ -1428,6 +1428,253 @@ The `run_dataset_query` tool has been implemented to allow direct execution of b
 - The implementation follows the same patterns as other Talk to Metabase tools for consistency
 
 This implementation provides Claude with a powerful way to directly execute SQL and MBQL queries against Metabase databases, while focusing on essential output fields for better performance and readability.
+
+## Dashboard Update Tool with Cards and Tabs
+
+The `update_dashboard` tool has been enhanced to support adding cards and managing tabs in Metabase dashboards, providing comprehensive dashboard management capabilities.
+
+### Key Features
+
+1. **Dashcards Management**: Add new cards to dashboards with precise grid positioning
+2. **Tabs Management**: Create and manage dashboard tabs for multi-tab dashboards
+3. **Strict Validation**: JSON schema validation for dashcards with business rule enforcement
+4. **Grid Constraints**: Automatic validation of dashboard grid boundaries (24-column system)
+5. **Forbidden Keys Protection**: Prevents use of complex configuration keys to maintain simplicity
+6. **Metadata Updates**: Support for updating dashboard name, description, collection, and archived status
+
+### Dashcards Support
+
+The tool supports adding cards to dashboards using the `dashcards` parameter with strict validation:
+
+#### Dashcard Structure
+```json
+{
+  "id": integer,           // Existing ID for updates, negative (-1, -2, -3) for new cards
+  "card_id": integer,      // Required: 5-digit card ID from Metabase
+  "col": integer,          // Required: Column position (0-23)
+  "row": integer,          // Required: Row position (0+)
+  "size_x": integer,       // Required: Width in columns (1-24)
+  "size_y": integer,       // Required: Height in rows (1+)
+  "dashboard_tab_id": int  // Optional: Tab ID for multi-tab dashboards
+}
+```
+
+#### Validation Rules
+
+1. **Required Fields**: `card_id`, `col`, `row`, `size_x`, `size_y`
+2. **Grid Constraints**: 
+   - `col` range: 0-23 (24 columns total)
+   - `size_x` range: 1-24
+   - `col + size_x` must not exceed 24
+3. **Forbidden Keys**: `action_id`, `series`, `visualization_settings`, `parameter_mappings`
+4. **ID Convention**: Use existing positive IDs for updates, negative IDs (-1, -2, -3) for new cards
+
+#### Usage Example
+
+```json
+{
+  "method": "tools/call",
+  "params": {
+    "name": "update_dashboard",
+    "arguments": {
+      "id": 1864,
+      "dashcards": [
+        {
+          "id": -1,
+          "card_id": 53832,
+          "col": 0,
+          "row": 0,
+          "size_x": 12,
+          "size_y": 8
+        },
+        {
+          "id": -2,
+          "card_id": 53845,
+          "col": 12,
+          "row": 0,
+          "size_x": 12,
+          "size_y": 8
+        }
+      ]
+    }
+  }
+}
+```
+
+### Tabs Support
+
+The tool supports creating and managing dashboard tabs using the `tabs` parameter:
+
+#### Tab Structure
+```json
+{
+  "id": integer,           // Existing ID for updates, negative (-1, -2, -3) for new tabs
+  "name": string           // Required: Tab name
+}
+```
+
+#### Validation Rules
+
+1. **Required Fields**: `name` (must be string)
+2. **Optional Fields**: `id` (must be integer if provided)
+3. **ID Convention**: Use existing positive IDs for updates, negative IDs for new tabs
+4. **Restricted Fields**: Only `id` and `name` are allowed
+
+#### Usage Example
+
+```json
+{
+  "method": "tools/call",
+  "params": {
+    "name": "update_dashboard",
+    "arguments": {
+      "id": 1864,
+      "tabs": [
+        {
+          "id": 1,
+          "name": "Overview"
+        },
+        {
+          "id": -1,
+          "name": "Details"
+        }
+      ]
+    }
+  }
+}
+```
+
+### Combined Updates
+
+The tool supports updating multiple aspects of a dashboard simultaneously:
+
+```json
+{
+  "method": "tools/call",
+  "params": {
+    "name": "update_dashboard",
+    "arguments": {
+      "id": 1864,
+      "name": "Updated Dashboard Name",
+      "description": "New description",
+      "tabs": [
+        {"id": -1, "name": "New Tab"}
+      ],
+      "dashcards": [
+        {
+          "id": -1,
+          "card_id": 53832,
+          "col": 0,
+          "row": 0,
+          "size_x": 24,
+          "size_y": 12,
+          "dashboard_tab_id": -1
+        }
+      ]
+    }
+  }
+}
+```
+
+### Supporting Tools
+
+#### GET_DASHCARDS_SCHEMA
+
+A dedicated tool that returns the JSON schema for dashcards validation:
+
+```json
+{
+  "method": "tools/call",
+  "params": {
+    "name": "GET_DASHCARDS_SCHEMA",
+    "arguments": {}
+  }
+}
+```
+
+Returns the complete schema with usage guidelines, constraints, and examples.
+
+### Implementation Architecture
+
+#### Validation Modules
+
+1. **Dashcards Validation** (`/talk_to_metabase/tools/dashcards.py`):
+   - JSON schema validation against `/talk_to_metabase/schemas/dashcards.json`
+   - Business rule validation (forbidden keys, grid constraints)
+   - Helper functions for structured validation results
+
+2. **Tabs Validation** (in `dashcards.py`):
+   - Simple validation for tab structure
+   - Field type checking and constraint validation
+   - No JSON schema required due to simplicity
+
+#### Validation Flow
+
+```python
+# Dashcards validation
+if dashcards is not None:
+    validation_result = validate_dashcards_helper(dashcards)
+    if not validation_result["valid"]:
+        return validation_error_response
+
+# Tabs validation  
+if tabs is not None:
+    tabs_validation_result = validate_tabs_helper(tabs)
+    if not tabs_validation_result["valid"]:
+        return validation_error_response
+
+# Proceed with update if all validations pass
+```
+
+#### Error Responses
+
+Validation errors provide clear, actionable feedback:
+
+```json
+{
+  "success": false,
+  "error": "Invalid dashcards format",
+  "validation_errors": [
+    "Dashcard 0: forbidden key 'action_id' is not allowed",
+    "Dashcard 1: col (20) + size_x (10) = 30 exceeds grid width of 24"
+  ],
+  "help": "Call GET_DASHCARDS_SCHEMA to understand the correct format."
+}
+```
+
+### Success Response
+
+The tool returns a concise success response with essential information:
+
+```json
+{
+  "success": true,
+  "dashboard_id": 1864,
+  "name": "Updated Dashboard",
+  "dashcard_count": 2,
+  "tab_count": 2
+}
+```
+
+### Benefits
+
+1. **Complete Dashboard Management**: Single tool for all dashboard update operations
+2. **Type Safety**: Strict validation prevents invalid configurations
+3. **Grid System Support**: Automatic validation of Metabase's 24-column grid system
+4. **Future Extensibility**: Architecture supports adding more complex features later
+5. **Clear Error Messages**: Actionable validation feedback with specific error locations
+6. **Modular Design**: Validation logic separated into reusable modules
+
+### Future Extensibility
+
+The implementation is designed to easily support additional features:
+
+1. **Visualization Settings**: Can be added by removing from forbidden keys and adding validation
+2. **Parameter Mappings**: Can be added with appropriate schema extensions
+3. **Series Cards**: Can be supported by extending the validation system
+4. **Advanced Grid Features**: Layout optimization and collision detection
+
+This implementation provides a solid foundation for dashboard management while maintaining simplicity and leaving room for future enhancements.
 
 ## Configuration Options
 
