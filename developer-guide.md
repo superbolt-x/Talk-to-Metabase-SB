@@ -2057,7 +2057,6 @@ To maintain clean, focused output, the following information is intentionally ex
 - **Fast Processing**: Efficient for Claude to parse and understand
 - **Categorized Fields**: Easy identification of key field types (primary keys, dates)
 - **Essential Context**: Maintains necessary database and table context information
-```
 
 ## Performance Considerations
 
