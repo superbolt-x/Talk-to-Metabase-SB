@@ -1692,15 +1692,16 @@ Talk to Metabase is configured through environment variables, which can be set i
 
 ## Metabase Context Guidelines System
 
-Talk to Metabase includes a simple context guidelines system that provides Claude with instance-specific information and best practices.
+Talk to Metabase includes a context guidelines system that automatically retrieves organization-specific guidelines from your Metabase instance.
 
 ### Overview
 
 The context system operates in two modes:
 
 #### Default Mode (`METABASE_CONTEXT_AUTO_INJECT=true`)
-- Loads the `GET_METABASE_GUIDELINES` tool with built-in instance guidelines
-- Tool description recommends calling it first for best results
+- Loads the `GET_METABASE_GUIDELINES` tool
+- Automatically retrieves custom guidelines from Metabase if available
+- Falls back to default guidelines with setup instructions if not found
 - No enforcement - all tools work normally
 - Provides comprehensive information about the Metabase instance
 
@@ -1708,20 +1709,17 @@ The context system operates in two modes:
 - Guidelines tool is not loaded
 - All other tools work normally without any guidelines functionality
 
-### Built-in Guidelines Content
+### Custom Guidelines Storage
 
-The guidelines tool provides essential information including:
-- Instance URL and user information
-- Common collection patterns (Executive, Marketing, Sales)
-- Database usage recommendations  
-- Query performance best practices
-- Dashboard design guidelines
-- Data governance standards
-- Common use cases and workflows
+Custom guidelines are stored directly in your Metabase instance:
+
+1. **Collection Location**: "000 Talk to Metabase" collection at root level
+2. **Dashboard**: "Talk to Metabase Guidelines" dashboard within that collection
+3. **Content**: Guidelines text stored in a text box dashcard
 
 ### Template Variable Substitution
 
-The guidelines content supports template variables that are automatically replaced:
+Both custom and default guidelines support template variables that are automatically replaced:
 - `{METABASE_URL}` → Your configured Metabase URL (without trailing slash)
 - `{METABASE_USERNAME}` → Your configured username
 
@@ -1730,8 +1728,52 @@ The guidelines content supports template variables that are automatically replac
 The context system uses:
 
 - **Conditional Tool Loading** (`tools/__init__.py`): Only loads context tools when enabled
-- **Built-in Guidelines** (`metabase_guidelines.md`): Contains the default guidelines template
+- **Dynamic Guidelines Retrieval** (`tools/context.py`): Searches Metabase for custom guidelines
+- **Fallback Mechanism**: Provides setup instructions when custom guidelines aren't found
 - **Simple Implementation**: No state tracking or enforcement - just helpful guidance
+
+### API Flow for Custom Guidelines
+
+When `GET_METABASE_GUIDELINES` is called, the system:
+
+1. **Searches for Collection**:
+   ```
+   GET /api/collection/root/items?models=collection
+   ```
+   Looks for collection named "000 Talk to Metabase"
+
+2. **Searches for Dashboard** (if collection found):
+   ```
+   GET /api/collection/{collection_id}/items?models=dashboard
+   ```
+   Looks for dashboard named "Talk to Metabase Guidelines"
+
+3. **Retrieves Dashboard Content** (if dashboard found):
+   ```
+   GET /api/dashboard/{dashboard_id}
+   ```
+   Extracts text content from text box dashcards
+
+4. **Template Substitution**: Replaces `{METABASE_URL}` and `{METABASE_USERNAME}` in the content
+
+5. **Fallback**: If any step fails, returns default guidelines with setup instructions
+
+### Default Guidelines Content
+
+When custom guidelines are not found, the system provides:
+- Setup instructions for creating custom guidelines
+- General best practices for Metabase usage
+- Instance-specific information (URL, username)
+- Recommendations for query performance and dashboard design
+
+### Benefits
+
+- **Organization-Specific**: Guidelines can be tailored to your specific Metabase setup
+- **Centrally Managed**: Guidelines are stored and managed within Metabase itself
+- **Version Controlled**: Changes to guidelines are tracked in Metabase
+- **User-Friendly**: No technical setup required - just create dashboard content
+- **Template Support**: Automatic variable substitution for dynamic content
+- **Graceful Fallback**: Provides helpful setup instructions when not configured
 
 ## Testing Your Implementation
 
@@ -2097,7 +2139,7 @@ When working with dashboards:
 
 ## Next Steps for Development
 
-The current implementation includes functionality for retrieving and searching Metabase resources with pagination, as well as executing queries for both standalone cards and cards within dashboards, creating new SQL cards, and providing context guidelines. Future development should focus on:
+The current implementation includes functionality for retrieving and searching Metabase resources with pagination, as well as executing queries for both standalone cards and cards within dashboards, creating new SQL cards, and providing dynamic context guidelines. Future development should focus on:
 
 1. Implementing the remaining tools defined in the specifications
 2. Adding integration tests with a real Metabase instance
@@ -2108,9 +2150,10 @@ The current implementation includes functionality for retrieving and searching M
 7. Improving parameter parsing for complex types
 8. Enhancing dashboard filter and parameter support
 9. **Context System Enhancements**:
-   - Adding user-customizable guidelines content
+   - Adding validation for guidelines content format
    - Implementing role-based context variations
    - Adding collection-specific context information
+   - Supporting multiple text boxes for structured guidelines
 
 ## Conclusion
 
@@ -2118,6 +2161,6 @@ By following these guidelines, you can effectively extend and improve the Talk t
 
 Remember to maintain consistency with the existing code patterns and to thoroughly test your implementations, especially pagination functionality which requires careful validation of edge cases.
 
-The context guidelines system provides a simple way to ensure Claude has helpful instance-specific context when working with Metabase, leading to more accurate and contextually appropriate responses.
+The enhanced context guidelines system provides a powerful way to ensure Claude has organization-specific context when working with Metabase. By storing guidelines directly in Metabase, organizations can easily maintain and update their AI assistant's knowledge about their specific data infrastructure, leading to more accurate and contextually appropriate responses.
 
 Happy coding!

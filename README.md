@@ -47,11 +47,51 @@ Configure the server through environment variables or directly in the Claude Des
 
 ### Metabase Context Guidelines
 
-The server includes an optional context guidelines system that provides Claude with instance-specific information and best practices:
+The server includes a context guidelines system that automatically retrieves organization-specific guidelines from your Metabase instance:
 
-- **When `METABASE_CONTEXT_AUTO_INJECT=true` (default)**: 
-  - Loads the `GET_METABASE_GUIDELINES` tool with essential context information
-  - Provides built-in guidelines with your instance URL and username automatically substituted
+#### Custom Guidelines from Metabase
+
+The system automatically looks for custom guidelines stored in your Metabase instance:
+
+1. **Collection**: "000 Talk to Metabase" (must be at root level)
+2. **Dashboard**: "Talk to Metabase Guidelines" (inside the collection above)
+3. **Content**: Guidelines text stored in a text box on the dashboard
+
+**Template Variables**: Your custom guidelines can use these variables:
+- `{METABASE_URL}` - Automatically replaced with your Metabase instance URL
+- `{METABASE_USERNAME}` - Automatically replaced with the configured username
+
+#### Setup Instructions
+
+To create custom guidelines for your organization:
+
+1. **Create the Collection**:
+   - Go to your Metabase instance
+   - Create a collection named exactly: `000 Talk to Metabase`
+   - Place it at the root level (not inside any other collection)
+   - Make sure it's readable by all Talk to Metabase users
+
+2. **Create the Guidelines Dashboard**:
+   - Inside the "000 Talk to Metabase" collection
+   - Create a dashboard named exactly: `Talk to Metabase Guidelines`
+   - Add a text box to this dashboard
+   - Write your custom guidelines in the text box
+
+3. **Guidelines Content Suggestions**:
+   Include information about:
+   - Important collections and their purposes
+   - Key databases and their usage guidelines
+   - Naming conventions and data governance standards
+   - Query performance recommendations
+   - Common use cases and workflows specific to your organization
+   - Contact information for data team or administrators
+
+#### Behavior
+
+- **When `METABASE_CONTEXT_AUTO_INJECT=true` (default)**:
+  - Loads the `GET_METABASE_GUIDELINES` tool
+  - Automatically retrieves custom guidelines from Metabase if configured
+  - Falls back to default guidelines with setup instructions if not found
   - Tool description recommends calling it first for best results
   - No enforcement - all other tools work normally
 
