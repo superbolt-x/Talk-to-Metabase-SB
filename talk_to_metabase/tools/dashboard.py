@@ -12,6 +12,7 @@ from mcp.server.fastmcp import Context, FastMCP
 from ..server import get_server_instance
 from .common import format_error_response, get_metabase_client, check_response_size
 from .dashcards import validate_dashcards_helper, validate_tabs_helper
+from .parameters import validate_parameters_helper, process_parameters
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -133,26 +134,28 @@ async def create_dashboard(
         )
 
 
-@mcp.tool(name="update_dashboard", description="Update a dashboard with new cards and tabs using dashcards and tabs parameters")
+@mcp.tool(name="update_dashboard", description="Update a dashboard with new cards, tabs and parameters")
 async def update_dashboard(
     id: int,
     ctx: Context,
     dashcards: Optional[List[Dict[str, Any]]] = None,
     tabs: Optional[List[Dict[str, Any]]] = None,
+    parameters: Optional[List[Dict[str, Any]]] = None,
     name: Optional[str] = None,
     description: Optional[str] = None,
     collection_id: Optional[int] = None,
     archived: Optional[bool] = None
 ) -> str:
     """
-    Update a dashboard with new cards, tabs, and/or metadata.
+    Update a dashboard with new cards, tabs, parameters, and/or metadata.
     
-    **IMPORTANT: Call GET_DASHCARDS_SCHEMA first to understand the dashcards format**
+    **IMPORTANT: Call GET_DASHCARDS_SCHEMA and GET_PARAMETERS_SCHEMA first to understand the format**
     
     This tool allows you to:
     - Add new cards to a dashboard using the dashcards parameter
     - Update existing cards by providing their existing ID
     - Add/update dashboard tabs using the tabs parameter
+    - Add/update dashboard parameters using the parameters parameter
     - Update dashboard metadata (name, description, collection, archived status)
     
     DASHCARDS FORMAT:
@@ -174,6 +177,16 @@ async def update_dashboard(
         "name": string           // Required: Tab name
     }
     
+    PARAMETERS FORMAT:
+    The parameters parameter must be a list of objects with the following structure:
+    {
+        "id": string,            // Optional for new parameters, required for updating existing ones
+        "name": string,          // Required: Parameter name
+        "type": string,          // Required: Parameter type (e.g., "date/all-options", "string/=")
+        "sectionId": string,     // Optional: Parameter section ("date", "string", etc.)
+        ... other fields         // See GET_PARAMETERS_SCHEMA for complete structure
+    }
+    
     FORBIDDEN KEYS (dashcards only):
     The following keys are forbidden in dashcards and will cause validation errors:
     - action_id
@@ -191,6 +204,7 @@ async def update_dashboard(
         ctx: MCP context
         dashcards: List of dashboard cards to add/update (call GET_DASHCARDS_SCHEMA for format)
         tabs: List of dashboard tabs to add/update (format: [{"id": int, "name": string}])
+        parameters: List of dashboard parameters to add/update (call GET_PARAMETERS_SCHEMA for format)
         name: New dashboard name (optional)
         description: New dashboard description (optional)
         collection_id: New collection ID (optional)
@@ -223,6 +237,20 @@ async def update_dashboard(
                 "help": "Tabs must have 'name' field (string) and optional 'id' field (integer). Use negative IDs for new tabs."
             }, indent=2)
     
+    # Validate parameters if provided
+    if parameters is not None:
+        parameters_validation_result = validate_parameters_helper(parameters)
+        if not parameters_validation_result["valid"]:
+            return json.dumps({
+                "success": False,
+                "error": "Invalid parameters format",
+                "validation_errors": parameters_validation_result["errors"],
+                "help": "Call GET_PARAMETERS_SCHEMA to understand the correct format. Required fields: name, type."
+            }, indent=2)
+        
+        # Process parameters to ensure all have IDs
+        parameters = process_parameters(parameters)
+    
     client = get_metabase_client(ctx)
     
     try:
@@ -242,6 +270,8 @@ async def update_dashboard(
             update_data["dashcards"] = dashcards
         if tabs is not None:
             update_data["tabs"] = tabs
+        if parameters is not None:
+            update_data["parameters"] = parameters
         
         # If no fields were provided to update, return early
         if not update_data:
@@ -272,7 +302,8 @@ async def update_dashboard(
             "dashboard_id": data.get("id"),
             "name": data.get("name"),
             "dashcard_count": len(data.get("dashcards", [])) if "dashcards" in data else None,
-            "tab_count": len(data.get("tabs", [])) if "tabs" in data else None
+            "tab_count": len(data.get("tabs", [])) if "tabs" in data else None,
+            "parameter_count": len(data.get("parameters", [])) if "parameters" in data else None
         }, indent=2)
         
     except Exception as e:

@@ -34,6 +34,9 @@ try:
     from . import dashcards
     logger.info("Loaded dashcards tools module")
     
+    from . import parameters
+    logger.info("Loaded parameters tools module")
+    
     # Load context tools if enabled
     from ..config import MetabaseConfig
     config = MetabaseConfig.from_env()

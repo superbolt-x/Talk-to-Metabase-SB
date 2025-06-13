@@ -670,6 +670,7 @@ async def get_dashboard(id: int, ctx: Context) -> str:
 Key features:
 - Returns dashboard metadata (name, description, etc.)
 - Includes tab information for multi-tab dashboards
+- Parameters Management: Add and configure dashboard parameters for interactive filtering
 - Provides total card count but doesn't include the cards themselves
 - Adds an `is_single_tab` flag for dashboards without explicit tabs
 - Significantly reduces response size by omitting card data
@@ -774,7 +775,7 @@ The following table shows the Metabase API endpoints that correspond to existing
 | **Dashboard Operations** | `GET /api/dashboard/{id}` | `get_dashboard` | ✅ Implemented |
 | | `GET /api/dashboard/{id}` | `get_dashboard_tab` | ✅ Implemented (with client-side pagination) |
 | | `POST /api/dashboard/` | `create_dashboard` | ✅ Implemented |
-| | `PUT /api/dashboard/{id}` | `update_dashboard` | ✅ Implemented (with dashcards and tabs support) |
+| | `PUT /api/dashboard/{id}` | `update_dashboard` | ✅ Implemented (with dashcards, tabs and parameters support) |
 | | `POST /api/dashboard/{dashboard-id}/cards` | `add_card_to_dashboard` | 📝 Planned |
 | | `DELETE /api/dashboard/{id}` | `delete_dashboard` | 📝 Planned |
 | **Card Operations** | `GET /api/card/{id}` | `get_card_definition` | ✅ Implemented |
@@ -1429,18 +1430,19 @@ The `run_dataset_query` tool has been implemented to allow direct execution of b
 
 This implementation provides Claude with a powerful way to directly execute SQL and MBQL queries against Metabase databases, while focusing on essential output fields for better performance and readability.
 
-## Dashboard Update Tool with Cards and Tabs
+## Dashboard Update Tool with Cards, Tabs and Parameters
 
-The `update_dashboard` tool has been enhanced to support adding cards and managing tabs in Metabase dashboards, providing comprehensive dashboard management capabilities.
+The `update_dashboard` tool has been enhanced to support adding cards, managing tabs and configuring parameters in Metabase dashboards, providing comprehensive dashboard management capabilities.
 
 ### Key Features
 
 1. **Dashcards Management**: Add new cards to dashboards with precise grid positioning
 2. **Tabs Management**: Create and manage dashboard tabs for multi-tab dashboards
-3. **Strict Validation**: JSON schema validation for dashcards with business rule enforcement
-4. **Grid Constraints**: Automatic validation of dashboard grid boundaries (24-column system)
-5. **Forbidden Keys Protection**: Prevents use of complex configuration keys to maintain simplicity
-6. **Metadata Updates**: Support for updating dashboard name, description, collection, and archived status
+3. **Parameters Management**: Add and configure dashboard parameters for interactive filtering
+4. **Strict Validation**: JSON schema validation for dashcards and parameters with business rule enforcement
+5. **Grid Constraints**: Automatic validation of dashboard grid boundaries (24-column system)
+6. **Forbidden Keys Protection**: Prevents use of complex configuration keys to maintain simplicity
+7. **Metadata Updates**: Support for updating dashboard name, description, collection, and archived status
 
 ### Dashcards Support
 
@@ -1544,6 +1546,61 @@ The tool supports creating and managing dashboard tabs using the `tabs` paramete
 }
 ```
 
+### Parameters Support
+
+The tool supports adding and managing dashboard parameters using the `parameters` parameter with strict validation:
+
+#### Parameter Structure
+```json
+{
+  "id": string,            // 8-character hex ID, auto-generated for new parameters
+  "name": string,          // Required: Parameter name (cannot be 'tab')
+  "type": string,          // Required: Parameter type (e.g., "date/all-options", "string/=")
+  "sectionId": string,     // Optional: Parameter section ("date", "string", etc.)
+  "default": value,        // Optional: Default value (required if parameter is required)
+  "isMultiSelect": boolean // Optional: Whether multiple values can be selected
+}
+```
+
+#### Validation Rules
+
+1. **Required Fields**: `name`, `type`
+2. **Name Constraints**: Cannot be 'tab' (reserved for dashboard tabs)
+3. **ID Format**: 8-character hexadecimal string, auto-generated for new parameters
+4. **Type-Specific Validation**:
+   - `temporal-unit` parameters must have `sectionId` set to "temporal-unit" and non-empty `temporal_units` array
+   - String contains/starts-with/ends-with cannot have `isMultiSelect` set to true
+5. **Required Parameters**: If `required` is true, must have a non-empty default value
+
+#### Usage Example
+
+```json
+{
+  "method": "tools/call",
+  "params": {
+    "name": "update_dashboard",
+    "arguments": {
+      "id": 1864,
+      "parameters": [
+        {
+          "name": "Date Filter",
+          "type": "date/all-options",
+          "sectionId": "date",
+          "default": "past30days"
+        },
+        {
+          "id": "fa3f29d7",
+          "name": "Category",
+          "type": "string/=",
+          "sectionId": "string",
+          "isMultiSelect": true
+        }
+      ]
+    }
+  }
+}
+```
+
 ### Combined Updates
 
 The tool supports updating multiple aspects of a dashboard simultaneously:
@@ -1570,6 +1627,13 @@ The tool supports updating multiple aspects of a dashboard simultaneously:
           "size_y": 12,
           "dashboard_tab_id": -1
         }
+      ],
+      "parameters": [
+        {
+          "name": "Date Range",
+          "type": "date/range",
+          "sectionId": "date"
+        }
       ]
     }
   }
@@ -1594,6 +1658,22 @@ A dedicated tool that returns the JSON schema for dashcards validation:
 
 Returns the complete schema with usage guidelines, constraints, and examples.
 
+#### GET_PARAMETERS_SCHEMA
+
+A dedicated tool that returns the JSON schema for parameters validation:
+
+```json
+{
+  "method": "tools/call",
+  "params": {
+    "name": "GET_PARAMETERS_SCHEMA",
+    "arguments": {}
+  }
+}
+```
+
+Returns the complete schema with usage guidelines, constraints, and examples.
+
 ### Implementation Architecture
 
 #### Validation Modules
@@ -1607,6 +1687,12 @@ Returns the complete schema with usage guidelines, constraints, and examples.
    - Simple validation for tab structure
    - Field type checking and constraint validation
    - No JSON schema required due to simplicity
+
+3. **Parameters Validation** (`/talk_to_metabase/tools/parameters.py`):
+   - JSON schema validation against `/talk_to_metabase/schemas/parameters.json`
+   - Business rule validation (type-specific constraints)
+   - Automatic ID generation for new parameters (8-character hex format)
+   - Helper functions for structured validation results
 
 #### Validation Flow
 
@@ -1622,6 +1708,15 @@ if tabs is not None:
     tabs_validation_result = validate_tabs_helper(tabs)
     if not tabs_validation_result["valid"]:
         return validation_error_response
+
+# Parameters validation
+if parameters is not None:
+    parameters_validation_result = validate_parameters_helper(parameters)
+    if not parameters_validation_result["valid"]:
+        return validation_error_response
+    
+    # Process parameters to ensure all have IDs
+    parameters = process_parameters(parameters)
 
 # Proceed with update if all validations pass
 ```
@@ -1652,7 +1747,8 @@ The tool returns a concise success response with essential information:
   "dashboard_id": 1864,
   "name": "Updated Dashboard",
   "dashcard_count": 2,
-  "tab_count": 2
+  "tab_count": 2,
+  "parameter_count": 3
 }
 ```
 
