@@ -183,7 +183,6 @@ Configure the server through environment variables or directly in the Claude Des
 #### Context Guidelines
 - **`GET_METABASE_GUIDELINES`** - Retrieve custom organization guidelines from Metabase or default setup instructions
 
-
 ## Metabase Context Guidelines
 
 The server includes a context guidelines system that automatically retrieves organization-specific guidelines from your Metabase instance:
