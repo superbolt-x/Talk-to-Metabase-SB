@@ -5,7 +5,7 @@
   "type": "array",
   "items": {
     "type": "object",
-    "required": ["id", "type"],
+    "required": ["type", "name", "default"],
     "properties": {
       "id": {
         "type": "string",
@@ -23,7 +23,8 @@
       },
       "name": {
         "type": "string",
-        "description": "Human-readable name for the parameter displayed in the UI."
+        "minLength": 1,
+        "description": "Parameter name that links to the SQL template tag. This must match the tag name in {{tag_name}} in your SQL query."
       },
       "slug": {
         "type": "string",
@@ -55,7 +56,7 @@
         "maxItems": 2
       },
       "default": {
-        "description": "Default value for the parameter. Type depends on parameter type.",
+        "description": "Default value for the parameter. REQUIRED because parameters used directly in SQL ({{param}}) must have a default value or queries will fail. Only parameters wrapped in [[optional]] syntax can omit defaults.",
         "anyOf": [
           { "type": "string" },
           { "type": "number" },
@@ -179,6 +180,25 @@
       }
     },
     "additionalProperties": false,
-    "description": "A parameter object that defines an interactive input control for the card. Parameters are automatically generated from template tags in native SQL queries.\n\nWith Field Filters Disabled - Template Tag to Parameter Type Mapping:\n- text → category (text input with autocomplete)\n- number → number/= (numeric input)\n- date → date/single (date picker)\n\nAll parameters use variable targets that link to template tags. The 'type' field is automatically determined by Metabase based on the template tag type and cannot be manually set via the API."
+    "description": "A parameter object that defines an interactive input control for the card. Parameters are automatically generated from template tags in native SQL queries.\n\nWith Field Filters Disabled - Template Tag to Parameter Type Mapping:\n- text → category (text input with autocomplete)\n- number → number/= (numeric input)\n- date → date/single (date picker)\n\nAll parameters use variable targets that link to template tags. The 'type' field is automatically determined by Metabase based on the template tag type and cannot be manually set via the API.",
+    "if": {
+      "properties": {
+        "values_source_config": {
+          "type": "object",
+          "minProperties": 1
+        }
+      },
+      "required": ["values_source_config"]
+    },
+    "then": {
+      "properties": {
+        "values_query_type": {
+          "type": "string",
+          "enum": ["list", "search"],
+          "description": "Required when values_source_config is provided. 'list' = dropdown, 'search' = search box"
+        }
+      },
+      "required": ["values_query_type"]
+    }
   }
 }

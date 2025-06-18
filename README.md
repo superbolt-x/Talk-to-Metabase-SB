@@ -85,6 +85,13 @@ Configure the server through environment variables or directly in the Claude Des
 - **Documentation System**: Complete documentation with examples for each chart type
 - **UI/API Name Mapping**: Supports both UI names (e.g., "number") and API names (e.g., "scalar")
 
+### 🔧 Simplified Parameter System
+- **3 Basic Types**: Streamlined to category, number/=, and date/single parameter types
+- **Automatic Validation**: JSON Schema handles most validation automatically
+- **Required Defaults**: All parameters must have default values for reliable query execution
+- **Template Tag Linking**: Parameter names directly correspond to {{template_tags}} in SQL
+- **UI Widget Control**: Clear mapping between parameter types and UI widgets (dropdown, search, input)
+
 ### 🔄 Smart Query Execution
 - **Dual Context Support**: Execute queries both standalone and within dashboard context
 - **SQL Validation**: Pre-validation of SQL queries before card creation
@@ -107,7 +114,7 @@ Configure the server through environment variables or directly in the Claude Des
 
 ### 🚧 Planned Features
 - **Models** : Build and use models
-- **Full support of parameters**: Create and edit SQL card parameters and link them to a dashboard's
+- **Complex parameters**: Advanced parameter types and field filters (simplified system focuses on basic types)
 - **Safe mode**: Disable editing features for read-only users
 - **Auto-debug mode**: Always run a query before pushing it
 - **MQBL support**: Create and edit UI-built cards
@@ -125,6 +132,11 @@ Configure the server through environment variables or directly in the Claude Des
 - **Detailed Validation**: Clear validation errors with specific guidance
 - **Request Context**: Error responses include request details for debugging
 
+### Efficient Validation Architecture
+- **JSON Schema First**: Leverages JSON Schema for automatic validation of structure, types, and business rules
+- **Minimal Manual Validation**: Only handles cross-item validation (duplicates) that JSON Schema cannot express
+- **Conditional Requirements**: Uses JSON Schema if/then patterns for complex validation rules
+
 ### Authentication & Session Management
 - **Session Caching**: Automatic session token management
 - **Re-authentication**: Automatic re-authentication on token expiry
@@ -139,9 +151,10 @@ Configure the server through environment variables or directly in the Claude Des
 
 #### Card (Question) Operations
 - **`get_card_definition`** - Get card metadata and query definition (with MBQL→SQL translation)
-- **`create_card`** - Create new SQL cards with query validation and visualization settings
+- **`create_card`** - Create new SQL cards with query validation and simplified parameter system
 - **`update_card`** - Update existing cards with new queries, metadata, or visualization settings
 - **`execute_card_query`** - Execute card queries in standalone or dashboard context
+- **`GET_CARD_PARAMETERS_SCHEMA`** - Get simplified JSON schema for card parameters validation
 
 #### Dashboard Operations
 - **`get_dashboard`** - Get dashboard metadata without card details
@@ -169,7 +182,6 @@ Configure the server through environment variables or directly in the Claude Des
 
 #### Context Guidelines
 - **`GET_METABASE_GUIDELINES`** - Retrieve custom organization guidelines from Metabase or default setup instructions
-
 
 ## Metabase Context Guidelines
 

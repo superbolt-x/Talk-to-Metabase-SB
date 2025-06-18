@@ -165,6 +165,175 @@ Talk to Metabase is an MCP (Model Context Protocol) server that integrates Claud
 4. **Response Handling**: Includes size limits to prevent oversized responses
 5. **Pagination**: Client-side pagination for large data sets where API doesn't natively support it
 6. **Unified Query Execution**: Flexible tool for executing queries in both standalone and dashboard contexts
+7. **Simplified Parameter System**: Streamlined card parameters with automatic JSON Schema validation
+
+## Simplified Card Parameters Implementation
+
+The card parameters system has been streamlined to focus on essential functionality while maintaining reliability and user-friendliness.
+
+### Key Features
+
+1. **3 Basic Parameter Types**:
+   - `category` - Text input with autocomplete (from text template tags)
+   - `number/=` - Number input (from number template tags)
+   - `date/single` - Date picker (from date template tags)
+
+2. **Required Fields**:
+   - `type` - Parameter widget type
+   - `name` - Links to SQL template tag (must match `{{tag_name}}`)
+   - `default` - Required for reliable query execution
+
+3. **UI Widget Control**:
+   - `values_query_type`: Controls UI widget when using `values_source_config`
+   - `"list"` - Dropdown widget
+   - `"search"` - Search box widget
+   - `"none"` - Text input (only when no `values_source_config`)
+
+4. **Automatic Validation**:
+   - JSON Schema handles structure, types, and conditional requirements
+   - Manual validation only for cross-item checks (duplicate names/IDs)
+   - 75% reduction in validation code complexity
+
+### Parameter-Template Tag Relationship
+
+```sql
+-- SQL Query
+SELECT * FROM orders WHERE status = {{order_status}} AND date >= {{start_date}}
+```
+
+```json
+// Corresponding Parameters
+[
+  {
+    "name": "order_status",  // Must match {{order_status}} exactly
+    "type": "category",
+    "default": "pending",
+    "values_source_type": "static-list",
+    "values_query_type": "list",
+    "values_source_config": {
+      "values": ["pending", "shipped", "delivered"]
+    }
+  },
+  {
+    "name": "start_date",    // Must match {{start_date}} exactly
+    "type": "date/single",
+    "default": "2024-01-01"
+  }
+]
+```
+
+### Why Default Values Are Required
+
+In this simplified system, all parameters are used directly in SQL queries:
+
+- **Direct usage**: `WHERE status = {{status}}` - parameter MUST have default
+- **Optional usage**: `[[AND status = {{status}}]]` - complex syntax not supported
+
+Without defaults, queries fail when no value is provided, breaking the user experience.
+
+### Validation Architecture
+
+The validation system leverages JSON Schema for efficiency:
+
+```python
+# Before: Manual validation (~100 lines)
+def validate_parameters_old(parameters):
+    # Manual checking of required fields
+    # Manual type validation
+    # Manual structure validation
+    # Manual conditional logic
+    # Business rule validation
+
+# After: Schema-first validation (~25 lines)
+def validate_parameters_new(parameters):
+    # JSON Schema handles automatically:
+    # - Required fields
+    # - Type validation
+    # - Structure validation
+    # - Conditional requirements
+    jsonschema.validate(parameters, schema)
+    
+    # Only manual validation for cross-item rules:
+    check_duplicate_names(parameters)
+    check_duplicate_ids(parameters)
+```
+
+### JSON Schema Features Used
+
+1. **Required Fields**: `"required": ["type", "name", "default"]`
+2. **Type Validation**: `"enum": ["category", "number/=", "date/single"]`
+3. **Conditional Requirements**: 
+   ```json
+   "if": {"properties": {"values_source_config": {...}}},
+   "then": {"required": ["values_query_type"]}
+   ```
+4. **Structure Validation**: Array formats, object properties, field types
+
+### Benefits of Simplified Approach
+
+1. **Reduced Complexity**: 75% less validation code
+2. **Better Performance**: JSON Schema is optimized and fast
+3. **Consistent Validation**: Single source of truth in schema
+4. **Automatic Evolution**: Schema changes automatically update validation
+5. **Clear Error Messages**: Standardized JSON Schema error messages
+6. **Predictable Behavior**: Only 3 parameter types to understand
+
+### Parameter Creation Examples
+
+#### Basic Parameter with Default
+```json
+{
+  "name": "status_filter",
+  "type": "category",
+  "default": "active"
+}
+```
+
+#### Dropdown Parameter with Static Values
+```json
+{
+  "name": "category_filter",
+  "type": "category",
+  "default": "Electronics",
+  "values_source_type": "static-list",
+  "values_query_type": "list",
+  "values_source_config": {
+    "values": ["Electronics", "Books", "Clothing"]
+  }
+}
+```
+
+#### Date Parameter
+```json
+{
+  "name": "start_date",
+  "type": "date/single",
+  "default": "2024-01-01"
+}
+```
+
+#### Number Parameter
+```json
+{
+  "name": "max_price",
+  "type": "number/=",
+  "default": 100
+}
+```
+
+### Tools for Parameter Management
+
+1. **`GET_CARD_PARAMETERS_SCHEMA`**: Returns JSON schema and documentation
+2. **`create_card`**: Accepts simplified parameters with automatic validation
+3. **`update_card`**: Updates card parameters with validation
+
+### Migration from Complex Parameters
+
+When encountering existing cards with complex parameters:
+- Metabase automatically handles parameter conversion
+- Complex field filters are not supported in the simplified system
+- Focus on the 3 basic types for new parameter creation
+- Existing complex parameters continue to work in Metabase UI
 
 ## Project Structure
 

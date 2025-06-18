@@ -37,6 +37,9 @@ try:
     from . import parameters
     logger.info("Loaded parameters tools module")
     
+    from . import card_parameters
+    logger.info("Loaded card_parameters tools module")
+    
     # Load context tools if enabled
     from ..config import MetabaseConfig
     config = MetabaseConfig.from_env()

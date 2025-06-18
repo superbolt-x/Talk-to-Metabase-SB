@@ -15,9 +15,48 @@ from .visualization import validate_visualization_settings_helper
 # Set up logging for this module
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
+
 # Register tools with the server
 mcp = get_server_instance()
 logger.info("Registering card definition tools with the server...")
+
+# Import card parameters functions - handle import errors gracefully
+try:
+    from .card_parameters import (
+        validate_card_parameters_helper,
+        process_card_parameters,
+        generate_template_tags_from_parameters
+    )
+    CARD_PARAMETERS_AVAILABLE = True
+    logger.info("Card parameters functionality loaded successfully")
+except ImportError as e:
+    logger.warning(f"Card parameters functionality not available: {e}")
+    CARD_PARAMETERS_AVAILABLE = False
+
+
+def parse_parameters_if_string(parameters: Union[str, List[Dict[str, Any]], None]) -> Optional[List[Dict[str, Any]]]:
+    """
+    Parse parameters if they are provided as a JSON string.
+    
+    Args:
+        parameters: Parameters as string, list, or None
+        
+    Returns:
+        Parsed parameters list or None
+    """
+    if parameters is None:
+        return None
+    
+    if isinstance(parameters, str):
+        try:
+            return json.loads(parameters)
+        except json.JSONDecodeError as e:
+            raise ValueError(f"Invalid JSON in parameters: {e}")
+    
+    if isinstance(parameters, list):
+        return parameters
+    
+    raise ValueError(f"Parameters must be a list or JSON string, got {type(parameters)}")
 
 
 def extract_essential_card_info(card_data: Dict[str, Any]) -> Dict[str, Any]:
@@ -118,6 +157,10 @@ def extract_essential_card_info(card_data: Dict[str, Any]) -> Dict[str, Any]:
             # Add target information if available
             if "target" in param:
                 simplified_param["target"] = param["target"]
+            
+            # Add default if available
+            if "default" in param:
+                simplified_param["default"] = param["default"]
             
             # Add values source if available
             if "values_source_type" in param:
@@ -321,7 +364,7 @@ async def get_card_definition(id: int, ctx: Context, ignore_view: Optional[bool]
         )
 
 
-@mcp.tool(name="create_card", description="Create a new SQL card after validating the query")
+@mcp.tool(name="create_card", description="Create a new SQL card with optional parameters")
 async def create_card(
     database_id: int,
     query: str,
@@ -331,10 +374,11 @@ async def create_card(
     collection_id: Optional[int] = None,
     description: Optional[str] = None,
     display: str = "table",
-    visualization_settings: Optional[Dict[str, Any]] = None
+    visualization_settings: Optional[Dict[str, Any]] = None,
+    parameters: Optional[Union[str, List[Dict[str, Any]]]] = None
 ) -> str:
     """
-    Create a new SQL card after validating the query.
+    Create a new SQL card with optional parameters after validating the query.
     
     CUSTOMIZABLE FILTERS:
     You can create SQL queries with customizable filters using Metabase's template syntax:
@@ -345,6 +389,17 @@ async def create_card(
     Examples:
     - SELECT * FROM orders WHERE date > {{start_date}}
     - SELECT * FROM products WHERE true [[AND category = {{category}}]] [[AND price > {{min_price}}]]
+    
+    PARAMETERS:
+    **IMPORTANT: Call GET_CARD_PARAMETERS_SCHEMA first to understand the parameters format**
+    
+    Parameters allow you to create interactive controls for your SQL queries:
+    - SIMPLIFIED SYSTEM: Only 3 parameter types supported (category, number/=, date/single)
+    - For NEW parameters: Only specify name, type, and other settings (ID and slug auto-generated)
+    - Parameter slugs are automatically generated from names - never specify manually
+    - Template tags are automatically generated from parameters
+    - All parameters use variable targets only (no field filters)
+    - Parameters can be provided as JSON string or list of dictionaries
     
     VISUALIZATION SETTINGS:
     **IMPORTANT: Call GET_VISUALIZATION_DOCUMENT first to understand the visualization settings format**
@@ -359,11 +414,12 @@ async def create_card(
         description: Optional description for the card
         display: Visualization type (default: "table")
         visualization_settings: Visualization settings dictionary (optional, call GET_VISUALIZATION_DOCUMENT for format)
+        parameters: List of parameter dictionaries or JSON string (optional, call GET_CARD_PARAMETERS_SCHEMA for format)
         
     Returns:
         JSON string with creation result or error information
     """
-    logger.info(f"Tool called: create_card(database_id={database_id}, name={name}, card_type={card_type}, display={display})")
+    logger.info(f"Tool called: create_card(database_id={database_id}, name={name}, card_type={card_type}, display={display}, parameters={len(parameters) if isinstance(parameters, list) else 'string' if isinstance(parameters, str) else 0})")
     
     # Validate card type
     valid_card_types = ["question", "model", "metric"]
@@ -387,6 +443,46 @@ async def create_card(
                 "help": "Call GET_VISUALIZATION_DOCUMENT first to understand the correct format"
             }, indent=2)
     
+    # Parse and validate parameters if provided
+    processed_parameters = None
+    template_tags = {}
+    if parameters is not None:
+        try:
+            # Parse parameters if they're a string
+            parsed_parameters = parse_parameters_if_string(parameters)
+            
+            if CARD_PARAMETERS_AVAILABLE and parsed_parameters:
+                # Validate parameters
+                validation_result = validate_card_parameters_helper(parsed_parameters)
+                if not validation_result["valid"]:
+                    return json.dumps({
+                        "success": False,
+                        "error": "Invalid parameters format",
+                        "validation_errors": validation_result["errors"],
+                        "parameters_count": len(parsed_parameters),
+                        "help": "Call GET_CARD_PARAMETERS_SCHEMA to understand the correct format"
+                    }, indent=2)
+                
+                # Process parameters to generate IDs and slugs
+                processed_parameters = process_card_parameters(parsed_parameters)
+                
+                # Generate template tags from parameters
+                template_tags = generate_template_tags_from_parameters(processed_parameters)
+            elif parsed_parameters:
+                # Parameters provided but card_parameters module not available
+                return json.dumps({
+                    "success": False,
+                    "error": "Parameters functionality not available",
+                    "message": "Card parameters module could not be imported"
+                }, indent=2)
+                
+        except ValueError as e:
+            return json.dumps({
+                "success": False,
+                "error": "Parameter parsing error",
+                "message": str(e)
+            }, indent=2)
+    
     client = get_metabase_client(ctx)
     
     # Step 1: Execute the query to validate it
@@ -408,7 +504,7 @@ async def create_card(
                 "database": database_id,
                 "native": {
                     "query": query,
-                    "template-tags": {}
+                    "template-tags": template_tags
                 },
                 "type": "native"
             },
@@ -416,6 +512,10 @@ async def create_card(
             "type": card_type,
             "visualization_settings": visualization_settings or {}  # Use provided settings or empty dict
         }
+        
+        # Add parameters if provided
+        if processed_parameters is not None:
+            card_data["parameters"] = processed_parameters
         
         # Add optional fields if provided
         if description:
@@ -448,7 +548,8 @@ async def create_card(
         return json.dumps({
             "success": True,
             "card_id": data.get("id"),
-            "name": data.get("name")
+            "name": data.get("name"),
+            "parameters_count": len(processed_parameters) if processed_parameters else 0
         }, indent=2)
         
     except Exception as e:
@@ -464,7 +565,7 @@ async def create_card(
         )
 
 
-@mcp.tool(name="update_card", description="Update an existing card with a new SQL query")
+@mcp.tool(name="update_card", description="Update an existing card with optional parameters")
 async def update_card(
     id: int,
     ctx: Context,
@@ -474,10 +575,11 @@ async def update_card(
     collection_id: Optional[int] = None,
     archived: Optional[bool] = None,
     display: Optional[str] = None,
-    visualization_settings: Optional[Dict[str, Any]] = None
+    visualization_settings: Optional[Dict[str, Any]] = None,
+    parameters: Optional[Union[str, List[Dict[str, Any]]]] = None
 ) -> str:
     """
-    Update an existing card with a new SQL query or metadata.
+    Update an existing card with optional parameters, SQL query, or metadata.
     
     CUSTOMIZABLE FILTERS:
     When updating the query, you can use Metabase's template syntax for customizable filters:
@@ -488,6 +590,19 @@ async def update_card(
     Examples:
     - SELECT * FROM orders WHERE date > {{start_date}}
     - SELECT * FROM products WHERE true [[AND category = {{category}}]] [[AND price > {{min_price}}]]
+    
+    PARAMETERS:
+    **IMPORTANT: Call GET_CARD_PARAMETERS_SCHEMA first to understand the parameters format**
+    
+    Parameters allow you to create interactive controls for your SQL queries:
+    - SIMPLIFIED SYSTEM: Only 3 parameter types supported (category, number/=, date/single)
+    - For NEW parameters: Only specify name, type, and other settings (ID and slug auto-generated)
+    - For EXISTING parameters: Include the existing ID to update that parameter
+    - Parameter slugs are automatically generated from names - never specify manually
+    - Template tags are automatically generated from parameters
+    - All parameters use variable targets only (no field filters)
+    - Parameters not included in the update will be REMOVED
+    - Parameters can be provided as JSON string or list of dictionaries
     
     VISUALIZATION SETTINGS:
     **IMPORTANT: Call GET_VISUALIZATION_DOCUMENT first to understand the visualization settings format**
@@ -502,11 +617,12 @@ async def update_card(
         archived: Whether the card is archived (optional)
         display: New visualization type (optional)
         visualization_settings: New visualization settings dictionary (optional, call GET_VISUALIZATION_DOCUMENT for format)
+        parameters: New list of parameter dictionaries or JSON string (optional, call GET_CARD_PARAMETERS_SCHEMA for format)
         
     Returns:
         JSON string with update result or error information
     """
-    logger.info(f"Tool called: update_card(id={id}, name={name}, display={display})")
+    logger.info(f"Tool called: update_card(id={id}, name={name}, display={display}, parameters={len(parameters) if isinstance(parameters, list) else 'string' if isinstance(parameters, str) else 0})")
     
     client = get_metabase_client(ctx)
     
@@ -557,6 +673,46 @@ async def update_card(
                 "help": "Call GET_VISUALIZATION_DOCUMENT first to understand the correct format"
             }, indent=2)
     
+    # Parse and validate parameters if provided
+    processed_parameters = None
+    template_tags = None
+    if parameters is not None:
+        try:
+            # Parse parameters if they're a string
+            parsed_parameters = parse_parameters_if_string(parameters)
+            
+            if CARD_PARAMETERS_AVAILABLE and parsed_parameters:
+                # Validate parameters
+                validation_result = validate_card_parameters_helper(parsed_parameters)
+                if not validation_result["valid"]:
+                    return json.dumps({
+                        "success": False,
+                        "error": "Invalid parameters format",
+                        "validation_errors": validation_result["errors"],
+                        "parameters_count": len(parsed_parameters),
+                        "help": "Call GET_CARD_PARAMETERS_SCHEMA to understand the correct format"
+                    }, indent=2)
+                
+                # Process parameters to generate IDs and slugs for new parameters
+                processed_parameters = process_card_parameters(parsed_parameters)
+                
+                # Generate template tags from parameters
+                template_tags = generate_template_tags_from_parameters(processed_parameters)
+            elif parsed_parameters:
+                # Parameters provided but card_parameters module not available
+                return json.dumps({
+                    "success": False,
+                    "error": "Parameters functionality not available",
+                    "message": "Card parameters module could not be imported"
+                }, indent=2)
+                
+        except ValueError as e:
+            return json.dumps({
+                "success": False,
+                "error": "Parameter parsing error",
+                "message": str(e)
+            }, indent=2)
+    
     try:
         # Fetch the current card data if not already fetched during validation
         if current_data is None:
@@ -597,6 +753,10 @@ async def update_card(
         if visualization_settings is not None:
             update_data["visualization_settings"] = visualization_settings
         
+        # Add parameters if provided
+        if processed_parameters is not None:
+            update_data["parameters"] = processed_parameters
+        
         # If query is provided, validate it and update the dataset_query
         if query is not None:
             if database_id is None:
@@ -626,7 +786,7 @@ async def update_card(
                 "database": database_id,
                 "native": {
                     "query": query,
-                    "template-tags": {}
+                    "template-tags": template_tags or {}
                 }
             }
             
@@ -661,7 +821,8 @@ async def update_card(
         return json.dumps({
             "success": True,
             "card_id": data.get("id"),
-            "name": data.get("name")
+            "name": data.get("name"),
+            "parameters_count": len(processed_parameters) if processed_parameters else 0
         }, indent=2)
         
     except Exception as e:
