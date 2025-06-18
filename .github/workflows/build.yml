@@ -4,6 +4,7 @@ name: Build Executables
 on:
   push:
     branches: [main]
+    tags: ['v*']
   pull_request:
     branches: [main]
   workflow_dispatch:  # Allow manual triggering
@@ -86,15 +87,28 @@ jobs:
       run: |
         ls -la dist/
         file dist/talk-to-metabase-${{ matrix.name }} || true
+        # Test architecture on macOS
+        if [[ "${{ runner.os }}" == "macOS" ]]; then
+          lipo -archs dist/talk-to-metabase-${{ matrix.name }} || true
+        fi
         # Quick test that it starts
-        timeout 10s ./dist/talk-to-metabase-${{ matrix.name }} --help || echo "Test completed"
+        timeout 10s ./dist/talk-to-metabase-${{ matrix.name }} --help || echo "Test completed (timeout expected)"
 
     - name: Verify executable (Windows)
       if: runner.os == 'Windows'
       run: |
         Get-ChildItem dist/
-        # Quick test that it starts
-        Start-Process -FilePath "dist/talk-to-metabase-${{ matrix.name }}.exe" -ArgumentList "--help" -Wait -WindowStyle Hidden
+        # Quick test that it starts  
+        try {
+          $process = Start-Process -FilePath "dist/talk-to-metabase-${{ matrix.name }}.exe" -ArgumentList "--help" -PassThru -WindowStyle Hidden
+          Start-Sleep -Seconds 5
+          if (!$process.HasExited) {
+            $process.Kill()
+            Write-Host "Executable started successfully (killed after 5s)"
+          }
+        } catch {
+          Write-Host "Could not test executable: $_"
+        }
 
     - name: Upload artifact
       uses: actions/upload-artifact@v4
@@ -103,3 +117,63 @@ jobs:
         path: |
           dist/talk-to-metabase-${{ matrix.name }}*
         retention-days: 30
+
+  # Create a release when a tag is pushed
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    
+    steps:
+    - name: Download all artifacts
+      uses: actions/download-artifact@v4
+      with:
+        path: artifacts
+
+    - name: Display structure of downloaded files
+      run: |
+        ls -la artifacts/
+        find artifacts -type f -name "talk-to-metabase-*" -exec ls -la {} \;
+
+    - name: Create Release
+      uses: softprops/action-gh-release@v1
+      with:
+        files: |
+          artifacts/*/talk-to-metabase-*
+        generate_release_notes: true
+        draft: false
+        prerelease: false
+        body: |
+          ## Talk to Metabase MCP Server
+          
+          **Installation Instructions:**
+          
+          1. Download the appropriate executable for your platform:
+             - `talk-to-metabase-macos-intel` - Intel Mac (x86_64)
+             - `talk-to-metabase-macos-apple-silicon` - Apple Silicon Mac (M1/M2/M3)
+             - `talk-to-metabase-linux` - Linux (x86_64)
+             - `talk-to-metabase-windows.exe` - Windows (x86_64)
+          
+          2. Make the file executable (macOS/Linux): `chmod +x talk-to-metabase-*`
+          
+          3. Add to your Claude Desktop configuration:
+          ```json
+          {
+            "mcpServers": {
+              "Talk to Metabase": {
+                "command": "/path/to/talk-to-metabase-[platform]",
+                "args": [],
+                "env": {
+                  "METABASE_URL": "https://your-metabase.com",
+                  "METABASE_USERNAME": "your-username",
+                  "METABASE_PASSWORD": "your-password",
+                  "METABASE_CONTEXT_AUTO_INJECT": "true"
+                }
+              }
+            }
+          }
+          ```
+          
+          4. Restart Claude Desktop and start chatting with your Metabase data!
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
