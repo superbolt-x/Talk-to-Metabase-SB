@@ -69,6 +69,13 @@ This MCP server implements the [Model Context Protocol](https://modelcontextprot
 - **Automatic Discovery**: Finds guidelines in "000 Talk to Metabase" collection
 - **Fallback System**: Provides setup instructions when custom guidelines aren't configured
 
+## ❌ Limitations
+What Talk to Metabase can't do (yet):
+- **UI Cards**: Edit UI-friendly (MBQL) cards, thus it can read and mimic them, but the result will be a SQL card
+- **Delete resources**
+- **Custom cards filters**: Handle card custom filters (aka parameters)
+- **Models**: Use and edit models
+
 ## Architecture Highlights
 
 ### Modular Tool Design
