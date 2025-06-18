@@ -394,9 +394,11 @@ async def create_card(
     **IMPORTANT: Call GET_CARD_PARAMETERS_SCHEMA first to understand the parameters format**
     
     Parameters allow you to create interactive controls for your SQL queries:
+    - SIMPLIFIED SYSTEM: Only 3 parameter types supported (category, number/=, date/single)
     - For NEW parameters: Only specify name, type, and other settings (ID and slug auto-generated)
     - Parameter slugs are automatically generated from names - never specify manually
     - Template tags are automatically generated from parameters
+    - All parameters use variable targets only (no field filters)
     - Parameters can be provided as JSON string or list of dictionaries
     
     VISUALIZATION SETTINGS:
@@ -593,10 +595,12 @@ async def update_card(
     **IMPORTANT: Call GET_CARD_PARAMETERS_SCHEMA first to understand the parameters format**
     
     Parameters allow you to create interactive controls for your SQL queries:
+    - SIMPLIFIED SYSTEM: Only 3 parameter types supported (category, number/=, date/single)
     - For NEW parameters: Only specify name, type, and other settings (ID and slug auto-generated)
     - For EXISTING parameters: Include the existing ID to update that parameter
     - Parameter slugs are automatically generated from names - never specify manually
     - Template tags are automatically generated from parameters
+    - All parameters use variable targets only (no field filters)
     - Parameters not included in the update will be REMOVED
     - Parameters can be provided as JSON string or list of dictionaries
     

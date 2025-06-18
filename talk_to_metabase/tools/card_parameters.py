@@ -96,10 +96,6 @@ def extract_template_tag_name_from_target(target: List[Any]) -> Optional[str]:
         if len(target) >= 2:
             if target[0] == "variable" and len(target[1]) >= 2:
                 return target[1][1]  # ["variable", ["template-tag", "tag_name"]]
-            elif target[0] == "dimension" and len(target[1]) >= 2:
-                return target[1][1]  # ["dimension", ["template-tag", "tag_name"]]
-            elif target[0] == "text-tag" and len(target) >= 2:
-                return target[1]     # ["text-tag", "tag_name"]
     except (IndexError, TypeError):
         pass
     return None
@@ -129,15 +125,13 @@ def generate_template_tags_from_parameters(parameters: List[Dict[str, Any]]) -> 
         # Determine template tag type based on parameter type
         param_type = param.get("type", "category")
         
-        # Map parameter types to template tag types
-        if param_type.startswith("date/"):
+        # Map parameter types to template tag types (simplified)
+        if param_type == "date/single":
             template_tag_type = "date"
-        elif param_type.startswith("number/"):
+        elif param_type == "number/=":
             template_tag_type = "number"
-        elif param_type.startswith("dimension") or param.get("target", [{}])[0] == "dimension":
-            template_tag_type = "dimension"
-        else:
-            template_tag_type = "text"  # Default
+        else:  # category or any other type defaults to text
+            template_tag_type = "text"
         
         template_tag = {
             "type": template_tag_type,
@@ -154,12 +148,6 @@ def generate_template_tags_from_parameters(parameters: List[Dict[str, Any]]) -> 
         if "required" in param:
             template_tag["required"] = param["required"]
         
-        # For dimension type, add additional configuration
-        if template_tag_type == "dimension":
-            # This would need more sophisticated mapping based on the field
-            # For now, keep it simple
-            template_tag["widget-type"] = "none"
-        
         template_tags[tag_name] = template_tag
     
     return template_tags
@@ -167,7 +155,7 @@ def generate_template_tags_from_parameters(parameters: List[Dict[str, Any]]) -> 
 
 def validate_card_parameters(parameters: List[Dict[str, Any]]) -> Tuple[bool, List[str]]:
     """
-    Validate card parameters against the JSON schema and additional business rules.
+    Validate card parameters against the JSON schema and essential business rules.
     
     Args:
         parameters: List of parameter dictionaries
@@ -180,81 +168,35 @@ def validate_card_parameters(parameters: List[Dict[str, Any]]) -> Tuple[bool, Li
         return False, ["Could not load card parameters schema"]
     
     try:
-        # First validate against JSON schema
+        # JSON Schema handles most validation automatically:
+        # - Required fields (type, name, default)
+        # - Valid parameter types (enum validation)
+        # - Field structure and data types
+        # - Conditional requirements (if/then for values_query_type)
         jsonschema.validate(parameters, schema)
         
-        # Additional validation for business rules
+        # Only add business logic that JSON Schema can't handle:
         errors = []
         
-        # Check for duplicate IDs and names
-        seen_ids = set()
+        # Check for duplicate names (JSON Schema can't validate across array items)
         seen_names = set()
-        
         for i, param in enumerate(parameters):
-            # Check for required fields
-            if "name" not in param or not param["name"]:
-                errors.append(f"Parameter {i}: missing required field 'name'")
-                
-            if "type" not in param or not param["type"]:
-                errors.append(f"Parameter {i}: missing required field 'type'")
-            
-            # Check for duplicate IDs (only for params with IDs)
-            if "id" in param and param["id"]:
-                if param["id"] in seen_ids:
-                    errors.append(f"Parameter {i}: duplicate ID '{param['id']}'")
-                else:
-                    seen_ids.add(param["id"])
-            
-            # Check for duplicate names
-            if "name" in param and param["name"]:
-                if param["name"] in seen_names:
-                    errors.append(f"Parameter {i}: duplicate name '{param['name']}'")
-                else:
-                    seen_names.add(param["name"])
-            
-            # Validate target structure
-            if "target" in param:
-                target = param["target"]
-                if not isinstance(target, list) or len(target) < 2:
-                    errors.append(f"Parameter {i}: invalid target structure")
-                else:
-                    target_type = target[0]
-                    if target_type not in ["variable", "dimension", "text-tag"]:
-                        errors.append(f"Parameter {i}: invalid target type '{target_type}'")
-                    
-                    # Validate target format based on type
-                    if target_type in ["variable", "dimension"]:
-                        if len(target) < 2 or not isinstance(target[1], list) or len(target[1]) < 2:
-                            errors.append(f"Parameter {i}: invalid {target_type} target format")
-                        elif target[1][0] != "template-tag":
-                            errors.append(f"Parameter {i}: {target_type} target must reference template-tag")
-                    elif target_type == "text-tag":
-                        if len(target) < 2 or not isinstance(target[1], str):
-                            errors.append(f"Parameter {i}: invalid text-tag target format")
-            
-            # Validate required parameters have defaults
-            if param.get("required") is True:
-                default = param.get("default")
-                if default is None or default == "" or (isinstance(default, list) and len(default) == 0):
-                    errors.append(f"Parameter {i}: required parameter must have a non-empty default value")
-            
-            # Validate parameter type specific constraints
-            param_type = param.get("type", "")
-            
-            # Validate isMultiSelect constraints for string types
-            if "isMultiSelect" in param and param["isMultiSelect"] is True:
-                if param_type in ["string/contains", "string/does-not-contain", "string/starts-with", "string/ends-with"]:
-                    errors.append(f"Parameter {i}: isMultiSelect cannot be true for type '{param_type}'")
-            
-            # Validate temporal_units for temporal-unit parameters
-            if param_type == "temporal-unit":
-                if "temporal_units" not in param or not isinstance(param["temporal_units"], list) or len(param["temporal_units"]) == 0:
-                    errors.append(f"Parameter {i}: temporal-unit parameter must have non-empty temporal_units array")
-                
-        if errors:
-            return False, errors
-            
-        return True, []
+            name = param.get("name")
+            if name and name in seen_names:
+                errors.append(f"Parameter {i}: duplicate name '{name}'")
+            elif name:
+                seen_names.add(name)
+        
+        # Check for duplicate IDs (only for parameters that have IDs)
+        seen_ids = set()
+        for i, param in enumerate(parameters):
+            param_id = param.get("id")
+            if param_id and param_id in seen_ids:
+                errors.append(f"Parameter {i}: duplicate ID '{param_id}'")
+            elif param_id:
+                seen_ids.add(param_id)
+        
+        return len(errors) == 0, errors
         
     except jsonschema.ValidationError as e:
         return False, [f"Validation error: {e.message}"]
@@ -294,28 +236,40 @@ async def get_card_parameters_schema(ctx: Context) -> str:
             "success": True,
             "schema": schema,
             "description": "JSON schema for validating card parameters in create_card and update_card tools",
+            "simplified_note": "This is a simplified parameter system with only 3 parameter types and variable targets only. JSON Schema handles most validation automatically.",
+            "supported_types": {
+                "category": "Text input with autocomplete (from text template tags)",
+                "number/=": "Number input (from number template tags)",
+                "date/single": "Date picker (from date template tags)"
+            },
             "usage": {
                 "new_parameters": "For new parameters, omit the 'id' field - it will be auto-generated",
                 "existing_parameters": "For updating existing parameters, include the existing 'id' from the current card",
-                "required_fields": ["name", "type"],
+                "required_fields": ["type", "name", "default"],
                 "auto_generated_fields": ["id (for new)", "slug (always)", "target (if not specified)"],
-                "slug_generation": "Slugs are automatically generated from parameter names - do not specify manually"
+                "slug_generation": "Slugs are automatically generated from parameter names - do not specify manually",
+                "target_type": "All parameters use variable targets only - no field filters supported"
             },
             "examples": [
                 {
-                    "name": "Order Status",
+                    "name": "order_status",
                     "type": "category",
                     "default": "pending"
                 },
                 {
-                    "name": "Date Range",
-                    "type": "date/all-options",
-                    "default": "past30days"
+                    "name": "price_limit",
+                    "type": "number/=",
+                    "default": 100
+                },
+                {
+                    "name": "created_date",
+                    "type": "date/single",
+                    "default": "2024-01-01"
                 },
                 {
                     "id": "existing-param-id",
-                    "name": "Updated Filter",
-                    "type": "string/=",
+                    "name": "updated_filter",
+                    "type": "category",
                     "note": "Include existing ID when updating"
                 }
             ]
@@ -400,10 +354,10 @@ def process_card_parameters(parameters: List[Dict[str, Any]]) -> List[Dict[str, 
             processed_param["slug"] = slug
             existing_slugs.add(slug)
         
-        # Generate target if not provided
+        # Generate target if not provided (always variable target)
         if "target" not in processed_param:
             slug = processed_param.get("slug", "parameter")
-            # Default to variable target
+            # All targets are variable targets in the simplified system
             processed_param["target"] = ["variable", ["template-tag", slug]]
         
         # Track existing IDs
