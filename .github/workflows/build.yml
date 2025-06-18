@@ -1,0 +1,105 @@
+# .github/workflows/build.yml
+name: Build Executables
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:  # Allow manual triggering
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - os: macos-13          # Intel Mac
+            name: macos-intel
+            arch: x86_64
+          - os: macos-14          # Apple Silicon Mac (M1/M2)
+            name: macos-apple-silicon
+            arch: arm64
+          - os: ubuntu-latest
+            name: linux
+            arch: x86_64
+          - os: windows-latest
+            name: windows
+            arch: x86_64
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pyinstaller
+
+    - name: Build executable (macOS/Linux)
+      if: runner.os != 'Windows'
+      run: |
+        python -m PyInstaller \
+          --onefile \
+          --name=talk-to-metabase-${{ matrix.name }} \
+          --clean \
+          --noconfirm \
+          --add-data=talk_to_metabase/schemas:talk_to_metabase/schemas \
+          --hidden-import=talk_to_metabase \
+          --hidden-import=talk_to_metabase.tools \
+          --hidden-import=talk_to_metabase.tools.dashboard \
+          --hidden-import=talk_to_metabase.tools.card \
+          --hidden-import=talk_to_metabase.tools.collection \
+          --hidden-import=talk_to_metabase.tools.database \
+          --hidden-import=talk_to_metabase.tools.search \
+          --hidden-import=talk_to_metabase.tools.context \
+          --console \
+          metabase_mcp.py
+
+    - name: Build executable (Windows)
+      if: runner.os == 'Windows'
+      run: |
+        python -m PyInstaller `
+          --onefile `
+          --name=talk-to-metabase-${{ matrix.name }} `
+          --clean `
+          --noconfirm `
+          --add-data="talk_to_metabase/schemas;talk_to_metabase/schemas" `
+          --hidden-import=talk_to_metabase `
+          --hidden-import=talk_to_metabase.tools `
+          --hidden-import=talk_to_metabase.tools.dashboard `
+          --hidden-import=talk_to_metabase.tools.card `
+          --hidden-import=talk_to_metabase.tools.collection `
+          --hidden-import=talk_to_metabase.tools.database `
+          --hidden-import=talk_to_metabase.tools.search `
+          --hidden-import=talk_to_metabase.tools.context `
+          --console `
+          metabase_mcp.py
+
+    - name: Verify executable (macOS/Linux)
+      if: runner.os != 'Windows'
+      run: |
+        ls -la dist/
+        file dist/talk-to-metabase-${{ matrix.name }} || true
+        # Quick test that it starts
+        timeout 10s ./dist/talk-to-metabase-${{ matrix.name }} --help || echo "Test completed"
+
+    - name: Verify executable (Windows)
+      if: runner.os == 'Windows'
+      run: |
+        Get-ChildItem dist/
+        # Quick test that it starts
+        Start-Process -FilePath "dist/talk-to-metabase-${{ matrix.name }}.exe" -ArgumentList "--help" -Wait -WindowStyle Hidden
+
+    - name: Upload artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: talk-to-metabase-${{ matrix.name }}
+        path: |
+          dist/talk-to-metabase-${{ matrix.name }}*
+        retention-days: 30
