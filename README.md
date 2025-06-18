@@ -69,12 +69,15 @@ This MCP server implements the [Model Context Protocol](https://modelcontextprot
 - **Automatic Discovery**: Finds guidelines in "000 Talk to Metabase" collection
 - **Fallback System**: Provides setup instructions when custom guidelines aren't configured
 
-## ❌ Limitations
-What Talk to Metabase can't do (yet):
-- **UI Cards**: Edit UI-friendly (MBQL) cards, thus it can read and mimic them, but the result will be a SQL card
-- **Delete resources**
-- **Custom cards filters**: Handle card custom filters (aka parameters)
-- **Models**: Use and edit models
+## Not Yet Implemented
+
+### 🚧 Planned Features
+- **Models** : Build and use models
+- **Full support of parameters**: Create and edit SQL card parameters and link them to a dashboard's
+- **Safe mode**: Disable editing features for read-only users
+- **Auto-debug mode**: Always run a query before pushing it
+- **MQBL support**: Create and edit UI-built cards
+- **Pivot tables**: Handle pivot tables visualization settings (only works with MBQL questions)
 
 ## Architecture Highlights
 
@@ -92,16 +95,6 @@ What Talk to Metabase can't do (yet):
 - **Session Caching**: Automatic session token management
 - **Re-authentication**: Automatic re-authentication on token expiry
 - **Environment Configuration**: Secure credential management
-
-## Not Yet Implemented
-
-### 🚧 Planned Features
-- **Models** : Build and use models
-- **Full support of parameters**: Create and edit SQL card parameters and link them to a dashboard's
-- **Safe mode**: Disable editing features for read-only users
-- **Auto-debug mode**: Always run a query before pushing it
-- **MQBL support**: Create and edit UI-built cards
-- **Pivot tables**: Handle pivot tables visualization settings (only works with MBQL questions)
 
 ## Existing tools in detail
 
