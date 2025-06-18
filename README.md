@@ -2,6 +2,26 @@
 
 A Model Context Protocol (MCP) server that integrates Claude with Metabase, providing AI-powered data analysis, visualization, and dashboard management capabilities.
 
+## Quick Start
+
+### Download Prebuilt Executable
+
+1. **Download** the appropriate executable for your platform from the [latest release](https://github.com/vincentgefflaut/talk-to-metabase/releases/latest):
+   - `talk-to-metabase-macos-intel` - Intel Mac (x86_64)
+   - `talk-to-metabase-macos-apple-silicon` - Apple Silicon Mac (M1/M2/M3)
+   - `talk-to-metabase-linux` - Linux (x86_64)
+   - `talk-to-metabase-windows.exe` - Windows (x86_64)
+
+2. **Allow the executable to run** (macOS only):
+   On macOS, you'll need to bypass the security warning the first time:
+   - Right-click the executable and select "Open"
+   - Click "Open" when prompted about unidentified developer
+   - The executable will be trusted for future runs
+
+3. **Configure Claude Desktop** (see Configuration section below)
+
+4. **Restart Claude Desktop** and start chatting with your Metabase data!
+
 ## Overview
 
 This MCP server implements the [Model Context Protocol](https://modelcontextprotocol.io/) specification to connect Claude with Metabase, allowing Claude to:
@@ -18,9 +38,9 @@ Configure the server through environment variables or directly in the Claude Des
 ```json
 {
   "mcpServers": {
-    "metabase": {
-      "command": "path-to-metabase-mcp-server",
-      "args": ["--config", "stdio"],
+    "Talk to Metabase": {
+      "command": "/path/to/talk-to-metabase-[your-platform]",
+      "args": [],
       "env": {
         "METABASE_URL": "https://your-metabase-instance.company.com",
         "METABASE_USERNAME": "user@example.com",
@@ -35,15 +55,15 @@ Configure the server through environment variables or directly in the Claude Des
 
 ### Configuration Parameters
 
-| Parameter | Description | Default |
-|-----------|-------------|--------|
-| METABASE_URL | Base URL of your Metabase instance | (Required) |
-| METABASE_USERNAME | Username for authentication | (Required) |
-| METABASE_PASSWORD | Password for authentication | (Required) |
-| RESPONSE_SIZE_LIMIT | Maximum size (in characters) for responses sent to Claude | 100000 |
-| METABASE_CONTEXT_AUTO_INJECT | Whether to automatically load context guidelines | true |
-| MCP_TRANSPORT | Transport method (stdio, sse, streamable-http) | stdio |
-| LOG_LEVEL | Logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL) | INFO |
+| Parameter | Description | Required | Default |
+|-----------|-------------|----------|----------|
+| METABASE_URL | Base URL of your Metabase instance | ✅ Yes | - |
+| METABASE_USERNAME | Username for authentication | ✅ Yes | - |
+| METABASE_PASSWORD | Password for authentication | ✅ Yes | - |
+| RESPONSE_SIZE_LIMIT | Maximum size (in characters) for responses sent to Claude | No | 100000 |
+| METABASE_CONTEXT_AUTO_INJECT | Whether to automatically load context guidelines | No | true |
+| MCP_TRANSPORT | Transport method (stdio, sse, streamable-http) | No | stdio |
+| LOG_LEVEL | Logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL) | No | INFO |
 
 ### Metabase Context Guidelines
 
@@ -99,13 +119,33 @@ To create custom guidelines for your organization:
 
 **Usage**: The guidelines tool is designed to be called at the beginning of Metabase conversations to provide Claude with helpful context about your instance, collections, databases, and best practices.
 
-## Installation
+## Development
+
+For developers who want to run from source or contribute to the project:
 
 1. Clone this repository
 2. Install with pip:
-   ```
+   ```bash
    pip install -e .
    ```
+3. Run the server:
+   ```bash
+   python metabase_mcp.py
+   ```
+
+See [DEVELOPMENT.md](DEVELOPMENT.md) for detailed development instructions.
+
+## Troubleshooting
+
+### Windows Security Warning
+If Windows Defender blocks the executable:
+1. Click "More info" then "Run anyway"
+2. Or add an exception in Windows Security
+
+### Connection Issues
+- Verify your Metabase URL is accessible
+- Check your username and password
+- Ensure your Metabase instance allows API access
 
 ## Usage
 
