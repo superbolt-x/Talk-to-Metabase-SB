@@ -1,0 +1,17 @@
+# Talk to Metabase - MCP Server Dependencies
+# Generated from pyproject.toml
+
+# Core MCP and HTTP dependencies
+mcp>=1.2.0
+httpx>=0.24.0
+
+# Data validation and configuration
+pydantic>=2.0.0
+python-dotenv>=1.0.0
+
+# JSON schema validation for visualization settings
+jsonschema>=4.0.0
+
+# Additional dependencies that might be needed by the MCP framework
+anyio>=3.0.0
+typing-extensions>=4.0.0
