@@ -13,10 +13,11 @@ A Model Context Protocol (MCP) server that integrates Claude with Metabase, prov
    - `talk-to-metabase-windows.exe` - Windows (x86_64)
 
 2. **Allow the executable to run** (macOS only):
-   On macOS, you'll need to bypass the security warning the first time:
+   On macOS, you'll need to bypass the security warning the first time[^1]:
    - Right-click the executable and select "Open"
    - Click "Open" when prompted about unidentified developer
    - The executable will be trusted for future runs
+[^1]: no Apple I won't pay a $99 developer license
 
 3. **Configure Claude Desktop** (see Configuration section below)
 
