@@ -74,7 +74,7 @@ The server includes a context guidelines system that automatically retrieves org
 
 The system automatically looks for custom guidelines stored in your Metabase instance:
 
-1. **Collection**: "000 Talk to Metabase" (must be at root level)
+1. **Collection**: "000 Talk to Metabase" (must be at root level i.e. in "Our Analytics")
 2. **Dashboard**: "Talk to Metabase Guidelines" (inside the collection above)
 3. **Content**: Guidelines text stored in a text box on the dashboard
 
@@ -89,7 +89,7 @@ To create custom guidelines for your organization:
 1. **Create the Collection**:
    - Go to your Metabase instance
    - Create a collection named exactly: `000 Talk to Metabase`
-   - Place it at the root level (not inside any other collection)
+   - Place it at the root level - also called "Our Analytics" (not inside any other collection)
    - Make sure it's readable by all Talk to Metabase users
 
 2. **Create the Guidelines Dashboard**:
