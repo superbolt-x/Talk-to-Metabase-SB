@@ -2,6 +2,19 @@
 
 A Model Context Protocol (MCP) server that integrates Claude with Metabase, providing AI-powered data analysis, visualization, and dashboard management capabilities.
 
+## Overview
+
+This MCP server implements the [Model Context Protocol](https://modelcontextprotocol.io/) specification to connect Claude with Metabase, allowing Claude to:
+
+- **📊 Database Operations**: List databases, explore schemas and tables, get field metadata
+- **🔍 Search & Discovery**: Search across all Metabase resources with advanced filtering
+- **📈 Cards (Questions)**: Create, read, update SQL cards with visualization settings
+- **📋 Dashboards**: Create, view, and update dashboards with cards, tabs, and parameters
+- **📁 Collections**: Navigate collection hierarchies and view contents
+- **⚙️ Query Execution**: Run SQL queries directly or execute card queries with dashboard context
+- **🎨 Visualization Settings**: Comprehensive support for 17 chart types with JSON schema validation
+- **📝 Context Guidelines**: Custom organization-specific guidelines stored in Metabase
+
 ## Quick Start
 
 ### Download Prebuilt Executable
@@ -23,18 +36,39 @@ A Model Context Protocol (MCP) server that integrates Claude with Metabase, prov
 
 4. **Restart Claude Desktop** and start chatting with your Metabase data!
 
-## Overview
+## Configuration
 
-This MCP server implements the [Model Context Protocol](https://modelcontextprotocol.io/) specification to connect Claude with Metabase, allowing Claude to:
+Configure the server through environment variables or directly in the Claude Desktop configuration file:
 
-- **📊 Database Operations**: List databases, explore schemas and tables, get field metadata
-- **🔍 Search & Discovery**: Search across all Metabase resources with advanced filtering
-- **📈 Cards (Questions)**: Create, read, update SQL cards with visualization settings
-- **📋 Dashboards**: Create, view, and update dashboards with cards, tabs, and parameters
-- **📁 Collections**: Navigate collection hierarchies and view contents
-- **⚙️ Query Execution**: Run SQL queries directly or execute card queries with dashboard context
-- **🎨 Visualization Settings**: Comprehensive support for 17 chart types with JSON schema validation
-- **📝 Context Guidelines**: Custom organization-specific guidelines stored in Metabase
+```json
+{
+  "mcpServers": {
+    "Talk to Metabase": {
+      "command": "/path/to/talk-to-metabase-[your-platform]",
+      "args": [],
+      "env": {
+        "METABASE_URL": "https://your-metabase-instance.company.com",
+        "METABASE_USERNAME": "user@example.com",
+        "METABASE_PASSWORD": "your-password",
+        "RESPONSE_SIZE_LIMIT": "100000",
+        "METABASE_CONTEXT_AUTO_INJECT": "true"
+      }
+    }
+  }
+}
+```
+
+### Configuration Parameters
+
+| Parameter | Description | Required | Default |
+|-----------|-------------|----------|----------|
+| METABASE_URL | Base URL of your Metabase instance | ✅ Yes | - |
+| METABASE_USERNAME | Username for authentication | ✅ Yes | - |
+| METABASE_PASSWORD | Password for authentication | ✅ Yes | - |
+| RESPONSE_SIZE_LIMIT | Maximum size (in characters) for responses sent to Claude | No | 100000 |
+| METABASE_CONTEXT_AUTO_INJECT | Whether to automatically load context guidelines | No | true |
+| MCP_TRANSPORT | Transport method (stdio, sse, streamable-http) | No | stdio |
+| LOG_LEVEL | Logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL) | No | INFO |
 
 ## Key Features & Capabilities
 
@@ -136,39 +170,6 @@ This MCP server implements the [Model Context Protocol](https://modelcontextprot
 #### Context Guidelines
 - **`GET_METABASE_GUIDELINES`** - Retrieve custom organization guidelines from Metabase or default setup instructions
 
-## Configuration
-
-Configure the server through environment variables or directly in the Claude Desktop configuration file:
-
-```json
-{
-  "mcpServers": {
-    "Talk to Metabase": {
-      "command": "/path/to/talk-to-metabase-[your-platform]",
-      "args": [],
-      "env": {
-        "METABASE_URL": "https://your-metabase-instance.company.com",
-        "METABASE_USERNAME": "user@example.com",
-        "METABASE_PASSWORD": "your-password",
-        "RESPONSE_SIZE_LIMIT": "100000",
-        "METABASE_CONTEXT_AUTO_INJECT": "true"
-      }
-    }
-  }
-}
-```
-
-### Configuration Parameters
-
-| Parameter | Description | Required | Default |
-|-----------|-------------|----------|----------|
-| METABASE_URL | Base URL of your Metabase instance | ✅ Yes | - |
-| METABASE_USERNAME | Username for authentication | ✅ Yes | - |
-| METABASE_PASSWORD | Password for authentication | ✅ Yes | - |
-| RESPONSE_SIZE_LIMIT | Maximum size (in characters) for responses sent to Claude | No | 100000 |
-| METABASE_CONTEXT_AUTO_INJECT | Whether to automatically load context guidelines | No | true |
-| MCP_TRANSPORT | Transport method (stdio, sse, streamable-http) | No | stdio |
-| LOG_LEVEL | Logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL) | No | INFO |
 
 ## Metabase Context Guidelines
 
