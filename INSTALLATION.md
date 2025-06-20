@@ -2,21 +2,28 @@
 
 ## Download and Install
 
-1. **Download** the appropriate file for your platform from the [latest release](https://github.com/VincentGefflaut/SuperMetabase/releases/latest):
+1. **Download** the appropriate file for your platform from the [latest release](https://github.com/VincentGefflaut/Talk-to-Metabase/releases/latest):
    - `talk-to-metabase-macos-intel.tar.gz` - Intel Mac (x86_64)
    - `talk-to-metabase-macos-apple-silicon.tar.gz` - Apple Silicon Mac (M1/M2/M3/M4)
    - `talk-to-metabase-linux.tar.gz` - Linux (x86_64)
    - `talk-to-metabase-windows.exe` - Windows (x86_64)
 
 2. **Extract and run**:
-   ```bash
-   # macOS/Linux - Extract with preserved permissions
-   tar -xzf talk-to-metabase-*.tar.gz
-   ./talk-to-metabase-*
-   
-   # Windows - Just run the .exe file
-   talk-to-metabase-windows.exe
-   ```
+    ```bash
+    # macOS - Extract and authorize to run
+    Click on the downloaded .tar.gz file - it should create an unzipped file
+    On the newly extracted file, do right click>open and then click "open" on the popup
+    Close the terminal that just poped-up (you can click on "Terminate" on the pop-up)
+
+    ./talk-to-metabase-*
+
+    # Linux - Extract with preserved permissions
+    tar -xzf talk-to-metabase-*.tar.gz
+    ./talk-to-metabase-*
+    
+    # Windows - Just run the .exe file
+    talk-to-metabase-windows.exe
+    ```
    
    ✅ **No chmod needed!** Executable permissions are preserved in the archive.
 
