@@ -19,9 +19,6 @@ dependencies = [
     "python-dotenv>=1.0.0",
     "jsonschema>=4.0.0",
 ]
-packages = [
-    {include = "talk_to_metabase"}
-]
 
 [project.optional-dependencies]
 dev = [
@@ -49,12 +46,17 @@ asyncio_mode = "auto"
 
 [tool.hatch.build.targets.wheel]
 packages = ["talk_to_metabase"]
+artifacts = [
+    "talk_to_metabase/schemas/*.json",
+    "talk_to_metabase/schemas/*.md",
+]
 
 [tool.hatch.build.targets.sdist]
 include = [
-    "talk_to_metabase",
-    "tests",
+    "talk_to_metabase/",
+    "tests/",
     "pyproject.toml",
     "README.md",
     "LICENSE",
+    "MANIFEST.in",
 ]

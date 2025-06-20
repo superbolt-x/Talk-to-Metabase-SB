@@ -4,13 +4,13 @@ Dashboard cards validation tools for Metabase MCP server.
 
 import json
 import logging
-import os
 from typing import Dict, List, Tuple, Any, Optional
 
 import jsonschema
 from mcp.server.fastmcp import Context
 
 from ..server import get_server_instance
+from ..resources import load_dashcards_schema
 from .common import format_error_response, check_response_size
 
 logger = logging.getLogger(__name__)
@@ -19,30 +19,7 @@ logger = logging.getLogger(__name__)
 mcp = get_server_instance()
 
 
-def load_dashcards_schema() -> Optional[Dict[str, Any]]:
-    """
-    Load the JSON schema for dashcards validation.
-    
-    Returns:
-        Dashcards schema dictionary or None if loading fails
-    """
-    try:
-        schema_path = os.path.join(
-            os.path.dirname(__file__), 
-            "..", 
-            "schemas", 
-            "dashcards.json"
-        )
-        
-        if not os.path.exists(schema_path):
-            logger.error(f"Dashcards schema file not found: {schema_path}")
-            return None
-            
-        with open(schema_path, 'r', encoding='utf-8') as f:
-            return json.load(f)
-    except Exception as e:
-        logger.error(f"Error loading dashcards schema: {e}")
-        return None
+# Note: load_dashcards_schema is now imported from resources module
 
 
 def validate_dashcards(dashcards: List[Dict[str, Any]]) -> Tuple[bool, List[str]]:

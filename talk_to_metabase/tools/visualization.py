@@ -4,13 +4,13 @@ Visualization documentation and validation tools for Metabase MCP server.
 
 import json
 import logging
-import os
 from typing import Dict, List, Tuple, Any, Optional
 
 import jsonschema
 from mcp.server.fastmcp import Context
 
 from ..server import get_server_instance
+from ..resources import load_visualization_schema, load_visualization_docs
 from .common import format_error_response, check_response_size
 
 logger = logging.getLogger(__name__)
@@ -41,22 +41,8 @@ def load_schema(chart_type: str) -> Optional[Dict[str, Any]]:
         # Convert UI name to API name if needed
         api_chart_type = UI_TO_API_MAPPING.get(chart_type, chart_type)
         
-        # Use the schema file name (which should match the API name)
-        schema_file_name = api_chart_type
-        
-        schema_path = os.path.join(
-            os.path.dirname(__file__), 
-            "..", 
-            "schemas", 
-            f"{schema_file_name}_visualization.json"
-        )
-        
-        if not os.path.exists(schema_path):
-            logger.error(f"Schema file not found: {schema_path}")
-            return None
-            
-        with open(schema_path, 'r', encoding='utf-8') as f:
-            return json.load(f)
+        # Use the resource utility to load the schema
+        return load_visualization_schema(api_chart_type)
     except Exception as e:
         logger.error(f"Error loading schema for {chart_type}: {e}")
         return None
@@ -67,22 +53,8 @@ def load_documentation(chart_type: str) -> Optional[str]:
         # Convert UI name to API name if needed
         api_chart_type = UI_TO_API_MAPPING.get(chart_type, chart_type)
         
-        # Use the schema file name for documentation (which should match the API name)
-        docs_file_name = api_chart_type
-        
-        docs_path = os.path.join(
-            os.path.dirname(__file__), 
-            "..", 
-            "schemas", 
-            f"{docs_file_name}_visualization_docs.md"
-        )
-        
-        if not os.path.exists(docs_path):
-            logger.error(f"Documentation file not found: {docs_path}")
-            return None
-            
-        with open(docs_path, 'r', encoding='utf-8') as f:
-            return f.read()
+        # Use the resource utility to load the documentation
+        return load_visualization_docs(api_chart_type)
     except Exception as e:
         logger.error(f"Error loading documentation for {chart_type}: {e}")
         return None

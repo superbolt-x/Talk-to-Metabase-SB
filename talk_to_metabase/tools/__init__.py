@@ -10,6 +10,10 @@ try:
     from . import common
     logger.info("Loaded common tools module")
     
+    # Import resources module to ensure it's available for PyInstaller
+    from .. import resources
+    logger.info("Loaded resources module")
+    
     from . import dashboard
     logger.info("Loaded dashboard tools module")
     

@@ -7,6 +7,7 @@ import os
 import sys
 import logging
 import traceback
+import argparse
 from dotenv import load_dotenv
 
 # Set up logging
@@ -37,8 +38,26 @@ try:
     logger.info("Successfully imported talk_to_metabase.server module")
     
     if __name__ == "__main__":
-        logger.info("Starting Talk to Metabase MCP server...")
-        run_server()
+        # Parse command line arguments
+        parser = argparse.ArgumentParser(description="Talk to Metabase MCP Server")
+        parser.add_argument("-c", "--command", help="Execute a Python script file for debugging")
+        args = parser.parse_args()
+        
+        if args.command:
+            # Debug mode: execute the specified script
+            logger.info(f"Debug mode: executing script {args.command}")
+            try:
+                with open(args.command, 'r') as f:
+                    script_content = f.read()
+                exec(script_content)
+            except Exception as e:
+                logger.error(f"Error executing debug script: {e}")
+                traceback.print_exc()
+                sys.exit(1)
+        else:
+            # Normal mode: start the MCP server
+            logger.info("Starting Talk to Metabase MCP server...")
+            run_server()
 except Exception as e:
     logger.error(f"Error starting server: {e}")
     logger.error(traceback.format_exc())

@@ -4,7 +4,6 @@ Card parameters validation tools for Metabase MCP server.
 
 import json
 import logging
-import os
 import random
 import re
 import string
@@ -14,6 +13,7 @@ import jsonschema
 from mcp.server.fastmcp import Context
 
 from ..server import get_server_instance
+from ..resources import load_card_parameters_schema
 from .common import format_error_response, check_response_size
 
 logger = logging.getLogger(__name__)
@@ -22,30 +22,7 @@ logger = logging.getLogger(__name__)
 mcp = get_server_instance()
 
 
-def load_card_parameters_schema() -> Optional[Dict[str, Any]]:
-    """
-    Load the JSON schema for card parameters validation.
-    
-    Returns:
-        Card parameters schema dictionary or None if loading fails
-    """
-    try:
-        schema_path = os.path.join(
-            os.path.dirname(__file__), 
-            "..", 
-            "schemas", 
-            "card_parameters.json"
-        )
-        
-        if not os.path.exists(schema_path):
-            logger.error(f"Card parameters schema file not found: {schema_path}")
-            return None
-            
-        with open(schema_path, 'r', encoding='utf-8') as f:
-            return json.load(f)
-    except Exception as e:
-        logger.error(f"Error loading card parameters schema: {e}")
-        return None
+# Note: load_card_parameters_schema is now imported from resources module
 
 
 def generate_parameter_id() -> str:

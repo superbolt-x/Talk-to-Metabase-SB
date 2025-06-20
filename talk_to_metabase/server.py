@@ -83,6 +83,9 @@ def run_server() -> None:
     # Import tools modules to register tools with the server
     logger.info("Registering tools...")
     try:
+        # Import resources module to ensure it's available
+        from . import resources
+        
         # This import triggers the tool registration
         from . import tools
         logger.info("Tools registered successfully")
