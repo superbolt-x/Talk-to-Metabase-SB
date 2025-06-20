@@ -62,6 +62,18 @@ jobs:
           --console \
           metabase_mcp.py
 
+    - name: Set executable permissions and create archive (macOS/Linux)
+      if: runner.os != 'Windows'
+      run: |
+        chmod +x dist/talk-to-metabase-${{ matrix.name }}
+        # Create tar.gz to preserve permissions
+        cd dist
+        tar -czf talk-to-metabase-${{ matrix.name }}.tar.gz talk-to-metabase-${{ matrix.name }}
+        ls -la
+        # Verify the executable in the archive
+        tar -tzf talk-to-metabase-${{ matrix.name }}.tar.gz
+        cd ..
+
     - name: Build executable (Windows)
       if: runner.os == 'Windows'
       run: |
@@ -135,26 +147,54 @@ jobs:
         ls -la artifacts/
         find artifacts -type f -name "talk-to-metabase-*" -exec ls -la {} \;
 
+    - name: Prepare release files
+      run: |
+        # Set executable permissions for Unix executables (artifacts may not preserve this)
+        find artifacts -name "talk-to-metabase-macos-*" ! -name "*.tar.gz" -exec chmod +x {} \; || true
+        find artifacts -name "talk-to-metabase-linux*" ! -name "*.tar.gz" -exec chmod +x {} \; || true
+        # Verify all files
+        find artifacts -type f -name "talk-to-metabase-*" -exec ls -la {} \;
+
+    - name: Make installer scripts executable
+      run: |
+        chmod +x scripts/install-macos.sh
+        chmod +x scripts/install-linux.sh
+
     - name: Create Release
       uses: softprops/action-gh-release@v1
       with:
         files: |
           artifacts/*/talk-to-metabase-*
+          scripts/install-macos.sh
+          scripts/install-linux.sh
         generate_release_notes: true
         draft: false
         prerelease: false
         body: |
           ## Talk to Metabase MCP Server
           
-          **Installation Instructions:**
+          **Easy Installation (Recommended):**
           
-          1. Download the appropriate executable for your platform:
-             - `talk-to-metabase-macos-intel` - Intel Mac (x86_64)
-             - `talk-to-metabase-macos-apple-silicon` - Apple Silicon Mac (M1/M2/M3)
-             - `talk-to-metabase-linux` - Linux (x86_64)
+          **macOS/Linux Users** - One-line install:
+          ```bash
+          # macOS
+          curl -L -o install.sh https://github.com/VincentGefflaut/SuperMetabase/releases/latest/download/install-macos.sh && chmod +x install.sh && ./install.sh
+          
+          # Linux  
+          curl -L -o install.sh https://github.com/VincentGefflaut/SuperMetabase/releases/latest/download/install-linux.sh && chmod +x install.sh && ./install.sh
+          ```
+          
+          **Manual Installation:**
+          
+          1. Download the appropriate file for your platform:
+             - `talk-to-metabase-macos-intel.tar.gz` - Intel Mac (x86_64)
+             - `talk-to-metabase-macos-apple-silicon.tar.gz` - Apple Silicon Mac (M1/M2/M3) 
+             - `talk-to-metabase-linux.tar.gz` - Linux (x86_64)
              - `talk-to-metabase-windows.exe` - Windows (x86_64)
           
-          2. Make the file executable (macOS/Linux): `chmod +x talk-to-metabase-*`
+          2. **Extract and set permissions**: 
+             - **macOS/Linux**: `tar -xzf talk-to-metabase-*.tar.gz` (permissions preserved)
+             - **Windows**: Just run the .exe file
           
           3. Add to your Claude Desktop configuration:
           ```json
