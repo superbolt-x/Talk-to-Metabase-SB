@@ -66,9 +66,11 @@ jobs:
       if: runner.os != 'Windows'
       run: |
         chmod +x dist/talk-to-metabase-${{ matrix.name }}
-        # Create tar.gz to preserve permissions
+        # Create tar.gz to preserve permissions and replace the plain executable
         cd dist
         tar -czf talk-to-metabase-${{ matrix.name }}.tar.gz talk-to-metabase-${{ matrix.name }}
+        # Remove the plain executable since we only want to distribute the tar.gz
+        rm talk-to-metabase-${{ matrix.name }}
         ls -la
         # Verify the executable in the archive
         tar -tzf talk-to-metabase-${{ matrix.name }}.tar.gz
@@ -149,52 +151,41 @@ jobs:
 
     - name: Prepare release files
       run: |
-        # Set executable permissions for Unix executables (artifacts may not preserve this)
-        find artifacts -name "talk-to-metabase-macos-*" ! -name "*.tar.gz" -exec chmod +x {} \; || true
-        find artifacts -name "talk-to-metabase-linux*" ! -name "*.tar.gz" -exec chmod +x {} \; || true
-        # Verify all files
+        # Display all downloaded files
         find artifacts -type f -name "talk-to-metabase-*" -exec ls -la {} \;
-
-    - name: Make installer scripts executable
-      run: |
-        chmod +x scripts/install-macos.sh
-        chmod +x scripts/install-linux.sh
+        # Note: tar.gz files already have preserved permissions
+        # Windows .exe files don't need permission changes
 
     - name: Create Release
       uses: softprops/action-gh-release@v1
       with:
         files: |
           artifacts/*/talk-to-metabase-*
-          scripts/install-macos.sh
-          scripts/install-linux.sh
         generate_release_notes: true
         draft: false
         prerelease: false
         body: |
           ## Talk to Metabase MCP Server
           
-          **Easy Installation (Recommended):**
+          **Installation Instructions:**
           
-          **macOS/Linux Users** - One-line install:
-          ```bash
-          # macOS
-          curl -L -o install.sh https://github.com/VincentGefflaut/SuperMetabase/releases/latest/download/install-macos.sh && chmod +x install.sh && ./install.sh
-          
-          # Linux  
-          curl -L -o install.sh https://github.com/VincentGefflaut/SuperMetabase/releases/latest/download/install-linux.sh && chmod +x install.sh && ./install.sh
-          ```
-          
-          **Manual Installation:**
-          
-          1. Download the appropriate file for your platform:
+          1. **Download** the appropriate file for your platform:
              - `talk-to-metabase-macos-intel.tar.gz` - Intel Mac (x86_64)
-             - `talk-to-metabase-macos-apple-silicon.tar.gz` - Apple Silicon Mac (M1/M2/M3) 
+             - `talk-to-metabase-macos-apple-silicon.tar.gz` - Apple Silicon Mac (M1/M2/M3/M4) 
              - `talk-to-metabase-linux.tar.gz` - Linux (x86_64)
              - `talk-to-metabase-windows.exe` - Windows (x86_64)
           
-          2. **Extract and set permissions**: 
-             - **macOS/Linux**: `tar -xzf talk-to-metabase-*.tar.gz` (permissions preserved)
-             - **Windows**: Just run the .exe file
+          2. **Extract and run**:
+             ```bash
+             # macOS/Linux - Extract with preserved permissions
+             tar -xzf talk-to-metabase-*.tar.gz
+             ./talk-to-metabase-*
+             
+             # Windows - Just run the .exe file
+             talk-to-metabase-windows.exe
+             ```
+             
+             ✅ **No chmod needed!** Executable permissions are preserved in the archive.
           
           3. Add to your Claude Desktop configuration:
           ```json
