@@ -1,0 +1,147 @@
+graph LR
+    Start([🎯 Metabase Filter]) --> SQLTemplate[Write SQL with template variable<br/>Example: WHERE column = variable_name]
+    SQLTemplate --> VarType{Choose Variable Type}
+    
+    %% Variable Type Branches
+    VarType --> Text[📝 Text]
+    VarType --> Number[🔢 Number]
+    VarType --> Date[📅 Date]
+    VarType --> FieldFilter[🔗 Field Filter]
+    
+    %% TEXT VARIABLE PATH
+    Text --> TextUI{Interface}
+    TextUI --> TextInput[Input Box]
+    TextUI --> TextSearch[Search Box]
+    TextUI --> TextDropdown[Dropdown list]
+    
+    TextInput --> Config[⚙️ Configuration]
+    TextSearch --> TextValueSource{Value Source}
+    TextDropdown --> TextValueSource
+    
+    TextValueSource --> TextCustom[Custom List]
+    TextValueSource --> TextModel[From Model/Question]
+    
+    TextCustom --> TextCustomInput[Input: List of values<br/>Format: value, Label OR value per line]
+    TextModel --> TextModelInput[Input: Select Model/Question<br/>Input: Choose Column]
+    
+    %% NUMBER VARIABLE PATH
+    Number --> NumUI{Interface}
+    NumUI --> NumInput[Input Box]
+    NumUI --> NumDropdown[Dropdown list]
+    NumUI --> NumSearch[Search Box]
+    
+    NumInput --> Config
+    NumDropdown --> NumValueSource{Value Source}
+    NumSearch --> NumValueSource
+    NumValueSource --> NumCustom[Custom List]
+    
+    NumCustom --> NumCustomInput[Input: List of values<br/>Format: value, Label OR value per line]
+    
+    %% DATE VARIABLE PATH
+    Date --> Config
+    
+    %% FIELD FILTER PATH
+    FieldFilter --> FieldMap{Choose Field to Map}
+    FieldMap --> FieldType[Field Data Type<br/>Auto-detected from database]
+    
+    %% STRING FIELD FILTERS
+    FieldType --> StringField[String Fields]
+    StringField --> StringWidgets{Choose Widget Type}
+    StringWidgets --> StringExact[String]
+    StringWidgets --> StringNot[String is not]
+    StringWidgets --> StringContains[String contains]
+    StringWidgets --> StringNotContain[String does not contain]
+    StringWidgets --> StringStarts[String starts with]
+    StringWidgets --> StringEnds[String ends with]
+    
+    StringExact --> StringInterface{Interface}
+    StringNot --> StringInterface
+    StringContains --> StringInterface
+    StringNotContain --> StringInterface
+    StringStarts --> StringInterface
+    StringEnds --> StringInterface
+    
+    StringInterface --> StringDrop[Dropdown list]
+    StringInterface --> StringSearch[Search Box]
+    StringInterface --> StringInput[Input Box]
+    
+    StringDrop --> StringSource{Value Source}
+    StringSearch --> StringSource
+    StringInput --> Config
+    StringSource --> StringConnected[From Connected Fields]
+    StringSource --> StringCustomList[Custom List]
+    StringSource --> StringModel[From Model/Question]
+    
+    StringConnected --> Config
+    StringCustomList --> StringCustomInput[Input: List of values<br/>Format: value, Label OR value per line]
+    StringModel --> StringModelInput[Input: Select Model/Question<br/>Input: Choose Column]
+    
+    %% NUMERIC FIELD FILTERS
+    FieldType --> NumericField[Numeric Fields]
+    NumericField --> NumericWidgets{Choose Widget Type}
+    NumericWidgets --> NumEqual[Equal to]
+    NumericWidgets --> NumNotEqual[Not equal to]
+    NumericWidgets --> NumBetween[Between]
+    NumericWidgets --> NumGreater[Greater than or equal]
+    NumericWidgets --> NumLess[Less than or equal]
+    
+    NumEqual --> NumericInterface{Interface}
+    NumNotEqual --> NumericInterface
+    NumBetween --> NumericInterface
+    NumGreater --> NumericInterface
+    NumLess --> NumericInterface
+    
+    NumericInterface --> NumericInputBox[Input Box]
+    NumericInterface --> NumericDropdown[Dropdown list]
+    NumericInterface --> NumericSearch[Search Box]
+    
+    NumericInputBox --> Config
+    NumericDropdown --> NumericValueSource{Value Source}
+    NumericSearch --> NumericValueSource
+    NumericValueSource --> NumericConnected[From Connected Fields]
+    NumericValueSource --> NumericCustomList[Custom List]
+    
+    NumericConnected --> Config
+    NumericCustomList --> NumericCustomInput[Input: List of values<br/>Format: value, Label OR value per line]
+    
+    %% DATE FIELD FILTERS
+    FieldType --> DateField[Date Fields]
+    DateField --> DateWidgets{Choose Widget Type}
+    DateWidgets --> MonthYear[Month and Year]
+    DateWidgets --> QuarterYear[Quarter and Year]
+    DateWidgets --> SingleDate[Single Date]
+    DateWidgets --> DateRange[Date Range]
+    DateWidgets --> RelativeDate[Relative Date]
+    DateWidgets --> AllOptions[All Options]
+    
+    MonthYear --> Config
+    QuarterYear --> Config
+    SingleDate --> Config
+    DateRange --> Config
+    RelativeDate --> Config
+    AllOptions --> Config
+    
+    %% COMMON CONFIGURATION
+    TextCustomInput --> Config
+    TextModelInput --> Config
+    NumCustomInput --> Config
+    StringConnected --> Config
+    StringCustomInput --> Config
+    StringModelInput --> Config
+    NumericConnected --> Config
+    NumericCustomInput --> Config
+    
+    Config --> Settings[Final Settings:<br/>Always require value Yes/No<br/>Filter widget label<br/>Default value optional]
+    
+    Settings --> Complete([✅ Complete])
+    
+    %% STYLING
+    classDef startEnd fill:#e1f5fe,stroke:#01579b,stroke-width:3px
+    classDef varType fill:#f3e5f5,stroke:#4a148c,stroke-width:2px
+    classDef consolidated fill:#e8f5e8,stroke:#1b5e20,stroke-width:2px
+    classDef config fill:#fff3e0,stroke:#e65100,stroke-width:2px
+    
+    class Start,Complete startEnd
+    class VarType,Text,Number,Date,FieldFilter varType
+    class StringWidgets,NumericWidgets,DateWidgets,Settings consolidated
+    class Config,TextValueSource,StringSource config
