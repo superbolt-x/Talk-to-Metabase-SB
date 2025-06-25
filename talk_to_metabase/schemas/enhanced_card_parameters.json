@@ -1,0 +1,236 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Enhanced Metabase Card Parameters Schema",
+  "description": "Comprehensive schema for card parameters supporting both simple filters and field filters with automatic template tag generation",
+  "type": "array",
+  "items": {
+    "type": "object",
+    "properties": {
+      "name": {
+        "type": "string",
+        "minLength": 1,
+        "pattern": "^[a-zA-Z][a-zA-Z0-9_]*$",
+        "description": "Parameter name - must start with letter, can contain letters, numbers, underscores"
+      },
+      "type": {
+        "type": "string",
+        "enum": [
+          "category",
+          "number/=",
+          "date/single",
+          "string/=",
+          "string/!=",
+          "string/contains",
+          "string/does-not-contain", 
+          "string/starts-with",
+          "string/ends-with",
+          "number/!=",
+          "number/between",
+          "number/>=",
+          "number/<=",
+          "date/range",
+          "date/relative", 
+          "date/all-options",
+          "date/month-year",
+          "date/quarter-year"
+        ],
+        "description": "Parameter type determining filtering behavior and UI widget"
+      },
+      "display_name": {
+        "type": "string",
+        "description": "Human-readable name shown in UI (defaults to name if not provided)"
+      },
+      "default": {
+        "description": "Default value for the parameter (format depends on parameter type)",
+        "anyOf": [
+          {"type": "string"},
+          {"type": "number"},
+          {"type": "boolean"},
+          {"type": "array"},
+          {"type": "null"}
+        ]
+      },
+      "required": {
+        "type": "boolean",
+        "default": false,
+        "description": "Whether the parameter requires a value. IMPORTANT: Required parameters MUST have a default value or card creation will fail."
+      },
+      "field": {
+        "type": "object",
+        "properties": {
+          "database_id": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Database ID containing the field"
+          },
+          "table_id": {
+            "type": "integer", 
+            "minimum": 1,
+            "description": "Table ID containing the field"
+          },
+          "field_id": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Field ID to filter on"
+          }
+        },
+        "required": ["database_id", "table_id", "field_id"],
+        "additionalProperties": false,
+        "description": "Field reference for field filter parameters"
+      },
+      "ui_widget": {
+        "type": "string",
+        "enum": ["input", "dropdown", "search"],
+        "description": "UI widget type for parameter input"
+      },
+      "values_source": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": ["static", "card", "connected"],
+            "description": "Source type for parameter values"
+          },
+          "values": {
+            "type": "array",
+            "items": {
+              "anyOf": [
+                {"type": "string"},
+                {"type": "number"},
+                {"type": "boolean"}
+              ]
+            },
+            "description": "Static list of values (when type is 'static')"
+          },
+          "card_id": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Card ID to source values from (when type is 'card')"
+          },
+          "value_field": {
+            "type": "string",
+            "description": "Column name for values (when type is 'card')"
+          },
+          "label_field": {
+            "type": "string", 
+            "description": "Column name for display labels (when type is 'card')"
+          }
+        },
+        "required": ["type"],
+        "additionalProperties": false,
+        "description": "Configuration for parameter value sources"
+      }
+    },
+    "required": ["name", "type"],
+    "additionalProperties": false,
+    "anyOf": [
+      {
+        "description": "Simple parameters (category, number/=, date/single)",
+        "properties": {
+          "type": {
+            "enum": ["category", "number/=", "date/single"]
+          }
+        }
+      },
+      {
+        "description": "Field filter parameters require field configuration",
+        "properties": {
+          "type": {
+            "not": {
+              "enum": ["category", "number/=", "date/single"]
+            }
+          }
+        },
+        "required": ["field"]
+      }
+    ],
+    "allOf": [
+      {
+        "description": "Dropdown widget requires values_source (except for connected field filters)",
+        "if": {
+          "allOf": [
+            {
+              "properties": {
+                "ui_widget": {"const": "dropdown"}
+              },
+              "required": ["ui_widget"]
+            },
+            {
+              "not": {
+                "allOf": [
+                  {"required": ["field"]},
+                  {
+                    "properties": {
+                      "values_source": {
+                        "properties": {
+                          "type": {"const": "connected"}
+                        }
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        "then": {
+          "required": ["values_source"]
+        }
+      },
+      {
+        "description": "Search widget requires values_source",
+        "if": {
+          "properties": {
+            "ui_widget": {"const": "search"}
+          },
+          "required": ["ui_widget"]
+        },
+        "then": {
+          "required": ["values_source"]
+        }
+      },
+      {
+        "description": "Static values_source requires values array",
+        "if": {
+          "properties": {
+            "values_source": {
+              "properties": {
+                "type": {"const": "static"}
+              },
+              "required": ["type"]
+            }
+          },
+          "required": ["values_source"]
+        },
+        "then": {
+          "properties": {
+            "values_source": {
+              "required": ["values"]
+            }
+          }
+        }
+      },
+      {
+        "description": "Card values_source requires card_id and value_field",
+        "if": {
+          "properties": {
+            "values_source": {
+              "properties": {
+                "type": {"const": "card"}
+              },
+              "required": ["type"]
+            }
+          },
+          "required": ["values_source"]
+        },
+        "then": {
+          "properties": {
+            "values_source": {
+              "required": ["card_id", "value_field"]
+            }
+          }
+        }
+      }
+    ]
+  }
+}

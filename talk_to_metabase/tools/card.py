@@ -20,18 +20,17 @@ logger.setLevel(logging.INFO)
 mcp = get_server_instance()
 logger.info("Registering card definition tools with the server...")
 
-# Import card parameters functions - handle import errors gracefully
+# Import enhanced parameters functions
 try:
-    from .card_parameters import (
-        validate_card_parameters_helper,
-        process_card_parameters,
-        generate_template_tags_from_parameters
+    from .enhanced_parameters import (
+        process_enhanced_parameters,
+        validate_enhanced_parameters_helper
     )
-    CARD_PARAMETERS_AVAILABLE = True
-    logger.info("Card parameters functionality loaded successfully")
+    ENHANCED_PARAMETERS_AVAILABLE = True
+    logger.info("Enhanced parameters functionality loaded successfully")
 except ImportError as e:
-    logger.warning(f"Card parameters functionality not available: {e}")
-    CARD_PARAMETERS_AVAILABLE = False
+    logger.warning(f"Enhanced parameters functionality not available: {e}")
+    ENHANCED_PARAMETERS_AVAILABLE = False
 
 
 def parse_parameters_if_string(parameters: Union[str, List[Dict[str, Any]], None]) -> Optional[List[Dict[str, Any]]]:
@@ -382,24 +381,38 @@ async def create_card(
     
     CUSTOMIZABLE FILTERS:
     You can create SQL queries with customizable filters using Metabase's template syntax:
-    - Use {{variable_name}} for required parameters (e.g., WHERE status = {{order_status}})
-    - Use [[AND condition = {{variable}}]] for optional filters that can be turned on/off
-    - These will create placeholder parameters that users can configure later in Metabase
+    
+    **SIMPLE VARIABLE FILTERS** (category, number/=, date/single):
+    - Use {{variable_name}} for direct value substitution
+    - Example: WHERE status = {{order_status}}
+    - Example: WHERE date >= {{start_date}}
+    - YOU provide the column name and operator in SQL
+    
+    **FIELD FILTERS** (string/=, number/between, date/range, etc.):
+    - Use {{field_filter_name}} for complete condition substitution
+    - Example: WHERE {{customer_filter}}
+    - Example: [[AND {{date_range_filter}}]]
+    - METABASE provides the column, operator, and formats the condition
+    
+    **OPTIONAL FILTERS:**
+    - Use [[AND condition]] for optional filters that can be turned on/off
+    - Works with both: [[AND status = {{simple_var}}]] or [[AND {{field_filter}}]]
     
     Examples:
-    - SELECT * FROM orders WHERE date > {{start_date}}
-    - SELECT * FROM products WHERE true [[AND category = {{category}}]] [[AND price > {{min_price}}]]
+    - SELECT * FROM orders WHERE date > {{start_date}} [[AND {{customer_filter}}]]
+    - SELECT * FROM products WHERE true [[AND category = {{category}}]] [[AND {{price_range}}]]
     
     PARAMETERS:
-    **IMPORTANT: Call GET_CARD_PARAMETERS_SCHEMA first to understand the parameters format**
+    **IMPORTANT: Call GET_ENHANCED_CARD_PARAMETERS_DOCUMENTATION first to understand the parameters format**
     
-    Parameters allow you to create interactive controls for your SQL queries:
-    - SIMPLIFIED SYSTEM: Only 3 parameter types supported (category, number/=, date/single)
-    - For NEW parameters: Only specify name, type, and other settings (ID and slug auto-generated)
-    - Parameter slugs are automatically generated from names - never specify manually
-    - Template tags are automatically generated from parameters
-    - All parameters use variable targets only (no field filters)
+    Enhanced parameters provide comprehensive filtering capabilities:
+    - SIMPLE FILTERS: category, number/=, date/single (work with {{variable}} in SQL)
+    - FIELD FILTERS: string/=, string/contains, number/between, date/range, etc. (connect to database columns)
+    - UI WIDGETS: input, dropdown, search with automatic value population
+    - VALUE SOURCES: static lists, card sources, connected field values
+    - AUTOMATIC PROCESSING: All UUIDs, template tags, targets, slugs generated automatically
     - Parameters can be provided as JSON string or list of dictionaries
+
     
     VISUALIZATION SETTINGS:
     **IMPORTANT: Call GET_VISUALIZATION_DOCUMENT first to understand the visualization settings format**
@@ -414,12 +427,15 @@ async def create_card(
         description: Optional description for the card
         display: Visualization type (default: "table")
         visualization_settings: Visualization settings dictionary (optional, call GET_VISUALIZATION_DOCUMENT for format)
-        parameters: List of parameter dictionaries or JSON string (optional, call GET_CARD_PARAMETERS_SCHEMA for format)
+        parameters: List of parameter dictionaries or JSON string (optional, call GET_ENHANCED_CARD_PARAMETERS_DOCUMENTATION for format)
         
     Returns:
         JSON string with creation result or error information
     """
     logger.info(f"Tool called: create_card(database_id={database_id}, name={name}, card_type={card_type}, display={display}, parameters={len(parameters) if isinstance(parameters, list) else 'string' if isinstance(parameters, str) else 0})")
+    
+    # Get the client early so it's available for parameter processing
+    client = get_metabase_client(ctx)
     
     # Validate card type
     valid_card_types = ["question", "model", "metric"]
@@ -451,29 +467,23 @@ async def create_card(
             # Parse parameters if they're a string
             parsed_parameters = parse_parameters_if_string(parameters)
             
-            if CARD_PARAMETERS_AVAILABLE and parsed_parameters:
-                # Validate parameters
-                validation_result = validate_card_parameters_helper(parsed_parameters)
-                if not validation_result["valid"]:
+            if ENHANCED_PARAMETERS_AVAILABLE and parsed_parameters:
+                # Process enhanced parameters with validation
+                processed_parameters, template_tags, errors = await process_enhanced_parameters(client, parsed_parameters)
+                if errors:
                     return json.dumps({
                         "success": False,
-                        "error": "Invalid parameters format",
-                        "validation_errors": validation_result["errors"],
+                        "error": "Invalid enhanced parameters",
+                        "validation_errors": errors,
                         "parameters_count": len(parsed_parameters),
-                        "help": "Call GET_CARD_PARAMETERS_SCHEMA to understand the correct format"
+                        "help": "Call GET_ENHANCED_CARD_PARAMETERS_DOCUMENTATION for format details"
                     }, indent=2)
-                
-                # Process parameters to generate IDs and slugs
-                processed_parameters = process_card_parameters(parsed_parameters)
-                
-                # Generate template tags from parameters
-                template_tags = generate_template_tags_from_parameters(processed_parameters)
             elif parsed_parameters:
-                # Parameters provided but card_parameters module not available
+                # Parameters provided but enhanced parameters module not available
                 return json.dumps({
                     "success": False,
-                    "error": "Parameters functionality not available",
-                    "message": "Card parameters module could not be imported"
+                    "error": "Enhanced parameters functionality not available",
+                    "message": "Enhanced parameters module could not be imported"
                 }, indent=2)
                 
         except ValueError as e:
@@ -482,8 +492,6 @@ async def create_card(
                 "error": "Parameter parsing error",
                 "message": str(e)
             }, indent=2)
-    
-    client = get_metabase_client(ctx)
     
     # Step 1: Execute the query to validate it
     execution_result = await execute_sql_query(client, database_id, query)
@@ -583,26 +591,39 @@ async def update_card(
     
     CUSTOMIZABLE FILTERS:
     When updating the query, you can use Metabase's template syntax for customizable filters:
-    - Use {{variable_name}} for required parameters (e.g., WHERE status = {{order_status}})
-    - Use [[AND condition = {{variable}}]] for optional filters that can be turned on/off
-    - These will create placeholder parameters that users can configure later in Metabase
+    
+    **SIMPLE VARIABLE FILTERS** (category, number/=, date/single):
+    - Use {{variable_name}} for direct value substitution
+    - Example: WHERE status = {{order_status}}
+    - Example: WHERE date >= {{start_date}}
+    - YOU provide the column name and operator in SQL
+    
+    **FIELD FILTERS** (string/=, number/between, date/range, etc.):
+    - Use {{field_filter_name}} for complete condition substitution
+    - Example: WHERE {{customer_filter}}
+    - Example: [[AND {{date_range_filter}}]]
+    - METABASE provides the column, operator, and formats the condition
+    
+    **OPTIONAL FILTERS:**
+    - Use [[AND condition]] for optional filters that can be turned on/off
+    - Works with both: [[AND status = {{simple_var}}]] or [[AND {{field_filter}}]]
     
     Examples:
-    - SELECT * FROM orders WHERE date > {{start_date}}
-    - SELECT * FROM products WHERE true [[AND category = {{category}}]] [[AND price > {{min_price}}]]
+    - SELECT * FROM orders WHERE date > {{start_date}} [[AND {{customer_filter}}]]
+    - SELECT * FROM products WHERE true [[AND category = {{category}}]] [[AND {{price_range}}]]
     
     PARAMETERS:
-    **IMPORTANT: Call GET_CARD_PARAMETERS_SCHEMA first to understand the parameters format**
+    **IMPORTANT: Call GET_ENHANCED_CARD_PARAMETERS_DOCUMENTATION first to understand the parameters format**
     
-    Parameters allow you to create interactive controls for your SQL queries:
-    - SIMPLIFIED SYSTEM: Only 3 parameter types supported (category, number/=, date/single)
-    - For NEW parameters: Only specify name, type, and other settings (ID and slug auto-generated)
-    - For EXISTING parameters: Include the existing ID to update that parameter
-    - Parameter slugs are automatically generated from names - never specify manually
-    - Template tags are automatically generated from parameters
-    - All parameters use variable targets only (no field filters)
+    Enhanced parameters provide comprehensive filtering capabilities:
+    - SIMPLE FILTERS: category, number/=, date/single (work with {{variable}} in SQL)
+    - FIELD FILTERS: string/=, string/contains, number/between, date/range, etc. (connect to database columns)
+    - UI WIDGETS: input, dropdown, search with automatic value population
+    - VALUE SOURCES: static lists, card sources, connected field values
+    - AUTOMATIC PROCESSING: All UUIDs, template tags, targets, slugs generated automatically
     - Parameters not included in the update will be REMOVED
     - Parameters can be provided as JSON string or list of dictionaries
+
     
     VISUALIZATION SETTINGS:
     **IMPORTANT: Call GET_VISUALIZATION_DOCUMENT first to understand the visualization settings format**
@@ -617,13 +638,14 @@ async def update_card(
         archived: Whether the card is archived (optional)
         display: New visualization type (optional)
         visualization_settings: New visualization settings dictionary (optional, call GET_VISUALIZATION_DOCUMENT for format)
-        parameters: New list of parameter dictionaries or JSON string (optional, call GET_CARD_PARAMETERS_SCHEMA for format)
+        parameters: New list of parameter dictionaries or JSON string (optional, call GET_ENHANCED_CARD_PARAMETERS_DOCUMENTATION for format)
         
     Returns:
         JSON string with update result or error information
     """
     logger.info(f"Tool called: update_card(id={id}, name={name}, display={display}, parameters={len(parameters) if isinstance(parameters, list) else 'string' if isinstance(parameters, str) else 0})")
     
+    # Get the client early so it's available for parameter processing
     client = get_metabase_client(ctx)
     
     # Initialize current_data as None
@@ -681,29 +703,23 @@ async def update_card(
             # Parse parameters if they're a string
             parsed_parameters = parse_parameters_if_string(parameters)
             
-            if CARD_PARAMETERS_AVAILABLE and parsed_parameters:
-                # Validate parameters
-                validation_result = validate_card_parameters_helper(parsed_parameters)
-                if not validation_result["valid"]:
+            if ENHANCED_PARAMETERS_AVAILABLE and parsed_parameters:
+                # Process enhanced parameters with validation
+                processed_parameters, template_tags, errors = await process_enhanced_parameters(client, parsed_parameters)
+                if errors:
                     return json.dumps({
                         "success": False,
-                        "error": "Invalid parameters format",
-                        "validation_errors": validation_result["errors"],
+                        "error": "Invalid enhanced parameters",
+                        "validation_errors": errors,
                         "parameters_count": len(parsed_parameters),
-                        "help": "Call GET_CARD_PARAMETERS_SCHEMA to understand the correct format"
+                        "help": "Call GET_ENHANCED_CARD_PARAMETERS_DOCUMENTATION for format details"
                     }, indent=2)
-                
-                # Process parameters to generate IDs and slugs for new parameters
-                processed_parameters = process_card_parameters(parsed_parameters)
-                
-                # Generate template tags from parameters
-                template_tags = generate_template_tags_from_parameters(processed_parameters)
             elif parsed_parameters:
-                # Parameters provided but card_parameters module not available
+                # Parameters provided but enhanced parameters module not available
                 return json.dumps({
                     "success": False,
-                    "error": "Parameters functionality not available",
-                    "message": "Card parameters module could not be imported"
+                    "error": "Enhanced parameters functionality not available",
+                    "message": "Enhanced parameters module could not be imported"
                 }, indent=2)
                 
         except ValueError as e:

@@ -167,173 +167,295 @@ Talk to Metabase is an MCP (Model Context Protocol) server that integrates Claud
 6. **Unified Query Execution**: Flexible tool for executing queries in both standalone and dashboard contexts
 7. **Simplified Parameter System**: Streamlined card parameters with automatic JSON Schema validation
 
-## Simplified Card Parameters Implementation
+## Enhanced Card Parameters Implementation
 
-The card parameters system has been streamlined to focus on essential functionality while maintaining reliability and user-friendliness.
+The enhanced card parameters system provides comprehensive support for creating sophisticated interactive filters in Metabase cards, including both simple variable filters and advanced field filters that connect directly to database columns.
 
 ### Key Features
 
-1. **3 Basic Parameter Types**:
-   - `category` - Text input with autocomplete (from text template tags)
-   - `number/=` - Number input (from number template tags)
-   - `date/single` - Date picker (from date template tags)
+1. **Comprehensive Parameter Types**:
+   - **Simple Filters**: `category`, `number/=`, `date/single` (work with `{{variable}}` in SQL)
+   - **Field Filters**: `string/=`, `string/contains`, `number/between`, `date/range`, etc. (connect to database columns)
 
-2. **Required Fields**:
-   - `type` - Parameter widget type
-   - `name` - Links to SQL template tag (must match `{{tag_name}}`)
-   - `default` - Required for reliable query execution
+2. **UI Widget Support**:
+   - `input` - Free text/number entry
+   - `dropdown` - Select from predefined values
+   - `search` - Search with suggestions
 
-3. **UI Widget Control**:
-   - `values_query_type`: Controls UI widget when using `values_source_config`
-   - `"list"` - Dropdown widget
-   - `"search"` - Search box widget
-   - `"none"` - Text input (only when no `values_source_config`)
+3. **Value Source Management**:
+   - `static` - Predefined list of values
+   - `card` - Values from another card/model
+   - `connected` - Values from connected database field (field filters only)
 
-4. **Automatic Validation**:
-   - JSON Schema handles structure, types, and conditional requirements
-   - Manual validation only for cross-item checks (duplicate names/IDs)
-   - 75% reduction in validation code complexity
+4. **Automatic Processing**:
+   - UUID generation and parameter linking
+   - Template tag creation from parameters
+   - Target mapping (variable vs dimension)
+   - Slug generation from parameter names
 
-### Parameter-Template Tag Relationship
+5. **Comprehensive Validation**:
+   - JSON Schema for structure and type validation
+   - Field reference validation against database
+   - UI widget compatibility checking
+   - Required parameter default value validation
 
-```sql
--- SQL Query
-SELECT * FROM orders WHERE status = {{order_status}} AND date >= {{start_date}}
-```
+### Critical Distinction: Variable vs Field Filters
+
+#### Simple Variable Filters
+- **SQL Usage**: `WHERE column = {{variable_name}}`
+- **How it works**: Parameter value gets substituted directly into SQL
+- **You control**: Column name, operator, SQL structure
+- **Example**: `WHERE status = {{order_status}}` → becomes `WHERE status = 'pending'`
+
+#### Field Filters
+- **SQL Usage**: `WHERE {{field_filter_name}}`
+- **How it works**: Metabase generates the entire condition based on field mapping
+- **Metabase controls**: Column name, operator, formatting, SQL structure
+- **Example**: `WHERE {{customer_filter}}` → becomes `WHERE customer_name = 'John Smith'`
+
+#### Key Rules
+- ✅ **Simple filters**: `WHERE column = {{variable}}`
+- ✅ **Field filters**: `WHERE {{field_filter}}`
+- ❌ **Never**: `WHERE column = {{field_filter}}` (this won't work!)
+
+### Enhanced Parameter Structure
 
 ```json
-// Corresponding Parameters
-[
-  {
-    "name": "order_status",  // Must match {{order_status}} exactly
-    "type": "category",
-    "default": "pending",
-    "values_source_type": "static-list",
-    "values_query_type": "list",
-    "values_source_config": {
-      "values": ["pending", "shipped", "delivered"]
-    }
+{
+  "name": "parameter_name",           // Required: Parameter name (used in SQL)
+  "type": "parameter_type",           // Required: Parameter type
+  "display_name": "Display Name",     // Optional: Human-readable name
+  "default": "default_value",         // Optional: Default value
+  "required": false,                   // Optional: Whether parameter is required
+  "field": {                          // Required for field filters
+    "database_id": 195,
+    "table_id": 50112,
+    "field_id": 50705149
   },
-  {
-    "name": "start_date",    // Must match {{start_date}} exactly
-    "type": "date/single",
-    "default": "2024-01-01"
+  "ui_widget": "dropdown",            // Optional: UI widget type
+  "values_source": {                  // Optional: Value source configuration
+    "type": "static",
+    "values": ["value1", "value2"]
   }
-]
+}
 ```
 
-### Why Default Values Are Required
+### Implementation Architecture
 
-In this simplified system, all parameters are used directly in SQL queries:
+#### Core Components
 
-- **Direct usage**: `WHERE status = {{status}}` - parameter MUST have default
-- **Optional usage**: `[[AND status = {{status}}]]` - complex syntax not supported
+1. **Enhanced Parameters Module** (`/talk_to_metabase/tools/enhanced_parameters/`):
+   - `core.py` - Main implementation with validation and processing
+   - `__init__.py` - Module exports
 
-Without defaults, queries fail when no value is provided, breaking the user experience.
+2. **JSON Schema Validation** (`/talk_to_metabase/schemas/enhanced_card_parameters.json`):
+   - Comprehensive validation for all parameter types
+   - Conditional validation for field filters
+   - UI widget compatibility rules
+   - Connected field filter exception handling
 
-### Validation Architecture
+3. **Documentation** (`/talk_to_metabase/schemas/enhanced_card_parameters_docs.md`):
+   - Complete examples for all parameter types
+   - SQL usage patterns and best practices
+   - UI widget and value source configuration
 
-The validation system leverages JSON Schema for efficiency:
+#### Key Functions
 
 ```python
-# Before: Manual validation (~100 lines)
-def validate_parameters_old(parameters):
-    # Manual checking of required fields
-    # Manual type validation
-    # Manual structure validation
-    # Manual conditional logic
-    # Business rule validation
+# Main processing function
+async def process_enhanced_parameters(
+    client, 
+    parameters: List[Dict[str, Any]]
+) -> Tuple[List[Dict[str, Any]], Dict[str, Any], List[str]]:
+    """Process enhanced parameters into Metabase API format with validation."""
 
-# After: Schema-first validation (~25 lines)
-def validate_parameters_new(parameters):
-    # JSON Schema handles automatically:
-    # - Required fields
-    # - Type validation
-    # - Structure validation
-    # - Conditional requirements
-    jsonschema.validate(parameters, schema)
-    
-    # Only manual validation for cross-item rules:
-    check_duplicate_names(parameters)
-    check_duplicate_ids(parameters)
+# Validation function
+def validate_enhanced_parameters(
+    parameters: List[Dict[str, Any]]
+) -> Tuple[bool, List[str]]:
+    """Validate enhanced parameters against schema and business rules."""
+
+# Individual parameter processing
+def process_single_parameter(
+    param_config: Dict[str, Any], 
+    param_id: str
+) -> Tuple[Dict[str, Any], Dict[str, Any]]:
+    """Process a single parameter configuration into Metabase API format."""
 ```
 
-### JSON Schema Features Used
+### Validation System
 
-1. **Required Fields**: `"required": ["type", "name", "default"]`
-2. **Type Validation**: `"enum": ["category", "number/=", "date/single"]`
-3. **Conditional Requirements**: 
-   ```json
-   "if": {"properties": {"values_source_config": {...}}},
-   "then": {"required": ["values_query_type"]}
-   ```
-4. **Structure Validation**: Array formats, object properties, field types
+The validation system uses a multi-layer approach:
 
-### Benefits of Simplified Approach
+1. **JSON Schema Validation**: Handles structure, types, and conditional requirements
+2. **Field Reference Validation**: Verifies database fields exist
+3. **Business Rule Validation**: 
+   - Duplicate parameter names
+   - Required parameters have default values
+   - UI widget compatibility
+   - Connected field filter configuration
 
-1. **Reduced Complexity**: 75% less validation code
-2. **Better Performance**: JSON Schema is optimized and fast
-3. **Consistent Validation**: Single source of truth in schema
-4. **Automatic Evolution**: Schema changes automatically update validation
-5. **Clear Error Messages**: Standardized JSON Schema error messages
-6. **Predictable Behavior**: Only 3 parameter types to understand
+### Special Handling for Number Dropdowns
 
-### Parameter Creation Examples
+Number parameters with dropdowns require special formatting:
 
-#### Basic Parameter with Default
-```json
+```python
+# Input format
 {
-  "name": "status_filter",
-  "type": "category",
-  "default": "active"
+  "type": "number/=",
+  "default": 100,
+  "values_source": {
+    "type": "static",
+    "values": [50, 100, 200, 500]
+  }
 }
-```
 
-#### Dropdown Parameter with Static Values
-```json
+# Generated API format
 {
-  "name": "category_filter",
-  "type": "category",
-  "default": "Electronics",
-  "values_source_type": "static-list",
-  "values_query_type": "list",
+  "default": ["100"],
   "values_source_config": {
-    "values": ["Electronics", "Books", "Clothing"]
+    "values": [["50"], ["100"], ["200"], ["500"]]
+  },
+  "template-tags": {
+    "parameter_name": {
+      "default": ["100"]
+    }
   }
 }
 ```
 
-#### Date Parameter
-```json
+### Connected Field Filter Configuration
+
+Connected field filters use a special configuration:
+
+```python
+# Input
 {
-  "name": "start_date",
-  "type": "date/single",
-  "default": "2024-01-01"
+  "ui_widget": "dropdown",
+  "values_source": {"type": "connected"}
+}
+
+# Generated API format
+{
+  "values_source_type": null,
+  "values_source_config": {}
 }
 ```
 
-#### Number Parameter
+### Tools Integration
+
+#### GET_ENHANCED_CARD_PARAMETERS_DOCUMENTATION
+
+Provides comprehensive documentation and examples:
+
+```python
+@mcp.tool(name="GET_ENHANCED_CARD_PARAMETERS_DOCUMENTATION")
+async def get_enhanced_card_parameters_documentation(ctx: Context) -> str:
+    """Get comprehensive documentation for enhanced card parameters."""
+```
+
+#### Enhanced create_card and update_card
+
+Both tools now support enhanced parameters with validation:
+
+```python
+# Parameters processing in card creation/update
+if ENHANCED_PARAMETERS_AVAILABLE and parsed_parameters:
+    processed_parameters, template_tags, errors = await process_enhanced_parameters(
+        client, parsed_parameters
+    )
+    if errors:
+        return validation_error_response
+```
+
+### Migration from Legacy System
+
+The enhanced system completely replaces the old simplified card parameters:
+
+1. **Legacy Files Removed**: Old card_parameters.py moved to .deprecated
+2. **Enhanced Validation**: More comprehensive and reliable
+3. **Field Filter Support**: Advanced filtering capabilities
+4. **Backward Compatibility**: Simple use cases work the same way
+
+### Performance Optimizations
+
+1. **Schema-First Validation**: JSON Schema handles most validation automatically
+2. **Reduced Code Complexity**: 75% less validation code compared to manual validation
+3. **Field Validation**: Database field references validated efficiently
+4. **Automatic Processing**: All complex configuration generated automatically
+
+### Usage Examples
+
+#### Simple Category Filter
 ```json
 {
-  "name": "max_price",
-  "type": "number/=",
-  "default": 100
+  "name": "order_status",
+  "type": "category",
+  "default": "pending",
+  "ui_widget": "dropdown",
+  "values_source": {
+    "type": "static",
+    "values": ["pending", "shipped", "delivered"]
+  }
 }
 ```
 
-### Tools for Parameter Management
+#### Field Filter with Connected Values
+```json
+{
+  "name": "customer_filter",
+  "type": "string/=",
+  "field": {
+    "database_id": 195,
+    "table_id": 50112,
+    "field_id": 50705149
+  },
+  "ui_widget": "dropdown",
+  "values_source": {
+    "type": "connected"
+  }
+}
+```
 
-1. **`GET_CARD_PARAMETERS_SCHEMA`**: Returns JSON schema and documentation
-2. **`create_card`**: Accepts simplified parameters with automatic validation
-3. **`update_card`**: Updates card parameters with validation
+#### Number Range Field Filter
+```json
+{
+  "name": "spend_range",
+  "type": "number/between",
+  "field": {
+    "database_id": 195,
+    "table_id": 50112,
+    "field_id": 50705151
+  },
+  "default": [100, 5000]
+}
+```
 
-### Migration from Complex Parameters
+#### Date Field Filter
+```json
+{
+  "name": "date_filter",
+  "type": "date/all-options",
+  "field": {
+    "database_id": 195,
+    "table_id": 50112,
+    "field_id": 50705150
+  },
+  "default": "past30days"
+}
+```
 
-When encountering existing cards with complex parameters:
-- Metabase automatically handles parameter conversion
-- Complex field filters are not supported in the simplified system
-- Focus on the 3 basic types for new parameter creation
-- Existing complex parameters continue to work in Metabase UI
+### Benefits
+
+1. **Comprehensive Filtering**: Support for all Metabase parameter types
+2. **Type Safety**: JSON Schema validation prevents configuration errors
+3. **Database Integration**: Field filters connect directly to database columns
+4. **User Experience**: Appropriate UI widgets with automatic value population
+5. **Developer Experience**: Clear error messages and comprehensive documentation
+6. **Performance**: Optimized validation and processing
+7. **Maintainability**: Clean, modular architecture
+
+The enhanced card parameters system provides a robust, comprehensive solution for creating sophisticated interactive filters in Metabase while maintaining ease of use and reliability.
 
 ## Project Structure
 

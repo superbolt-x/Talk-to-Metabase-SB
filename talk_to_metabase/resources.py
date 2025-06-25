@@ -162,11 +162,11 @@ def load_dashcards_schema() -> Optional[Dict[str, Any]]:
     return load_json_resource("schemas/dashcards.json")
 
 
-def load_card_parameters_schema() -> Optional[Dict[str, Any]]:
-    """Load the card parameters JSON schema."""
-    return load_json_resource("schemas/card_parameters.json")
+def load_enhanced_card_parameters_schema() -> Optional[Dict[str, Any]]:
+    """Load the enhanced card parameters JSON schema."""
+    return load_json_resource("schemas/enhanced_card_parameters.json")
 
 
-def load_card_parameters_docs() -> Optional[str]:
-    """Load the card parameters documentation."""
-    return load_text_resource("schemas/card_parameters_docs.md")
+def load_enhanced_card_parameters_docs() -> Optional[str]:
+    """Load the enhanced card parameters documentation."""
+    return load_text_resource("schemas/enhanced_card_parameters_docs.md")
