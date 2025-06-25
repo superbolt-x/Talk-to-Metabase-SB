@@ -233,6 +233,38 @@ async def get_sql_translation(client, card_data: Dict[str, Any]) -> Optional[str
         return None
 
 
+def detect_sql_parameter_mistakes(query: str, parameter_names: List[str]) -> List[str]:
+    """
+    Detect common SQL parameter usage mistakes.
+    
+    Args:
+        query: SQL query string
+        parameter_names: List of parameter names
+        
+    Returns:
+        List of warning messages about potential mistakes
+    """
+    import re
+    warnings = []
+    
+    for param_name in parameter_names:
+        # Check for quoted parameters (common mistake)
+        quoted_pattern = rf"'\{{\{{{re.escape(param_name)}\}}\}}'"
+        if re.search(quoted_pattern, query, re.IGNORECASE):
+            warnings.append(f"WARNING: Parameter '{param_name}' is quoted in SQL. Remove quotes - parameters include proper formatting automatically.")
+            warnings.append(f"  ❌ WRONG: WHERE column = '{{{{param_name}}}}'") 
+            warnings.append(f"  ✅ CORRECT: WHERE column = {{{{param_name}}}}")
+    
+    # Check for common CASE WHEN mistakes
+    case_quoted_pattern = r"CASE\s+WHEN\s+'\{\{[^}]+\}\}'"
+    if re.search(case_quoted_pattern, query, re.IGNORECASE):
+        warnings.append("WARNING: CASE WHEN statement has quoted parameters. Remove quotes around parameters.")
+        warnings.append("  ❌ WRONG: CASE WHEN '{{metric_type}}' = 'spend'")
+        warnings.append("  ✅ CORRECT: CASE WHEN {{metric_type}} = 'spend'")
+    
+    return warnings
+
+
 async def execute_sql_query(client, database_id: int, query: str) -> Dict[str, Any]:
     """
     Execute a SQL query to validate it before creating a card.
@@ -382,17 +414,19 @@ async def create_card(
     CUSTOMIZABLE FILTERS:
     You can create SQL queries with customizable filters using Metabase's template syntax:
     
+    ⚠️ CRITICAL: NEVER add quotes around parameters! They substitute with proper formatting automatically.
+    
     **SIMPLE VARIABLE FILTERS** (category, number/=, date/single):
-    - Use {{variable_name}} for direct value substitution
-    - Example: WHERE status = {{order_status}}
-    - Example: WHERE date >= {{start_date}}
+    - Use {{variable_name}} for direct value substitution WITH AUTOMATIC FORMATTING
+    - ✅ CORRECT: WHERE status = {{order_status}} (becomes WHERE status = 'pending')
+    - ❌ WRONG: WHERE status = '{{order_status}}' (double quotes!)
     - YOU provide the column name and operator in SQL
     
     **FIELD FILTERS** (string/=, number/between, date/range, etc.):
-    - Use {{field_filter_name}} for complete condition substitution
-    - Example: WHERE {{customer_filter}}
-    - Example: [[AND {{date_range_filter}}]]
-    - METABASE provides the column, operator, and formats the condition
+    - Use {{field_filter_name}} for BOOLEAN CONDITIONS (true/false)
+    - ✅ CORRECT: WHERE {{customer_filter}} (becomes WHERE true or WHERE false)
+    - ❌ WRONG: WHERE customer_name = {{customer_filter}} (field filters are booleans!)
+    - METABASE controls the actual filtering logic based on field mapping
     
     **OPTIONAL FILTERS:**
     - Use [[AND condition]] for optional filters that can be turned on/off
@@ -493,15 +527,27 @@ async def create_card(
                 "message": str(e)
             }, indent=2)
     
+    # Check for common SQL parameter mistakes if parameters are provided
+    sql_warnings = []
+    if processed_parameters:
+        parameter_names = [param["slug"] for param in processed_parameters if "slug" in param]
+        sql_warnings = detect_sql_parameter_mistakes(query, parameter_names)
+    
     # Step 1: Execute the query to validate it
     execution_result = await execute_sql_query(client, database_id, query)
     
     if not execution_result["success"]:
         # Return a concise error response if query validation fails
-        return json.dumps({
+        response = {
             "success": False,
             "error": execution_result["error"]
-        }, indent=2)
+        }
+        # Include SQL warnings if any were detected
+        if sql_warnings:
+            response["sql_warnings"] = sql_warnings
+            response["help"] = "Check your SQL parameter usage. Parameters substitute with proper formatting automatically."
+        
+        return json.dumps(response, indent=2)
     
     # Step 2: Query is valid, create the card
     try:
@@ -553,12 +599,19 @@ async def create_card(
             )
         
         # Return a concise success response with essential info
-        return json.dumps({
+        response = {
             "success": True,
             "card_id": data.get("id"),
             "name": data.get("name"),
             "parameters_count": len(processed_parameters) if processed_parameters else 0
-        }, indent=2)
+        }
+        
+        # Include SQL warnings if any were detected
+        if sql_warnings:
+            response["sql_warnings"] = sql_warnings
+            response["help"] = "Card created successfully, but check SQL parameter usage warnings above."
+        
+        return json.dumps(response, indent=2)
         
     except Exception as e:
         logger.error(f"Error creating card: {e}")
@@ -592,17 +645,18 @@ async def update_card(
     CUSTOMIZABLE FILTERS:
     When updating the query, you can use Metabase's template syntax for customizable filters:
     
+    ⚠️ CRITICAL: NEVER add quotes around parameters! They substitute with proper formatting automatically.
+    
     **SIMPLE VARIABLE FILTERS** (category, number/=, date/single):
-    - Use {{variable_name}} for direct value substitution
-    - Example: WHERE status = {{order_status}}
-    - Example: WHERE date >= {{start_date}}
+    - Use {{variable_name}} for direct value substitution WITH AUTOMATIC FORMATTING
+    - ✅ CORRECT: WHERE status = {{order_status}} (becomes WHERE status = 'pending')
+    - ❌ WRONG: WHERE status = '{{order_status}}' (double quotes!)
     - YOU provide the column name and operator in SQL
     
     **FIELD FILTERS** (string/=, number/between, date/range, etc.):
-    - Use {{field_filter_name}} for complete condition substitution
-    - Example: WHERE {{customer_filter}}
-    - Example: [[AND {{date_range_filter}}]]
-    - METABASE provides the column, operator, and formats the condition
+    - Use {{field_filter_name}} for BOOLEAN CONDITIONS (true/false)
+    - ✅ CORRECT: WHERE {{customer_filter}} (becomes WHERE true or WHERE false)
+    - ❌ WRONG: WHERE customer_name = {{customer_filter}} (field filters are booleans!)
     
     **OPTIONAL FILTERS:**
     - Use [[AND condition]] for optional filters that can be turned on/off
@@ -730,6 +784,9 @@ async def update_card(
             }, indent=2)
     
     try:
+        # Initialize sql_warnings at function scope
+        sql_warnings = []
+        
         # Fetch the current card data if not already fetched during validation
         if current_data is None:
             current_data, status, error = await client.auth.make_request(
@@ -786,15 +843,26 @@ async def update_card(
                     }
                 )
             
+            # Check for common SQL parameter mistakes if parameters are provided
+            if processed_parameters:
+                parameter_names = [param["slug"] for param in processed_parameters if "slug" in param]
+                sql_warnings = detect_sql_parameter_mistakes(query, parameter_names)
+            
             # Validate the SQL query
             execution_result = await execute_sql_query(client, database_id, query)
             
             if not execution_result["success"]:
                 # Return a concise error response if query validation fails
-                return json.dumps({
+                response = {
                     "success": False,
                     "error": execution_result["error"]
-                }, indent=2)
+                }
+                # Include SQL warnings if any were detected
+                if sql_warnings:
+                    response["sql_warnings"] = sql_warnings
+                    response["help"] = "Check your SQL parameter usage. Parameters substitute with proper formatting automatically."
+                
+                return json.dumps(response, indent=2)
             
             # Add the validated query to the update data
             update_data["dataset_query"] = {
@@ -834,12 +902,19 @@ async def update_card(
             )
         
         # Return a concise success response with essential info
-        return json.dumps({
+        response = {
             "success": True,
             "card_id": data.get("id"),
             "name": data.get("name"),
             "parameters_count": len(processed_parameters) if processed_parameters else 0
-        }, indent=2)
+        }
+        
+        # Include SQL warnings if query was updated and warnings were detected
+        if query is not None and sql_warnings:
+            response["sql_warnings"] = sql_warnings
+            response["help"] = "Card updated successfully, but check SQL parameter usage warnings above."
+        
+        return json.dumps(response, indent=2)
         
     except Exception as e:
         logger.error(f"Error updating card {id}: {e}")

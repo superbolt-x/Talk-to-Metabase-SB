@@ -11,19 +11,70 @@ Enhanced card parameters provide comprehensive filtering capabilities for Metaba
 - **How it works**: The parameter value gets substituted directly into your SQL
 - **You control**: Column name, operator, and SQL structure
 - **User provides**: Just the value
-- **Example SQL**: `WHERE status = {{order_status}}` → becomes `WHERE status = 'pending'`
+- **Example SQL**: `WHERE status = {{order_status}}` → becomes `WHERE status = 'pending'` (quotes included automatically)
 
 ### **Field Filters** (string/=, number/between, date/range, etc.)
 - **SQL Usage**: `WHERE {{field_filter_name}}`
-- **How it works**: Metabase generates the entire condition based on field mapping
+- **How it works**: Field filters are replaced with BOOLEAN VALUES (true/false) indicating if the condition is met
 - **Metabase controls**: Column name, operator, formatting, and SQL structure
 - **User provides**: Just the value(s)
-- **Example SQL**: `WHERE {{customer_filter}}` → becomes `WHERE customer_name = 'John Smith'`
+- **Example SQL**: `WHERE {{customer_filter}}` → becomes `WHERE true` or `WHERE false` (boolean result)
 
 ### **Key Rule**: 
 - ✅ **Simple filters**: `WHERE column = {{variable}}`
 - ✅ **Field filters**: `WHERE {{field_filter}}`
-- ❌ **Never**: `WHERE column = {{field_filter}}` (this won't work!)
+- ❌ **Never**: `WHERE column = {{field_filter}}` (field filters are booleans, not values!)
+- ❌ **Never**: `WHERE column = '{{variable}}'` (don't add extra quotes to text parameters)
+
+## ⚠️ CRITICAL: Common AI Assistant Mistakes to AVOID
+
+### ❌ **WRONG: Adding quotes around parameters**
+```sql
+-- DON'T DO THIS - WRONG!
+CASE 
+    WHEN '{{metric_type}}' = 'spend' THEN spend    -- ❌ Extra quotes!
+    WHEN '{{metric_type}}' = 'impressions' THEN impressions
+END
+
+-- DON'T DO THIS - WRONG!
+WHERE channel = '{{channel_param}}'               -- ❌ Double quotes!
+
+-- DON'T DO THIS - WRONG!
+WHERE customer_name = {{customer_filter}}         -- ❌ Field filter used as value!
+```
+
+### ✅ **CORRECT: Parameters substitute with proper formatting**
+```sql
+-- CORRECT - Simple variable parameters
+CASE 
+    WHEN {{metric_type}} = 'spend' THEN spend      -- ✅ No extra quotes!
+    WHEN {{metric_type}} = 'impressions' THEN impressions
+END
+
+-- CORRECT - Text parameter already includes quotes
+WHERE channel = {{channel_param}}                  -- ✅ {{channel_param}} becomes 'Google'
+
+-- CORRECT - Field filter as boolean condition
+WHERE {{customer_filter}}                          -- ✅ Becomes true/false
+```
+
+## 🎯 How Parameter Substitution Actually Works
+
+### Simple Variable Filters
+Parameters substitute their **actual values** with proper formatting:
+
+- **Text parameter**: `{{channel}}` → `'Google'` (quotes included automatically)
+- **Number parameter**: `{{limit}}` → `100` (no quotes)
+- **Date parameter**: `{{start_date}}` → `'2024-01-01'` (quotes included automatically)
+
+### Field Filters
+Parameters substitute **boolean values** indicating if the condition is met:
+
+- `{{customer_filter}}` → `true` (if customer matches filter) or `false`
+- `{{date_range}}` → `true` (if date is in range) or `false`
+- `{{spend_range}}` → `true` (if spend is in range) or `false`
+
+**Field filters are NOT replaced with the actual filter condition - they become boolean evaluations!**
 
 ### **⚡ Performance Tip**: 
 **Use field filters instead of multiple simple date filters!**
@@ -32,32 +83,43 @@ Enhanced card parameters provide comprehensive filtering capabilities for Metaba
 
 ## Complete SQL Examples
 
-### ✅ **Correct Usage**
+### ✅ **Complete Correct Example**
 ```sql
 SELECT 
     date,
     channel,
     spend,
-    impressions
+    impressions,
+    CASE 
+        WHEN {{metric_type}} = 'spend' THEN spend           -- ✅ Simple variable, no extra quotes
+        WHEN {{metric_type}} = 'impressions' THEN impressions
+        ELSE spend
+    END as selected_metric
 FROM reporting.marketing_data
 WHERE 1=1
-    AND date >= {{start_date}}           -- Simple date filter
-    AND date <= {{end_date}}             -- Simple date filter  
-    AND granularity = {{granularity}}    -- Simple category filter
-    [[AND {{channel_filter}}]]           -- Field filter (complete condition)
-    [[AND {{spend_range}}]]              -- Field filter (complete condition)
+    AND date >= {{start_date}}           -- ✅ Simple date filter (becomes '2024-01-01')
+    AND date <= {{end_date}}             -- ✅ Simple date filter
+    AND granularity = {{granularity}}    -- ✅ Simple category filter (becomes 'day')
+    [[AND {{channel_filter}}]]           -- ✅ Field filter (becomes true/false)
+    [[AND {{spend_range}}]]              -- ✅ Field filter (becomes true/false)
 ORDER BY date DESC
 ```
 
-### ❌ **Incorrect Usage**
+### ❌ **What NOT to do**
 ```sql
 -- DON'T DO THIS:
 SELECT * FROM orders 
-WHERE customer_name = {{customer_filter}}  -- ❌ Wrong! Field filter used as simple variable
+WHERE customer_name = {{customer_filter}}  -- ❌ Wrong! Field filter is boolean, not a value
 
 -- DON'T DO THIS:
 SELECT * FROM orders
-WHERE {{start_date}}                       -- ❌ Wrong! Simple variable used as field filter
+WHERE {{start_date}}                       -- ❌ Wrong! Simple variable used as boolean condition
+
+-- DON'T DO THIS:
+WHERE status = '{{order_status}}'          -- ❌ Wrong! Double-quoting text parameter
+
+-- DON'T DO THIS:
+CASE WHEN '{{metric}}' = 'spend'           -- ❌ Wrong! Extra quotes around parameter
 ```
 
 ### Parameter Configurations

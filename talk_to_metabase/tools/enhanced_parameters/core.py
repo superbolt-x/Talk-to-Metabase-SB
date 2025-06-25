@@ -534,12 +534,32 @@ async def get_enhanced_card_parameters_documentation(ctx: Context) -> str:
                 "connected": "Values from connected database field (field filters only)"
             },
             "usage_notes": [
+                "CRITICAL: NEVER add quotes around parameters - they substitute with proper formatting automatically",
+                "Simple variables like {{text_param}} become 'value' (quotes included automatically)", 
+                "Field filters like {{field_filter}} become true/false (boolean conditions)",
                 "All UUIDs, template tags, targets, and slugs are generated automatically",
                 "Parameter names must start with a letter and contain only letters, numbers, and underscores",
                 "Field references are validated against the database",
                 "UI widgets are validated for compatibility with parameter types",
                 "Use parameter names in SQL queries as {{parameter_name}} or [[AND condition = {{parameter_name}}]]"
-            ]
+            ],
+            "common_mistakes": {
+                "quoted_parameters": {
+                    "wrong": "WHERE status = '{{order_status}}'",
+                    "correct": "WHERE status = {{order_status}}",
+                    "explanation": "Parameters include quotes automatically for text values"
+                },
+                "case_when_quotes": {
+                    "wrong": "CASE WHEN '{{metric_type}}' = 'spend' THEN spend",
+                    "correct": "CASE WHEN {{metric_type}} = 'spend' THEN spend", 
+                    "explanation": "Remove quotes around parameters in CASE WHEN statements"
+                },
+                "field_filter_as_value": {
+                    "wrong": "WHERE customer_name = {{customer_filter}}",
+                    "correct": "WHERE {{customer_filter}}",
+                    "explanation": "Field filters are boolean conditions, not values"
+                }
+            }
         }
         
         # Convert to JSON string
