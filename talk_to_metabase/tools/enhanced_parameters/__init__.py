@@ -11,10 +11,14 @@ This module provides comprehensive card parameter support including:
 
 from .core import (
     process_enhanced_parameters,
-    validate_enhanced_parameters_helper
+    validate_enhanced_parameters_helper,
+    extract_sql_parameters,
+    validate_sql_parameter_consistency
 )
 
 __all__ = [
     'process_enhanced_parameters',
-    'validate_enhanced_parameters_helper'
+    'validate_enhanced_parameters_helper',
+    'extract_sql_parameters',
+    'validate_sql_parameter_consistency'
 ]

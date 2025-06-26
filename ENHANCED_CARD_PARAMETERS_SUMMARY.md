@@ -1,3 +1,30 @@
+## ⚠️ Critical SQL Parameter Usage Fixes
+
+A major enhancement addresses common AI assistant mistakes with SQL parameter usage:
+
+### Field Filter Behavior Clarification
+Field filters are replaced with **boolean values (true/false)**, NOT with complete SQL conditions:
+- ✅ **Correct**: `WHERE {{customer_filter}}` (becomes `WHERE true` or `WHERE false`)
+- ❌ **Wrong**: `WHERE customer_name = {{customer_filter}}` (field filters are booleans!)
+
+### SQL Parameter Mistake Detection
+The system now detects and warns about common mistakes:
+- **Quoted Parameters**: `'{{param}}'` (parameters include quotes automatically)
+- **CASE WHEN Errors**: `CASE WHEN '{{metric}}' = 'value'` (remove quotes around parameters)
+- **Parameter Consistency**: SQL references must match parameter configurations
+
+### Parameter Preservation
+The `update_card` tool now preserves existing parameters when updating queries:
+- Prevents "template tag not found" errors
+- Maintains parameter functionality during query-only updates
+- Automatically preserves both parameters and template tags
+
+### Enhanced Widget Compatibility
+UI widget validation has been improved:
+- Search widgets now work with all string field filter types
+- Better validation for dropdown and search widget requirements
+- Clearer error messages for incompatible configurations
+
 # Enhanced Card Parameters Implementation Summary
 
 ## Overview
@@ -41,10 +68,11 @@ WHERE {{customer_filter}}
 [[AND {{date_range_filter}}]]
 [[AND {{spend_range}}]]
 ```
-- Metabase generates the complete condition based on field mapping
-- User provides the value(s), Metabase provides column, operator, and formatting
+- Field filters are replaced with BOOLEAN VALUES (true/false) indicating if the condition is met
+- User provides the filter values through UI, Metabase evaluates the condition
+- Field filters connect directly to database columns and handle filtering logic
 
-**Critical Rule**: Never mix syntax patterns (`WHERE column = {{field_filter}}` won't work!)
+**Critical Rule**: Never mix syntax patterns (`WHERE column = {{field_filter}}` won't work - field filters are booleans!)
 
 ## 🏗️ Architecture
 
@@ -100,9 +128,12 @@ parameters (user input)
 ### 4. Comprehensive Validation
 - **JSON Schema**: Structure and type validation
 - **Field References**: Database validation for field filters
-- **Widget Compatibility**: UI widget compatibility checking
+- **Widget Compatibility**: Enhanced UI widget compatibility checking (search widgets now work with all string field filters)
 - **Required Parameters**: Must have default values
 - **Business Rules**: Duplicate names, proper configuration
+- **SQL Parameter Consistency**: Validates SQL references match parameter configurations
+- **SQL Mistake Detection**: Detects quoted parameters and provides correction guidance
+- **Parameter Preservation**: Automatically preserves existing parameters during query-only updates
 
 ## 🔢 Special Handling
 
@@ -332,7 +363,7 @@ Users can enhance existing simple parameters by adding field mappings:
 - [x] Complete parameter type support (simple + field filters)
 - [x] JSON Schema validation with conditional logic
 - [x] Field reference validation against database
-- [x] UI widget compatibility validation
+- [x] Enhanced UI widget compatibility validation (search widgets work with all string field filters)
 - [x] Number dropdown special formatting
 - [x] Connected field filter configuration
 - [x] Required parameter validation
@@ -341,6 +372,10 @@ Users can enhance existing simple parameters by adding field mappings:
 - [x] Comprehensive documentation and examples
 - [x] Error handling with clear messages
 - [x] Legacy system removal and cleanup
+- [x] **SQL parameter consistency validation**
+- [x] **SQL mistake detection and guidance**
+- [x] **Parameter preservation during query updates**
+- [x] **Field filter behavior clarification (boolean values)**
 
 ### 🎯 Production Ready
 The enhanced card parameters system is **production-ready** and provides:
@@ -358,7 +393,11 @@ The enhanced card parameters implementation provides a robust, comprehensive sol
 
 Key achievements include:
 - **Complete Metabase parameter support** across all types
-- **Clear SQL usage patterns** preventing common mistakes
+- **Corrected SQL usage patterns** preventing common AI mistakes
+- **Field filter behavior clarification** (boolean values, not SQL conditions)
+- **SQL parameter consistency validation** ensuring SQL matches configuration
+- **Parameter preservation** during query updates preventing template tag errors
+- **Enhanced widget compatibility** with improved validation
 - **Automatic processing** of complex configurations
 - **Comprehensive validation** preventing errors
 - **Production-ready reliability** with thorough testing

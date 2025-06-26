@@ -1,3 +1,147 @@
+## SQL Parameter Usage and Validation
+
+Talk to Metabase implements comprehensive SQL parameter validation to prevent common AI assistant mistakes when writing SQL with Metabase parameters. This system addresses critical issues with parameter substitution understanding.
+
+### Critical Parameter Substitution Rules
+
+#### ⚠️ Common AI Assistant Mistakes to AVOID
+
+**❌ WRONG: Adding quotes around parameters**
+```sql
+-- DON'T DO THIS - WRONG!
+CASE 
+    WHEN '{{metric_type}}' = 'spend' THEN spend    -- Extra quotes!
+    WHEN '{{metric_type}}' = 'impressions' THEN impressions
+END
+
+-- DON'T DO THIS - WRONG!
+WHERE channel = '{{channel_param}}'               -- Double quotes!
+
+-- DON'T DO THIS - WRONG!
+WHERE customer_name = {{customer_filter}}         -- Field filter used as value!
+```
+
+**✅ CORRECT: Parameters substitute with proper formatting**
+```sql
+-- CORRECT - Simple variable parameters
+CASE 
+    WHEN {{metric_type}} = 'spend' THEN spend      -- No extra quotes!
+    WHEN {{metric_type}} = 'impressions' THEN impressions
+END
+
+-- CORRECT - Text parameter already includes quotes
+WHERE channel = {{channel_param}}                  -- {{channel_param}} becomes 'Google'
+
+-- CORRECT - Field filter as boolean condition
+WHERE {{customer_filter}}                          -- Becomes true/false
+```
+
+### How Parameter Substitution Actually Works
+
+#### Simple Variable Filters
+Parameters substitute their **actual values** with proper formatting:
+
+- **Text parameter**: `{{channel}}` → `'Google'` (quotes included automatically)
+- **Number parameter**: `{{limit}}` → `100` (no quotes)
+- **Date parameter**: `{{start_date}}` → `'2024-01-01'` (quotes included automatically)
+
+#### Field Filters
+Parameters substitute **boolean values** indicating if the condition is met:
+
+- `{{customer_filter}}` → `true` (if customer matches filter) or `false`
+- `{{date_range}}` → `true` (if date is in range) or `false`
+- `{{spend_range}}` → `true` (if spend is in range) or `false`
+
+**Field filters are NOT replaced with the actual filter condition - they become boolean evaluations!**
+
+### SQL Parameter Validation System
+
+The system includes comprehensive validation functions located in `enhanced_parameters/core.py`:
+
+#### Key Validation Functions
+
+```python
+def extract_sql_parameters(query: str) -> Dict[str, List[str]]:
+    """Extract parameter references from SQL query."""
+    # Returns: {"required": [...], "optional": [...]}
+
+def validate_sql_parameter_consistency(query: str, parameters: List[Dict[str, Any]]) -> List[str]:
+    """Validate that SQL parameters match the provided parameters configuration."""
+    # Returns: List of validation error/warning messages
+
+def detect_sql_parameter_mistakes(query: str, parameter_names: List[str]) -> List[str]:
+    """Detect common SQL parameter usage mistakes."""
+    # Returns: List of warning messages about potential mistakes
+```
+
+#### Parameter Extraction Logic
+
+- **Required parameters**: `{{parameter}}` used directly in WHERE clauses
+- **Optional parameters**: `[[AND {{parameter}}]]` that can be turned on/off
+- **Duplicate handling**: Removes duplicates and correctly categorizes optional vs required
+
+#### Consistency Validation
+
+- **Missing parameters**: SQL references parameters not in configuration
+- **Unused parameters**: Configuration has parameters not used in SQL
+- **Required parameter validation**: Checks that required SQL parameters have defaults or are marked as required
+
+#### Integration with Card Tools
+
+The validation is integrated into both `create_card` and `update_card` tools:
+
+```python
+# Check for common SQL parameter mistakes and parameter consistency
+if processed_parameters:
+    sql_warnings.extend(detect_sql_parameter_mistakes(query, parameter_names))
+    
+    # Check parameter consistency
+    consistency_issues = validate_sql_parameter_consistency(query, processed_parameters)
+    if consistency_issues:
+        sql_warnings.extend([f"PARAMETER CONSISTENCY: {issue}" for issue in consistency_issues])
+```
+
+#### Example Validation Messages
+
+```json
+{
+  "success": false,
+  "error": "Invalid query",
+  "sql_warnings": [
+    "WARNING: Parameter 'metric_type' is quoted in SQL. Remove quotes - parameters include proper formatting automatically.",
+    "PARAMETER CONSISTENCY: SQL references parameter 'date_range_filter' but no matching parameter configuration found",
+    "PARAMETER CONSISTENCY: Parameter 'unused_param' is configured but not used in SQL query"
+  ]
+}
+```
+
+### Parameter Preservation in Card Updates
+
+The `update_card` tool has been enhanced to preserve existing parameters when updating queries:
+
+```python
+# If query is being updated but no new parameters provided, preserve existing parameters
+if query is not None and "parameters" in current_data and current_data["parameters"]:
+    update_data["parameters"] = current_data["parameters"]
+    
+# Also preserve existing template tags
+if parameters is None and "dataset_query" in current_data:
+    existing_native = current_data["dataset_query"].get("native", {})
+    existing_template_tags = existing_native.get("template-tags", {})
+```
+
+This prevents the "template tag not found" error when updating cards without explicitly providing parameters.
+
+### Benefits of SQL Parameter Validation
+
+1. **Prevents Common Mistakes**: Detects quoted parameters and incorrect field filter usage
+2. **Ensures Consistency**: Validates that SQL references match parameter configurations
+3. **Provides Clear Guidance**: Offers specific correction suggestions
+4. **Preserves Functionality**: Maintains existing parameters during query updates
+5. **Comprehensive Coverage**: Validates both simple variables and field filters
+
+This validation system significantly improves the reliability of AI-generated SQL with Metabase parameters, preventing runtime errors and ensuring proper parameter functionality.
+
 ## Visualization Settings Support
 
 Talk to Metabase provides comprehensive support for customizing chart visualization settings across 17 different chart types. This functionality enables users to create sophisticated, well-formatted visualizations directly through Claude.
@@ -209,14 +353,15 @@ The enhanced card parameters system provides comprehensive support for creating 
 
 #### Field Filters
 - **SQL Usage**: `WHERE {{field_filter_name}}`
-- **How it works**: Metabase generates the entire condition based on field mapping
-- **Metabase controls**: Column name, operator, formatting, SQL structure
-- **Example**: `WHERE {{customer_filter}}` → becomes `WHERE customer_name = 'John Smith'`
+- **How it works**: Field filters are replaced with BOOLEAN VALUES (true/false) indicating if the condition is met
+- **Metabase controls**: The actual filtering logic based on field mapping
+- **Example**: `WHERE {{customer_filter}}` → becomes `WHERE true` or `WHERE false` (boolean result)
 
 #### Key Rules
 - ✅ **Simple filters**: `WHERE column = {{variable}}`
 - ✅ **Field filters**: `WHERE {{field_filter}}`
-- ❌ **Never**: `WHERE column = {{field_filter}}` (this won't work!)
+- ❌ **Never**: `WHERE column = {{field_filter}}` (field filters are booleans, not values!)
+- ❌ **Never**: `WHERE column = '{{variable}}'` (don't add extra quotes to text parameters)
 
 ### Enhanced Parameter Structure
 
@@ -283,17 +428,38 @@ def process_single_parameter(
     """Process a single parameter configuration into Metabase API format."""
 ```
 
-### Validation System
+### Enhanced Validation System
 
-The validation system uses a multi-layer approach:
+The validation system has been significantly enhanced to prevent common AI assistant mistakes:
 
-1. **JSON Schema Validation**: Handles structure, types, and conditional requirements
-2. **Field Reference Validation**: Verifies database fields exist
-3. **Business Rule Validation**: 
-   - Duplicate parameter names
-   - Required parameters have default values
-   - UI widget compatibility
-   - Connected field filter configuration
+1. **SQL Parameter Consistency Validation**: 
+   - Validates that SQL references match parameter configurations
+   - Checks for missing or unused parameters
+   - Validates required parameter default values
+
+2. **SQL Mistake Detection**:
+   - Detects quoted parameters (`'{{param}}'`)
+   - Identifies incorrect CASE WHEN usage
+   - Provides specific correction guidance
+
+3. **UI Widget Compatibility**:
+   - Enhanced to allow search widgets with all string field filter types
+   - Validates dropdown/search widget requirements
+   - Prevents incompatible widget configurations
+
+4. **Parameter Preservation**:
+   - Automatically preserves existing parameters during query-only updates
+   - Maintains template tag consistency
+   - Prevents "template tag not found" errors
+
+### Validation Functions Location
+
+All parameter validation functions are centralized in `enhanced_parameters/core.py`:
+
+- `extract_sql_parameters()` - Extracts required/optional parameters from SQL
+- `validate_sql_parameter_consistency()` - Validates SQL-parameter alignment  
+- `detect_sql_parameter_mistakes()` - Detects common usage errors
+- `validate_parameter_widget_compatibility()` - Validates UI widget compatibility
 
 ### Special Handling for Number Dropdowns
 

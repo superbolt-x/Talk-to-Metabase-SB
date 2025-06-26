@@ -24,7 +24,9 @@ logger.info("Registering card definition tools with the server...")
 try:
     from .enhanced_parameters import (
         process_enhanced_parameters,
-        validate_enhanced_parameters_helper
+        validate_enhanced_parameters_helper,
+        extract_sql_parameters,
+        validate_sql_parameter_consistency
     )
     ENHANCED_PARAMETERS_AVAILABLE = True
     logger.info("Enhanced parameters functionality loaded successfully")
@@ -527,11 +529,16 @@ async def create_card(
                 "message": str(e)
             }, indent=2)
     
-    # Check for common SQL parameter mistakes if parameters are provided
+    # Check for common SQL parameter mistakes and parameter consistency if parameters are provided
     sql_warnings = []
     if processed_parameters:
         parameter_names = [param["slug"] for param in processed_parameters if "slug" in param]
-        sql_warnings = detect_sql_parameter_mistakes(query, parameter_names)
+        sql_warnings.extend(detect_sql_parameter_mistakes(query, parameter_names))
+        
+        # Check parameter consistency
+        consistency_issues = validate_sql_parameter_consistency(query, processed_parameters)
+        if consistency_issues:
+            sql_warnings.extend([f"PARAMETER CONSISTENCY: {issue}" for issue in consistency_issues])
     
     # Step 1: Execute the query to validate it
     execution_result = await execute_sql_query(client, database_id, query)
@@ -675,7 +682,7 @@ async def update_card(
     - UI WIDGETS: input, dropdown, search with automatic value population
     - VALUE SOURCES: static lists, card sources, connected field values
     - AUTOMATIC PROCESSING: All UUIDs, template tags, targets, slugs generated automatically
-    - Parameters not included in the update will be REMOVED
+    - PARAMETER PRESERVATION: If updating query without providing parameters, existing parameters are preserved
     - Parameters can be provided as JSON string or list of dictionaries
 
     
@@ -826,9 +833,13 @@ async def update_card(
         if visualization_settings is not None:
             update_data["visualization_settings"] = visualization_settings
         
-        # Add parameters if provided
+        # Add parameters if provided, or preserve existing ones if query is being updated
         if processed_parameters is not None:
             update_data["parameters"] = processed_parameters
+        elif query is not None and "parameters" in current_data and current_data["parameters"]:
+            # If query is being updated but no new parameters provided, preserve existing parameters
+            update_data["parameters"] = current_data["parameters"]
+            logger.info(f"Preserving existing parameters for card {id} during query update")
         
         # If query is provided, validate it and update the dataset_query
         if query is not None:
@@ -843,10 +854,27 @@ async def update_card(
                     }
                 )
             
-            # Check for common SQL parameter mistakes if parameters are provided
+            # Check for common SQL parameter mistakes and parameter consistency if parameters are provided
             if processed_parameters:
                 parameter_names = [param["slug"] for param in processed_parameters if "slug" in param]
-                sql_warnings = detect_sql_parameter_mistakes(query, parameter_names)
+                sql_warnings.extend(detect_sql_parameter_mistakes(query, parameter_names))
+                
+                # Check parameter consistency
+                consistency_issues = validate_sql_parameter_consistency(query, processed_parameters)
+                if consistency_issues:
+                    sql_warnings.extend([f"PARAMETER CONSISTENCY: {issue}" for issue in consistency_issues])
+            elif "parameters" in update_data and update_data["parameters"]:
+                # If we're preserving existing parameters, validate them against the new query
+                preserved_params = update_data["parameters"]
+                consistency_issues = validate_sql_parameter_consistency(query, preserved_params)
+                if consistency_issues:
+                    sql_warnings.extend([f"PARAMETER CONSISTENCY (preserved): {issue}" for issue in consistency_issues])
+            
+            # If parameters are not provided but query is updated, preserve existing template tags
+            existing_template_tags = {}
+            if parameters is None and "dataset_query" in current_data:
+                existing_native = current_data["dataset_query"].get("native", {})
+                existing_template_tags = existing_native.get("template-tags", {})
             
             # Validate the SQL query
             execution_result = await execute_sql_query(client, database_id, query)
@@ -870,7 +898,7 @@ async def update_card(
                 "database": database_id,
                 "native": {
                     "query": query,
-                    "template-tags": template_tags or {}
+                    "template-tags": template_tags if template_tags else existing_template_tags
                 }
             }
             
@@ -902,11 +930,17 @@ async def update_card(
             )
         
         # Return a concise success response with essential info
+        final_parameters_count = 0
+        if processed_parameters is not None:
+            final_parameters_count = len(processed_parameters)
+        elif "parameters" in update_data:
+            final_parameters_count = len(update_data["parameters"])
+        
         response = {
             "success": True,
             "card_id": data.get("id"),
             "name": data.get("name"),
-            "parameters_count": len(processed_parameters) if processed_parameters else 0
+            "parameters_count": final_parameters_count
         }
         
         # Include SQL warnings if query was updated and warnings were detected
