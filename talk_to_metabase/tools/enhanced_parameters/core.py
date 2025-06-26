@@ -1,86 +1,3 @@
-def extract_sql_parameters(query: str) -> Dict[str, List[str]]:
-    """
-    Extract parameter references from SQL query.
-    
-    Args:
-        query: SQL query string
-        
-    Returns:
-        Dictionary with 'required' and 'optional' parameter lists
-    """
-    import re
-    
-    # Find all {{parameter}} references
-    required_pattern = r'\{\{([^}]+)\}\}'
-    required_matches = re.findall(required_pattern, query)
-    
-    # Find all [[...{{parameter}}...]] optional references
-    optional_pattern = r'\[\[[^\]]*\{\{([^}]+)\}\}[^\]]*\]\]'
-    optional_matches = re.findall(optional_pattern, query)
-    
-    # Remove optional parameters from required list (they appear in both)
-    required_only = [param for param in required_matches if param not in optional_matches]
-    
-    return {
-        "required": list(set(required_only)),  # Remove duplicates
-        "optional": list(set(optional_matches))  # Remove duplicates
-    }
-
-
-def validate_sql_parameter_consistency(query: str, parameters: List[Dict[str, Any]]) -> List[str]:
-    """
-    Validate that SQL parameters match the provided parameters configuration.
-    
-    Args:
-        query: SQL query string
-        parameters: List of parameter configurations
-        
-    Returns:
-        List of validation error/warning messages
-    """
-    issues = []
-    
-    # Extract parameters from SQL
-    sql_params = extract_sql_parameters(query)
-    all_sql_params = sql_params["required"] + sql_params["optional"]
-    
-    # Get parameter names/slugs from configuration
-    config_param_names = set()
-    config_param_slugs = set()
-    
-    for param in parameters:
-        if "name" in param:
-            config_param_names.add(param["name"])
-        if "slug" in param:
-            config_param_slugs.add(param["slug"])
-    
-    # Combine both name and slug for checking (parameters can be referenced by either)
-    config_params = config_param_names.union(config_param_slugs)
-    
-    # Check for SQL parameters not in configuration
-    for sql_param in all_sql_params:
-        if sql_param not in config_params:
-            issues.append(f"SQL references parameter '{sql_param}' but no matching parameter configuration found")
-    
-    # Check for configured parameters not used in SQL
-    for config_param in config_params:
-        if config_param not in all_sql_params:
-            issues.append(f"Parameter '{config_param}' is configured but not used in SQL query")
-    
-    # Check required vs optional parameter usage
-    for required_param in sql_params["required"]:
-        if required_param in config_params:
-            # Find the parameter config
-            param_config = next(
-                (p for p in parameters if p.get("name") == required_param or p.get("slug") == required_param), 
-                None
-            )
-            if param_config and not param_config.get("required", False) and "default" not in param_config:
-                issues.append(f"Parameter '{required_param}' is used as required in SQL but has no default value and is not marked as required")
-    
-    return issues
-
-
 """
 Enhanced card parameters implementation for Metabase MCP server.
 
@@ -682,3 +599,86 @@ def validate_enhanced_parameters_helper(parameters: List[Dict[str, Any]]) -> Dic
         "parameters_count": len(parameters) if parameters else 0,
         "validation_type": "enhanced_parameters"
     }
+
+def extract_sql_parameters(query: str) -> Dict[str, List[str]]:
+    """
+    Extract parameter references from SQL query.
+    
+    Args:
+        query: SQL query string
+        
+    Returns:
+        Dictionary with 'required' and 'optional' parameter lists
+    """
+    import re
+    
+    # Find all {{parameter}} references
+    required_pattern = r'\{\{([^}]+)\}\}'
+    required_matches = re.findall(required_pattern, query)
+    
+    # Find all [[...{{parameter}}...]] optional references
+    optional_pattern = r'\[\[[^\]]*\{\{([^}]+)\}\}[^\]]*\]\]'
+    optional_matches = re.findall(optional_pattern, query)
+    
+    # Remove optional parameters from required list (they appear in both)
+    required_only = [param for param in required_matches if param not in optional_matches]
+    
+    return {
+        "required": list(set(required_only)),  # Remove duplicates
+        "optional": list(set(optional_matches))  # Remove duplicates
+    }
+
+def validate_sql_parameter_consistency(query: str, parameters: List[Dict[str, Any]]) -> List[str]:
+    """
+    Validate that SQL parameters match the provided parameters configuration.
+    
+    Args:
+        query: SQL query string
+        parameters: List of parameter configurations
+        
+    Returns:
+        List of validation error/warning messages
+    """
+    issues = []
+    
+    # Extract parameters from SQL
+    sql_params = extract_sql_parameters(query)
+    all_sql_params = sql_params["required"] + sql_params["optional"]
+    
+    # Get parameter names/slugs from configuration
+    config_param_names = set()
+    config_param_slugs = set()
+    
+    for param in parameters:
+        if "name" in param:
+            config_param_names.add(param["name"])
+        if "slug" in param:
+            config_param_slugs.add(param["slug"])
+    
+    # Combine both name and slug for checking (parameters can be referenced by either)
+    config_params = config_param_names.union(config_param_slugs)
+    
+    # Check for SQL parameters not in configuration
+    for sql_param in all_sql_params:
+        if sql_param not in config_params:
+            issues.append(f"SQL references parameter '{sql_param}' but no matching parameter configuration found")
+    
+    # Check for configured parameters not used in SQL
+    for config_param in config_params:
+        if config_param not in all_sql_params:
+            issues.append(f"Parameter '{config_param}' is configured but not used in SQL query")
+    
+    # Check required vs optional parameter usage
+    for required_param in sql_params["required"]:
+        if required_param in config_params:
+            # Find the parameter config
+            param_config = next(
+                (p for p in parameters if p.get("name") == required_param or p.get("slug") == required_param), 
+                None
+            )
+            if param_config and not param_config.get("required", False) and "default" not in param_config:
+                issues.append(f"Parameter '{required_param}' is used as required in SQL but has no default value and is not marked as required")
+    
+    return issues
+
+
