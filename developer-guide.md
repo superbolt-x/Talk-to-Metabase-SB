@@ -621,7 +621,154 @@ The enhanced system completely replaces the old simplified card parameters:
 6. **Performance**: Optimized validation and processing
 7. **Maintainability**: Clean, modular architecture
 
-The enhanced card parameters system provides a robust, comprehensive solution for creating sophisticated interactive filters in Metabase while maintaining ease of use and reliability.
+## Enhanced Dashboard Parameters Implementation
+
+The enhanced dashboard parameters system provides comprehensive support for all Metabase dashboard filter types with automatic ID generation, intelligent defaults, and complete validation. This system completely replaces the previous simplified dashboard parameters implementation.
+
+### Key Features
+
+1. **Complete Parameter Type Support**:
+   - **Text Parameters**: All 6 string parameter types with full multi-select support
+   - **Number Parameters**: 5 number parameter types with multi-select for equality types
+   - **Date Parameters**: 6 date parameter types (no multi-select support)
+   - **Special Parameters**: `temporal-unit`, `id`, and location parameters
+
+2. **Multi-Select Support Rules**:
+   - ✅ **Supported**: All string types (`string/=`, `string/!=`, `string/contains`, `string/does-not-contain`, `string/starts-with`, `string/ends-with`)
+   - ✅ **Supported**: Number equality types (`number/=`, `number/!=`)
+   - ✅ **Supported**: `id` parameters
+   - ✅ **Supported**: Location parameters (`string/=` with `sectionId: "location"`)
+   - ❌ **Not Supported**: All date parameters, `temporal-unit`, number range/comparison parameters
+
+3. **Value Sources**: Static lists, card sources, and connected values with comprehensive validation
+
+4. **Automatic Processing**: ID generation (8-character alphanumeric), slug creation, sectionId determination
+
+5. **Name-Based Identification**: Parameters identified by name only, IDs managed internally
+
+### Implementation Architecture
+
+#### Core Files
+
+1. **Main Implementation** (`enhanced_dashboard_parameters.py`):
+   - Parameter processing and validation logic
+   - Multi-select compatibility checking
+   - Value source configuration
+   - Automatic ID and slug generation
+   - `GET_ENHANCED_DASHBOARD_PARAMETERS_DOCUMENTATION` tool
+
+2. **JSON Schema** (`enhanced_dashboard_parameters.json`):
+   - Validates all parameter types and configurations
+   - Enforces multi-select restrictions
+   - Validates required fields and business rules
+   - Handles temporal-unit parameter requirements
+
+3. **Documentation** (`enhanced_dashboard_parameters_docs.md`):
+   - Complete examples for all parameter types
+   - Usage guidelines and best practices
+   - Multi-select compatibility rules
+   - Default value formats
+
+4. **Updated Dashboard Tool** (`dashboard.py`):
+   - Uses enhanced validation and processing
+   - Replaced old parameters system
+   - Updated documentation and error messages
+
+#### Parameter Type Categories
+
+```python
+# Text parameters - all support multi-select
+TEXT_PARAMETER_TYPES = {
+    "string/=", "string/!=", "string/contains", "string/does-not-contain",
+    "string/starts-with", "string/ends-with"
+}
+
+# Number parameters - equality types support multi-select
+NUMBER_PARAMETER_TYPES = {
+    "number/=", "number/!=", "number/between", "number/>=", "number/<="
+}
+
+# Date parameters - none support multi-select
+DATE_PARAMETER_TYPES = {
+    "date/single", "date/range", "date/month-year", "date/quarter-year", 
+    "date/relative", "date/all-options"
+}
+```
+
+#### Validation System
+
+1. **JSON Schema Validation**: Handles structure, types, and basic constraints
+2. **Business Logic Validation**: Multi-select compatibility, temporal units, value sources
+3. **Card Reference Validation**: Validates accessibility of referenced cards for value sources
+4. **Parameter Processing**: Converts enhanced format to Metabase API format
+
+### Usage Pattern
+
+#### Tools Integration
+
+```python
+# Documentation tool
+@mcp.tool(name="GET_ENHANCED_DASHBOARD_PARAMETERS_DOCUMENTATION")
+async def get_enhanced_dashboard_parameters_documentation(ctx: Context) -> str:
+    # Returns comprehensive documentation and schema
+
+# Dashboard update with enhanced parameters
+@mcp.tool(name="update_dashboard")
+async def update_dashboard(
+    id: int,
+    ctx: Context,
+    parameters: Optional[List[Dict[str, Any]]] = None,
+    # ... other parameters
+) -> str:
+    # Uses enhanced validation and processing
+```
+
+#### Parameter Configuration Format
+
+```python
+# Enhanced parameter configuration
+{
+    "name": "Parameter Name",        # Required: Used for identification
+    "type": "string/=",              # Required: Parameter type
+    "default": "value",             # Optional: Default value
+    "isMultiSelect": True,           # Optional: Enable multi-select (where supported)
+    "sectionId": "location",        # Optional: Override section (for location parameters)
+    "required": True,                # Optional: Whether parameter is required
+    "values_source": {               # Optional: Value source configuration
+        "type": "static",
+        "values": ["option1", "option2"]
+    },
+    "temporal_units": ["day", "week"] # Required for temporal-unit parameters
+}
+```
+
+### Processing Flow
+
+1. **Initial Validation**: JSON schema validation for structure and types
+2. **Business Logic Validation**: Multi-select compatibility, temporal units, value sources
+3. **Card Reference Validation**: Check accessibility of referenced cards
+4. **Parameter Processing**: Generate IDs, slugs, and convert to Metabase API format
+5. **Final Validation**: Ensure processed parameters are valid
+
+### Error Handling
+
+The system provides detailed error messages for:
+- Schema validation failures with specific field paths
+- Multi-select compatibility issues
+- Invalid temporal units
+- Missing or inaccessible card references
+- Required parameter validation
+- Value source configuration errors
+
+### Key Improvements Over Previous System
+
+1. **Complete Type Coverage**: All 18 dashboard parameter types supported
+2. **Accurate Multi-Select Rules**: Reflects actual Metabase capabilities
+3. **Name-Based Identification**: Simplified parameter management
+4. **Comprehensive Validation**: Prevents configuration errors
+5. **Better Error Messages**: Clear, actionable feedback
+6. **Value Source Validation**: Ensures referenced cards are accessible
+7. **Automatic Processing**: Reduces manual configuration effort
 
 ## Project Structure
 

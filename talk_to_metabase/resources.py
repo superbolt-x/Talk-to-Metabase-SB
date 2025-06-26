@@ -170,3 +170,13 @@ def load_enhanced_card_parameters_schema() -> Optional[Dict[str, Any]]:
 def load_enhanced_card_parameters_docs() -> Optional[str]:
     """Load the enhanced card parameters documentation."""
     return load_text_resource("schemas/enhanced_card_parameters_docs.md")
+
+
+def load_enhanced_dashboard_parameters_schema() -> Optional[Dict[str, Any]]:
+    """Load the enhanced dashboard parameters JSON schema."""
+    return load_json_resource("schemas/enhanced_dashboard_parameters.json")
+
+
+def load_enhanced_dashboard_parameters_docs() -> Optional[str]:
+    """Load the enhanced dashboard parameters documentation."""
+    return load_text_resource("schemas/enhanced_dashboard_parameters_docs.md")

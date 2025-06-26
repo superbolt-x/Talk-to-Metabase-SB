@@ -1,0 +1,193 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Enhanced Metabase Dashboard Parameters Schema",
+  "description": "Comprehensive schema for dashboard parameters supporting all Metabase dashboard filter types with automatic ID generation and comprehensive validation",
+  "type": "array",
+  "items": {
+    "type": "object",
+    "properties": {
+      "name": {
+        "type": "string",
+        "minLength": 1,
+        "description": "Parameter name - used for identification and as display label. Cannot be 'tab' (reserved)."
+      },
+      "type": {
+        "type": "string",
+        "enum": [
+          "string/=", "string/!=", "string/contains", "string/does-not-contain",
+          "string/starts-with", "string/ends-with",
+          "number/=", "number/!=", "number/between", "number/>=", "number/<=",
+          "date/single", "date/range", "date/month-year", "date/quarter-year",
+          "date/relative", "date/all-options",
+          "temporal-unit", "id"
+        ],
+        "description": "Parameter type determining filtering behavior and UI widget"
+      },
+      "id": {
+        "type": "string",
+        "pattern": "^[a-zA-Z0-9]{8}$",
+        "description": "8-character alphanumeric parameter ID (auto-generated if not provided)"
+      },
+      "sectionId": {
+        "type": "string",
+        "enum": ["string", "number", "date", "location", "temporal-unit", "id"],
+        "description": "Parameter category for UI grouping (auto-determined if not provided, except for location)"
+      },
+      "required": {
+        "type": "boolean",
+        "default": false,
+        "description": "Whether parameter value is required (required parameters must have defaults)"
+      },
+      "default": {
+        "description": "Default value - format depends on type and multi-select setting",
+        "anyOf": [
+          {"type": "string"},
+          {"type": "number"},
+          {"type": "array"},
+          {"type": "null"}
+        ]
+      },
+      "isMultiSelect": {
+        "type": "boolean",
+        "description": "Enable multiple value selection (only supported for string/=, number/=, id, and location)"
+      },
+      "temporal_units": {
+        "type": "array",
+        "items": {
+          "type": "string",
+          "enum": [
+            "minute", "hour", "day", "week", "month", "quarter", "year",
+            "minute-of-hour", "hour-of-day", "day-of-week", "day-of-month",
+            "day-of-year", "week-of-year", "month-of-year", "quarter-of-year"
+          ]
+        },
+        "minItems": 1,
+        "description": "Available temporal units (required for temporal-unit parameters)"
+      },
+      "values_source": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": ["static", "card", "connected"],
+            "description": "Source type for parameter values"
+          },
+          "values": {
+            "type": "array",
+            "items": {
+              "anyOf": [
+                {"type": "string"},
+                {"type": "number"},
+                {"type": "boolean"}
+              ]
+            },
+            "minItems": 1,
+            "description": "Static list of values (when type is 'static')"
+          },
+          "card_id": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Card ID to source values from (when type is 'card')"
+          },
+          "value_field": {
+            "type": "string",
+            "description": "Column name for values (when type is 'card')"
+          },
+          "label_field": {
+            "type": "string",
+            "description": "Column name for display labels (when type is 'card')"
+          }
+        },
+        "required": ["type"],
+        "additionalProperties": false,
+        "description": "Configuration for parameter value sources"
+      }
+    },
+    "required": ["name", "type"],
+    "additionalProperties": false,
+    "allOf": [
+      {
+        "description": "Temporal-unit parameters require temporal_units array",
+        "if": {
+          "properties": {
+            "type": {"const": "temporal-unit"}
+          }
+        },
+        "then": {
+          "required": ["temporal_units"]
+        }
+      },
+      {
+        "description": "Static values source requires values array",
+        "if": {
+          "properties": {
+            "values_source": {
+              "properties": {
+                "type": {"const": "static"}
+              },
+              "required": ["type"]
+            }
+          },
+          "required": ["values_source"]
+        },
+        "then": {
+          "properties": {
+            "values_source": {
+              "required": ["values"]
+            }
+          }
+        }
+      },
+      {
+        "description": "Card values source requires card_id and value_field",
+        "if": {
+          "properties": {
+            "values_source": {
+              "properties": {
+                "type": {"const": "card"}
+              },
+              "required": ["type"]
+            }
+          },
+          "required": ["values_source"]
+        },
+        "then": {
+          "properties": {
+            "values_source": {
+              "required": ["card_id", "value_field"]
+            }
+          }
+        }
+      },
+      {
+        "description": "Multi-select validation for string/contains and similar types - REMOVED as they do support multi-select"
+      },
+      {
+        "description": "Forbid isMultiSelect: true for date and temporal-unit parameters",
+        "if": {
+          "properties": {
+            "type": {
+              "enum": ["date/single", "date/range", "date/month-year", "date/quarter-year", "date/relative", "date/all-options", "temporal-unit"]
+            },
+            "isMultiSelect": {"const": true}
+          },
+          "required": ["type", "isMultiSelect"]
+        },
+        "then": false
+      },
+      {
+        "description": "Location parameters use string/= type with location sectionId",
+        "if": {
+          "properties": {
+            "sectionId": {"const": "location"}
+          }
+        },
+        "then": {
+          "properties": {
+            "type": {"const": "string/="}
+          }
+        }
+      }
+    ]
+  }
+}
