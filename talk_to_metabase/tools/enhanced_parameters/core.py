@@ -365,8 +365,9 @@ def validate_parameter_widget_compatibility(parameters: List[Dict[str, Any]]) ->
         ui_widget = param.get("ui_widget")
         
         # Check widget compatibility
-        if ui_widget == "search" and param_type not in ["category", "string/contains", "string/starts-with", "string/ends-with"]:
-            errors.append(f"Parameter {i} ({param['name']}): Search widget not compatible with type '{param_type}'")
+        # Search widget is compatible with category and all string field filters
+        if ui_widget == "search" and param_type not in ["category"] and not param_type.startswith("string/"):
+            errors.append(f"Parameter {i} ({param['name']}): Search widget only compatible with category and string field filter types, not '{param_type}'")
         
         if ui_widget == "dropdown" and param_type.startswith("date/") and param_type != "date/single":
             errors.append(f"Parameter {i} ({param['name']}): Dropdown widget not compatible with date field filter type '{param_type}'")
