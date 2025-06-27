@@ -160,9 +160,6 @@
         }
       },
       {
-        "description": "Multi-select validation for string/contains and similar types - REMOVED as they do support multi-select"
-      },
-      {
         "description": "Forbid isMultiSelect: true for date and temporal-unit parameters",
         "if": {
           "properties": {
@@ -176,16 +173,18 @@
         "then": false
       },
       {
-        "description": "Location parameters use string/= type with location sectionId",
+        "description": "Location parameters must use string/= type when sectionId is location",
         "if": {
           "properties": {
             "sectionId": {"const": "location"}
-          }
+          },
+          "required": ["sectionId"]
         },
         "then": {
           "properties": {
             "type": {"const": "string/="}
-          }
+          },
+          "required": ["type"]
         }
       }
     ]
