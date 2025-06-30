@@ -1,5 +1,5 @@
 """
-Enhanced dashboard parameters implementation for Metabase MCP server.
+Dashboard parameters implementation for Metabase MCP server.
 
 This module provides comprehensive dashboard parameter support including:
 - All dashboard parameter types (string, number, date, temporal-unit, location, ID)
@@ -118,9 +118,9 @@ LOCATION_TO_STRING_MAPPING = {
 }
 
 
-def load_enhanced_dashboard_parameters_schema() -> Optional[Dict[str, Any]]:
-    """Load the enhanced dashboard parameters JSON schema."""
-    return load_json_resource("schemas/enhanced_dashboard_parameters.json")
+def load_dashboard_parameters_schema() -> Optional[Dict[str, Any]]:
+    """Load the dashboard parameters JSON schema."""
+    return load_json_resource("schemas/dashboard_parameters.json")
 
 
 def generate_parameter_id() -> str:
@@ -409,7 +409,7 @@ def process_single_dashboard_parameter(param_config: Dict[str, Any], existing_id
     Process a single dashboard parameter configuration into Metabase API format.
     
     Args:
-        param_config: Enhanced parameter configuration
+        param_config: Dashboard parameter configuration
         existing_ids: Set of existing parameter IDs to avoid collisions
         
     Returns:
@@ -475,19 +475,19 @@ def process_single_dashboard_parameter(param_config: Dict[str, Any], existing_id
     return processed_param
 
 
-def validate_enhanced_dashboard_parameters(parameters: List[Dict[str, Any]]) -> Tuple[bool, List[str]]:
+def validate_dashboard_parameters(parameters: List[Dict[str, Any]]) -> Tuple[bool, List[str]]:
     """
-    Validate enhanced dashboard parameters against schema and business rules.
+    Validate dashboard parameters against schema and business rules.
     
     Args:
-        parameters: List of enhanced parameter configurations
+        parameters: List of dashboard parameter configurations
         
     Returns:
         Tuple of (is_valid, error_messages)
     """
-    schema = load_enhanced_dashboard_parameters_schema()
+    schema = load_dashboard_parameters_schema()
     if schema is None:
-        return False, ["Could not load enhanced dashboard parameters schema"]
+        return False, ["Could not load dashboard parameters schema"]
     
     try:
         # JSON Schema validation handles most validation automatically
@@ -633,19 +633,19 @@ async def validate_card_references(client, parameters: List[Dict[str, Any]]) -> 
     return errors
 
 
-async def process_enhanced_dashboard_parameters(client, parameters: List[Dict[str, Any]]) -> Tuple[List[Dict[str, Any]], List[str]]:
+async def process_dashboard_parameters(client, parameters: List[Dict[str, Any]]) -> Tuple[List[Dict[str, Any]], List[str]]:
     """
-    Process enhanced dashboard parameters into Metabase API format with validation.
+    Process dashboard parameters into Metabase API format with validation.
     
     Args:
         client: Metabase client for card validation
-        parameters: List of enhanced parameter configurations
+        parameters: List of dashboard parameter configurations
         
     Returns:
         Tuple of (processed_parameters, errors)
     """
     # Basic validation first
-    is_valid, validation_errors = validate_enhanced_dashboard_parameters(parameters)
+    is_valid, validation_errors = validate_dashboard_parameters(parameters)
     if not is_valid:
         return [], validation_errors
     
@@ -665,30 +665,30 @@ async def process_enhanced_dashboard_parameters(client, parameters: List[Dict[st
     return processed_parameters, []
 
 
-def validate_enhanced_dashboard_parameters_helper(parameters: List[Dict[str, Any]]) -> Dict[str, Any]:
+def validate_dashboard_parameters_helper(parameters: List[Dict[str, Any]]) -> Dict[str, Any]:
     """
-    Helper function to validate enhanced dashboard parameters and return structured result.
+    Helper function to validate dashboard parameters and return structured result.
     
     Args:
-        parameters: List of enhanced parameter configurations
+        parameters: List of dashboard parameter configurations
         
     Returns:
         Dictionary with validation results
     """
-    is_valid, errors = validate_enhanced_dashboard_parameters(parameters)
+    is_valid, errors = validate_dashboard_parameters(parameters)
     
     return {
         "valid": is_valid,
         "errors": errors,
         "parameters_count": len(parameters) if parameters else 0,
-        "validation_type": "enhanced_dashboard_parameters"
+        "validation_type": "dashboard_parameters"
     }
 
 
-@mcp.tool(name="GET_ENHANCED_DASHBOARD_PARAMETERS_DOCUMENTATION", description="Get complete schema and documentation for enhanced dashboard parameters")
-async def get_enhanced_dashboard_parameters_documentation(ctx: Context) -> str:
+@mcp.tool(name="GET_DASHBOARD_PARAMETERS_DOCUMENTATION", description="Get complete schema and documentation for dashboard parameters")
+async def get_dashboard_parameters_documentation(ctx: Context) -> str:
     """
-    Get complete schema and documentation for enhanced dashboard parameters.
+    Get complete schema and documentation for dashboard parameters.
     All documentation is embedded in the JSON schema.
     
     Args:
@@ -697,17 +697,17 @@ async def get_enhanced_dashboard_parameters_documentation(ctx: Context) -> str:
     Returns:
         JSON schema with embedded documentation
     """
-    logger.info("Tool called: GET_ENHANCED_DASHBOARD_PARAMETERS_DOCUMENTATION()")
+    logger.info("Tool called: GET_DASHBOARD_PARAMETERS_DOCUMENTATION()")
     
     try:
-        schema = load_enhanced_dashboard_parameters_schema()
+        schema = load_dashboard_parameters_schema()
         
         if schema is None:
             return format_error_response(
                 status_code=500,
                 error_type="schema_loading_error",
-                message="Could not load enhanced dashboard parameters JSON schema",
-                request_info={"schema_file": "enhanced_dashboard_parameters.json"}
+                message="Could not load dashboard parameters JSON schema",
+                request_info={"schema_file": "dashboard_parameters.json"}
             )
         
         # Return the schema directly - all documentation is embedded
@@ -719,10 +719,10 @@ async def get_enhanced_dashboard_parameters_documentation(ctx: Context) -> str:
         return check_response_size(response, config)
         
     except Exception as e:
-        logger.error(f"Error in GET_ENHANCED_DASHBOARD_PARAMETERS_DOCUMENTATION: {e}")
+        logger.error(f"Error in GET_DASHBOARD_PARAMETERS_DOCUMENTATION: {e}")
         return format_error_response(
             status_code=500,
             error_type="tool_error",
-            message=f"Error retrieving enhanced dashboard parameters documentation: {str(e)}",
+            message=f"Error retrieving dashboard parameters documentation: {str(e)}",
             request_info={}
         )

@@ -1,6 +1,6 @@
 ## ⚠️ Critical SQL Parameter Usage Fixes
 
-A major enhancement addresses common AI assistant mistakes with SQL parameter usage:
+A major improvement addresses common AI assistant mistakes with SQL parameter usage:
 
 ### Field Filter Behavior Clarification
 Field filters are replaced with **boolean values (true/false)**, NOT with complete SQL conditions:
@@ -19,17 +19,17 @@ The `update_card` tool now preserves existing parameters when updating queries:
 - Maintains parameter functionality during query-only updates
 - Automatically preserves both parameters and template tags
 
-### Enhanced Widget Compatibility
+### Widget Compatibility
 UI widget validation has been improved:
 - Search widgets now work with all string field filter types
 - Better validation for dropdown and search widget requirements
 - Clearer error messages for incompatible configurations
 
-# Enhanced Card Parameters Implementation Summary
+# Card Parameters Implementation Summary
 
 ## Overview
 
-Talk to Metabase now provides comprehensive support for creating sophisticated interactive filters in Metabase cards through an enhanced card parameters system. This implementation supports both simple variable filters and advanced field filters that connect directly to database columns, providing users with powerful filtering capabilities while maintaining ease of use.
+Talk to Metabase now provides comprehensive support for creating sophisticated interactive filters in Metabase cards through a card parameters system. This implementation supports both simple variable filters and advanced field filters that connect directly to database columns, providing users with powerful filtering capabilities while maintaining ease of use.
 
 ## 🎯 Key Achievements
 
@@ -78,17 +78,17 @@ WHERE {{customer_filter}}
 
 ### Core Components
 
-1. **Enhanced Parameters Module**: `/talk_to_metabase/tools/enhanced_parameters/`
+1. **Card Parameters Module**: `/talk_to_metabase/tools/card_parameters/`
    - `core.py`: Main implementation with validation, processing, and tools
    - `__init__.py`: Module exports for easy importing
 
-2. **JSON Schema Validation**: `/talk_to_metabase/schemas/enhanced_card_parameters.json`
+2. **JSON Schema Validation**: `/talk_to_metabase/schemas/card_parameters.json`
    - Comprehensive validation for all parameter types
    - Conditional validation for field filters requiring field configuration
    - UI widget compatibility validation with exceptions for connected field filters
    - Special handling for number dropdown formatting
 
-3. **Complete Documentation**: `/talk_to_metabase/schemas/enhanced_card_parameters_docs.md`
+3. **Complete Documentation**: `/talk_to_metabase/schemas/card_parameters_docs.md`
    - Detailed examples for all parameter types
    - Clear SQL usage patterns and best practices
    - UI widget mapping guide
@@ -179,13 +179,13 @@ Connected field filters use special API configuration:
 
 ## 🛠️ Tools Integration
 
-### Enhanced Card Creation/Update Tools
-Both `create_card` and `update_card` now support enhanced parameters:
+### Card Creation/Update Tools
+Both `create_card` and `update_card` now support card parameters:
 
 ```python
 # Automatic parameter processing with validation
-if ENHANCED_PARAMETERS_AVAILABLE and parsed_parameters:
-    processed_parameters, template_tags, errors = await process_enhanced_parameters(
+if CARD_PARAMETERS_AVAILABLE and parsed_parameters:
+    processed_parameters, template_tags, errors = await process_card_parameters(
         client, parsed_parameters
     )
     if errors:
@@ -193,7 +193,7 @@ if ENHANCED_PARAMETERS_AVAILABLE and parsed_parameters:
 ```
 
 ### Documentation Tool
-`GET_ENHANCED_CARD_PARAMETERS_DOCUMENTATION` provides:
+`GET_CARD_PARAMETERS_DOCUMENTATION` provides:
 - Complete schema and examples
 - UI widget mappings  
 - Value source configurations
@@ -292,13 +292,13 @@ if ENHANCED_PARAMETERS_AVAILABLE and parsed_parameters:
 ```json
 {
   "success": false,
-  "error": "Invalid enhanced parameters",
+  "error": "Invalid card parameters",
   "validation_errors": [
     "Parameter 2 (date_filter): required parameters must have a default value",
     "Parameter 3 (customer_filter): Field 99999 not found in table 50112"
   ],
   "parameters_count": 4,
-  "help": "Call GET_ENHANCED_CARD_PARAMETERS_DOCUMENTATION for format details"
+  "help": "Call GET_CARD_PARAMETERS_DOCUMENTATION for format details"
 }
 ```
 
@@ -327,9 +327,9 @@ if ENHANCED_PARAMETERS_AVAILABLE and parsed_parameters:
 
 ### Complete Legacy Replacement
 - **Legacy Files Removed**: Old `card_parameters.py` moved to `.deprecated`
-- **No Dual Systems**: Single enhanced system for all parameter needs
+- **No Dual Systems**: Single card parameters system for all parameter needs
 - **Backward Compatibility**: Simple use cases work the same way
-- **Enhanced Capabilities**: Field filters and advanced features now available
+- **Advanced Capabilities**: Field filters and advanced features now available
 
 ### Upgrade Path
 Users can enhance existing simple parameters by adding field mappings:
@@ -363,7 +363,7 @@ Users can enhance existing simple parameters by adding field mappings:
 - [x] Complete parameter type support (simple + field filters)
 - [x] JSON Schema validation with conditional logic
 - [x] Field reference validation against database
-- [x] Enhanced UI widget compatibility validation (search widgets work with all string field filters)
+- [x] UI widget compatibility validation (search widgets work with all string field filters)
 - [x] Number dropdown special formatting
 - [x] Connected field filter configuration
 - [x] Required parameter validation
@@ -378,7 +378,7 @@ Users can enhance existing simple parameters by adding field mappings:
 - [x] **Field filter behavior clarification (boolean values)**
 
 ### 🎯 Production Ready
-The enhanced card parameters system is **production-ready** and provides:
+The card parameters system is **production-ready** and provides:
 
 1. **Comprehensive validation** prevents configuration errors
 2. **Field validation** ensures database references are valid  
@@ -389,7 +389,7 @@ The enhanced card parameters system is **production-ready** and provides:
 
 ## 🏁 Conclusion
 
-The enhanced card parameters implementation provides a robust, comprehensive solution for creating sophisticated interactive filters in Metabase. It successfully bridges the gap between simple parameter usage and advanced field filtering capabilities, while maintaining ease of use and providing clear guidance for AI assistants.
+The card parameters implementation provides a robust, comprehensive solution for creating sophisticated interactive filters in Metabase. It successfully bridges the gap between simple parameter usage and advanced field filtering capabilities, while maintaining ease of use and providing clear guidance for AI assistants.
 
 Key achievements include:
 - **Complete Metabase parameter support** across all types
@@ -397,7 +397,7 @@ Key achievements include:
 - **Field filter behavior clarification** (boolean values, not SQL conditions)
 - **SQL parameter consistency validation** ensuring SQL matches configuration
 - **Parameter preservation** during query updates preventing template tag errors
-- **Enhanced widget compatibility** with improved validation
+- **Widget compatibility** with improved validation
 - **Automatic processing** of complex configurations
 - **Comprehensive validation** preventing errors
 - **Production-ready reliability** with thorough testing

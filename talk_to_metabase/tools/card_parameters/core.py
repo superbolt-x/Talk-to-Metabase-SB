@@ -1,5 +1,5 @@
 """
-Enhanced card parameters implementation for Metabase MCP server.
+Card parameters implementation for Metabase MCP server.
 
 This module provides comprehensive card parameter support including:
 - Simple filters (category, number, date) 
@@ -18,7 +18,7 @@ import jsonschema
 from mcp.server.fastmcp import Context
 
 from ...server import get_server_instance
-from ...resources import load_enhanced_card_parameters_schema, load_enhanced_card_parameters_docs
+from ...resources import load_card_parameters_schema, load_card_parameters_docs
 from ..common import format_error_response, get_metabase_client, check_response_size
 
 logger = logging.getLogger(__name__)
@@ -131,10 +131,10 @@ def convert_ui_widget_to_values_query_type(ui_widget: Optional[str]) -> str:
 
 def build_values_source_config(values_source: Optional[Dict[str, Any]], field_config: Optional[Dict[str, Any]] = None) -> Tuple[Optional[str], Optional[Dict[str, Any]]]:
     """
-    Build Metabase values_source_type and values_source_config from enhanced configuration.
+    Build Metabase values_source_type and values_source_config from card parameter configuration.
     
     Args:
-        values_source: Enhanced values source configuration
+        values_source: Card parameter values source configuration
         field_config: Field configuration for connected field filters
         
     Returns:
@@ -240,7 +240,7 @@ def process_single_parameter(param_config: Dict[str, Any], param_id: str) -> Tup
     Process a single parameter configuration into Metabase API format.
     
     Args:
-        param_config: Enhanced parameter configuration
+        param_config: Card parameter configuration
         param_id: Generated parameter UUID
         
     Returns:
@@ -375,19 +375,19 @@ def validate_parameter_widget_compatibility(parameters: List[Dict[str, Any]]) ->
     return errors
 
 
-def validate_enhanced_parameters(parameters: List[Dict[str, Any]]) -> Tuple[bool, List[str]]:
+def validate_card_parameters(parameters: List[Dict[str, Any]]) -> Tuple[bool, List[str]]:
     """
-    Validate enhanced parameters against schema and business rules.
+    Validate card parameters against schema and business rules.
     
     Args:
-        parameters: List of enhanced parameter configurations
+        parameters: List of card parameter configurations
         
     Returns:
         Tuple of (is_valid, error_messages)
     """
-    schema = load_enhanced_card_parameters_schema()
+    schema = load_card_parameters_schema()
     if schema is None:
-        return False, ["Could not load enhanced parameters schema"]
+        return False, ["Could not load card parameters schema"]
     
     try:
         # JSON Schema validation handles most validation automatically
@@ -426,19 +426,19 @@ def validate_enhanced_parameters(parameters: List[Dict[str, Any]]) -> Tuple[bool
         return False, [f"Unexpected validation error: {str(e)}"]
 
 
-async def process_enhanced_parameters(client, parameters: List[Dict[str, Any]]) -> Tuple[List[Dict[str, Any]], Dict[str, Any], List[str]]:
+async def process_card_parameters(client, parameters: List[Dict[str, Any]]) -> Tuple[List[Dict[str, Any]], Dict[str, Any], List[str]]:
     """
-    Process enhanced parameters into Metabase API format with validation.
+    Process card parameters into Metabase API format with validation.
     
     Args:
         client: Metabase client for field validation
-        parameters: List of enhanced parameter configurations
+        parameters: List of card parameter configurations
         
     Returns:
         Tuple of (processed_parameters, template_tags, errors)
     """
     # Basic validation first
-    is_valid, validation_errors = validate_enhanced_parameters(parameters)
+    is_valid, validation_errors = validate_card_parameters(parameters)
     if not is_valid:
         return [], {}, validation_errors
     
@@ -461,10 +461,10 @@ async def process_enhanced_parameters(client, parameters: List[Dict[str, Any]]) 
     return processed_parameters, template_tags, []
 
 
-@mcp.tool(name="GET_ENHANCED_CARD_PARAMETERS_DOCUMENTATION", description="Get comprehensive documentation for enhanced card parameters")
-async def get_enhanced_card_parameters_documentation(ctx: Context) -> str:
+@mcp.tool(name="GET_CARD_PARAMETERS_DOCUMENTATION", description="Get comprehensive documentation for card parameters")
+async def get_card_parameters_documentation(ctx: Context) -> str:
     """
-    Get comprehensive documentation for enhanced card parameters including:
+    Get comprehensive documentation for card parameters including:
     - Simple filters (category, number, date)
     - Field filters (string, numeric, date field filters)  
     - UI widget options and their API values
@@ -477,26 +477,26 @@ async def get_enhanced_card_parameters_documentation(ctx: Context) -> str:
     Returns:
         Complete documentation and examples as JSON string
     """
-    logger.info("Tool called: GET_ENHANCED_CARD_PARAMETERS_DOCUMENTATION()")
+    logger.info("Tool called: GET_CARD_PARAMETERS_DOCUMENTATION()")
     
     try:
-        schema = load_enhanced_card_parameters_schema()
-        docs = load_enhanced_card_parameters_docs()
+        schema = load_card_parameters_schema()
+        docs = load_card_parameters_docs()
         
         if schema is None:
             return format_error_response(
                 status_code=500,
                 error_type="schema_loading_error",
-                message="Could not load enhanced card parameters JSON schema",
-                request_info={"schema_file": "enhanced_card_parameters.json"}
+                message="Could not load card parameters JSON schema",
+                request_info={"schema_file": "card_parameters.json"}
             )
         
         if docs is None:
             return format_error_response(
                 status_code=500,
                 error_type="docs_loading_error", 
-                message="Could not load enhanced card parameters documentation",
-                request_info={"docs_file": "enhanced_card_parameters_docs.md"}
+                message="Could not load card parameters documentation",
+                request_info={"docs_file": "card_parameters_docs.md"}
             )
         
         response_data = {
@@ -572,32 +572,32 @@ async def get_enhanced_card_parameters_documentation(ctx: Context) -> str:
         return check_response_size(response, config)
         
     except Exception as e:
-        logger.error(f"Error in GET_ENHANCED_CARD_PARAMETERS_DOCUMENTATION: {e}")
+        logger.error(f"Error in GET_CARD_PARAMETERS_DOCUMENTATION: {e}")
         return format_error_response(
             status_code=500,
             error_type="tool_error",
-            message=f"Error retrieving enhanced card parameters documentation: {str(e)}",
+            message=f"Error retrieving card parameters documentation: {str(e)}",
             request_info={}
         )
 
 
-def validate_enhanced_parameters_helper(parameters: List[Dict[str, Any]]) -> Dict[str, Any]:
+def validate_card_parameters_helper(parameters: List[Dict[str, Any]]) -> Dict[str, Any]:
     """
-    Helper function to validate enhanced parameters and return structured result.
+    Helper function to validate card parameters and return structured result.
     
     Args:
-        parameters: List of enhanced parameter configurations
+        parameters: List of card parameter configurations
         
     Returns:
         Dictionary with validation results
     """
-    is_valid, errors = validate_enhanced_parameters(parameters)
+    is_valid, errors = validate_card_parameters(parameters)
     
     return {
         "valid": is_valid,
         "errors": errors,
         "parameters_count": len(parameters) if parameters else 0,
-        "validation_type": "enhanced_parameters"
+        "validation_type": "card_parameters"
     }
 
 def extract_sql_parameters(query: str) -> Dict[str, List[str]]:

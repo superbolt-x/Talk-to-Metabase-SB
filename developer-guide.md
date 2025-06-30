@@ -311,9 +311,9 @@ Talk to Metabase is an MCP (Model Context Protocol) server that integrates Claud
 6. **Unified Query Execution**: Flexible tool for executing queries in both standalone and dashboard contexts
 7. **Simplified Parameter System**: Streamlined card parameters with automatic JSON Schema validation
 
-## Enhanced Card Parameters Implementation
+## Card Parameters Implementation
 
-The enhanced card parameters system provides comprehensive support for creating sophisticated interactive filters in Metabase cards, including both simple variable filters and advanced field filters that connect directly to database columns.
+The card parameters system provides comprehensive support for creating sophisticated interactive filters in Metabase cards, including both simple variable filters and advanced field filters that connect directly to database columns.
 
 ### Key Features
 
@@ -363,7 +363,7 @@ The enhanced card parameters system provides comprehensive support for creating 
 - ❌ **Never**: `WHERE column = {{field_filter}}` (field filters are booleans, not values!)
 - ❌ **Never**: `WHERE column = '{{variable}}'` (don't add extra quotes to text parameters)
 
-### Enhanced Parameter Structure
+### Card Parameter Structure
 
 ```json
 {
@@ -389,17 +389,17 @@ The enhanced card parameters system provides comprehensive support for creating 
 
 #### Core Components
 
-1. **Enhanced Parameters Module** (`/talk_to_metabase/tools/enhanced_parameters/`):
+1. **Card Parameters Module** (`/talk_to_metabase/tools/card_parameters/`):
    - `core.py` - Main implementation with validation and processing
    - `__init__.py` - Module exports
 
-2. **JSON Schema Validation** (`/talk_to_metabase/schemas/enhanced_card_parameters.json`):
+2. **JSON Schema Validation** (`/talk_to_metabase/schemas/card_parameters.json`):
    - Comprehensive validation for all parameter types
    - Conditional validation for field filters
    - UI widget compatibility rules
    - Connected field filter exception handling
 
-3. **Documentation** (`/talk_to_metabase/schemas/enhanced_card_parameters_docs.md`):
+3. **Documentation** (`/talk_to_metabase/schemas/card_parameters_docs.md`):
    - Complete examples for all parameter types
    - SQL usage patterns and best practices
    - UI widget and value source configuration
@@ -408,17 +408,17 @@ The enhanced card parameters system provides comprehensive support for creating 
 
 ```python
 # Main processing function
-async def process_enhanced_parameters(
+async def process_card_parameters(
     client, 
     parameters: List[Dict[str, Any]]
 ) -> Tuple[List[Dict[str, Any]], Dict[str, Any], List[str]]:
-    """Process enhanced parameters into Metabase API format with validation."""
+    """Process card parameters into Metabase API format with validation."""
 
 # Validation function
-def validate_enhanced_parameters(
+def validate_card_parameters(
     parameters: List[Dict[str, Any]]
 ) -> Tuple[bool, List[str]]:
-    """Validate enhanced parameters against schema and business rules."""
+    """Validate card parameters against schema and business rules."""
 
 # Individual parameter processing
 def process_single_parameter(
@@ -428,9 +428,9 @@ def process_single_parameter(
     """Process a single parameter configuration into Metabase API format."""
 ```
 
-### Enhanced Validation System
+### Card Validation System
 
-The validation system has been significantly enhanced to prevent common AI assistant mistakes:
+The validation system has been significantly improved to prevent common AI assistant mistakes:
 
 1. **SQL Parameter Consistency Validation**: 
    - Validates that SQL references match parameter configurations
@@ -443,7 +443,7 @@ The validation system has been significantly enhanced to prevent common AI assis
    - Provides specific correction guidance
 
 3. **UI Widget Compatibility**:
-   - Enhanced to allow search widgets with all string field filter types
+   - Improved to allow search widgets with all string field filter types
    - Validates dropdown/search widget requirements
    - Prevents incompatible widget configurations
 
@@ -454,7 +454,7 @@ The validation system has been significantly enhanced to prevent common AI assis
 
 ### Validation Functions Location
 
-All parameter validation functions are centralized in `enhanced_parameters/core.py`:
+All parameter validation functions are centralized in `card_parameters/core.py`:
 
 - `extract_sql_parameters()` - Extracts required/optional parameters from SQL
 - `validate_sql_parameter_consistency()` - Validates SQL-parameter alignment  
@@ -510,24 +510,24 @@ Connected field filters use a special configuration:
 
 ### Tools Integration
 
-#### GET_ENHANCED_CARD_PARAMETERS_DOCUMENTATION
+#### GET_CARD_PARAMETERS_DOCUMENTATION
 
 Provides comprehensive documentation and examples:
 
 ```python
-@mcp.tool(name="GET_ENHANCED_CARD_PARAMETERS_DOCUMENTATION")
-async def get_enhanced_card_parameters_documentation(ctx: Context) -> str:
-    """Get comprehensive documentation for enhanced card parameters."""
+@mcp.tool(name="GET_CARD_PARAMETERS_DOCUMENTATION")
+async def get_card_parameters_documentation(ctx: Context) -> str:
+    """Get comprehensive documentation for card parameters."""
 ```
 
-#### Enhanced create_card and update_card
+#### Card Creation/Update Tools
 
-Both tools now support enhanced parameters with validation:
+Both tools now support card parameters with validation:
 
 ```python
 # Parameters processing in card creation/update
-if ENHANCED_PARAMETERS_AVAILABLE and parsed_parameters:
-    processed_parameters, template_tags, errors = await process_enhanced_parameters(
+if CARD_PARAMETERS_AVAILABLE and parsed_parameters:
+    processed_parameters, template_tags, errors = await process_card_parameters(
         client, parsed_parameters
     )
     if errors:
@@ -536,10 +536,10 @@ if ENHANCED_PARAMETERS_AVAILABLE and parsed_parameters:
 
 ### Migration from Legacy System
 
-The enhanced system completely replaces the old simplified card parameters:
+The card parameters system completely replaces the old simplified card parameters:
 
 1. **Legacy Files Removed**: Old card_parameters.py moved to .deprecated
-2. **Enhanced Validation**: More comprehensive and reliable
+2. **Improved Validation**: More comprehensive and reliable
 3. **Field Filter Support**: Advanced filtering capabilities
 4. **Backward Compatibility**: Simple use cases work the same way
 
@@ -621,9 +621,9 @@ The enhanced system completely replaces the old simplified card parameters:
 6. **Performance**: Optimized validation and processing
 7. **Maintainability**: Clean, modular architecture
 
-## Enhanced Dashboard Parameters Implementation
+## Dashboard Parameters Implementation
 
-The enhanced dashboard parameters system provides comprehensive support for all Metabase dashboard filter types with automatic ID generation, intelligent defaults, and complete validation. This system completely replaces the previous simplified dashboard parameters implementation and is designed for maximum AI assistant usability.
+The dashboard parameters system provides comprehensive support for all Metabase dashboard filter types with automatic ID generation, intelligent defaults, and complete validation. This system completely replaces the previous simplified dashboard parameters implementation and is designed for maximum AI assistant usability.
 
 ### Key Features
 
@@ -652,14 +652,14 @@ The enhanced dashboard parameters system provides comprehensive support for all 
 
 #### Core Files
 
-1. **Main Implementation** (`enhanced_dashboard_parameters.py`):
+1. **Main Implementation** (`dashboard_parameters.py`):
    - Parameter processing and validation logic
    - Multi-select compatibility checking
    - Value source configuration
    - Automatic ID and slug generation
-   - `GET_ENHANCED_DASHBOARD_PARAMETERS_DOCUMENTATION` tool
+   - `GET_DASHBOARD_PARAMETERS_DOCUMENTATION` tool
 
-2. **JSON Schema** (`enhanced_dashboard_parameters.json`):
+2. **JSON Schema** (`dashboard_parameters.json`):
    - Validates all parameter types and configurations
    - Enforces multi-select restrictions
    - Sets `isMultiSelect` default to `true` for supported types
@@ -751,11 +751,11 @@ LOCATION_TO_STRING_MAPPING = {
 
 ```python
 # Documentation tool
-@mcp.tool(name="GET_ENHANCED_DASHBOARD_PARAMETERS_DOCUMENTATION")
-async def get_enhanced_dashboard_parameters_documentation(ctx: Context) -> str:
+@mcp.tool(name="GET_DASHBOARD_PARAMETERS_DOCUMENTATION")
+async def get_dashboard_parameters_documentation(ctx: Context) -> str:
     # Returns comprehensive documentation and schema
 
-# Dashboard update with enhanced parameters
+# Dashboard update with dashboard parameters
 @mcp.tool(name="update_dashboard")
 async def update_dashboard(
     id: int,
@@ -763,7 +763,7 @@ async def update_dashboard(
     parameters: Optional[List[Dict[str, Any]]] = None,
     # ... other parameters
 ) -> str:
-    # Uses enhanced validation and processing
+    # Uses dashboard parameter validation and processing
 ```
 
 #### Parameter Configuration Format

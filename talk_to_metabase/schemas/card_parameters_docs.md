@@ -1,8 +1,8 @@
-# Enhanced Card Parameters Documentation
+# Card Parameters Documentation
 
 ## Overview
 
-Enhanced card parameters provide comprehensive filtering capabilities for Metabase cards, supporting both simple variable filters and advanced field filters that connect directly to database columns.
+Card parameters provide comprehensive filtering capabilities for Metabase cards, supporting both simple variable filters and advanced field filters that connect directly to database columns.
 
 ## 🔑 Critical Distinction: Variable vs Field Filters
 

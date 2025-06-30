@@ -20,19 +20,19 @@ logger.setLevel(logging.INFO)
 mcp = get_server_instance()
 logger.info("Registering card definition tools with the server...")
 
-# Import enhanced parameters functions
+# Import card parameters functions
 try:
-    from .enhanced_parameters import (
-        process_enhanced_parameters,
-        validate_enhanced_parameters_helper,
+    from .card_parameters import (
+        process_card_parameters,
+        validate_card_parameters_helper,
         extract_sql_parameters,
         validate_sql_parameter_consistency
     )
-    ENHANCED_PARAMETERS_AVAILABLE = True
-    logger.info("Enhanced parameters functionality loaded successfully")
+    CARD_PARAMETERS_AVAILABLE = True
+    logger.info("Card parameters functionality loaded successfully")
 except ImportError as e:
-    logger.warning(f"Enhanced parameters functionality not available: {e}")
-    ENHANCED_PARAMETERS_AVAILABLE = False
+    logger.warning(f"Card parameters functionality not available: {e}")
+    CARD_PARAMETERS_AVAILABLE = False
 
 
 def parse_parameters_if_string(parameters: Union[str, List[Dict[str, Any]], None]) -> Optional[List[Dict[str, Any]]]:
@@ -439,9 +439,9 @@ async def create_card(
     - SELECT * FROM products WHERE true [[AND category = {{category}}]] [[AND {{price_range}}]]
     
     PARAMETERS:
-    **IMPORTANT: Call GET_ENHANCED_CARD_PARAMETERS_DOCUMENTATION first to understand the parameters format**
+    **IMPORTANT: Call GET_CARD_PARAMETERS_DOCUMENTATION first to understand the parameters format**
     
-    Enhanced parameters provide comprehensive filtering capabilities:
+    Card parameters provide comprehensive filtering capabilities:
     - SIMPLE FILTERS: category, number/=, date/single (work with {{variable}} in SQL)
     - FIELD FILTERS: string/=, string/contains, number/between, date/range, etc. (connect to database columns)
     - UI WIDGETS: input, dropdown, search with automatic value population
@@ -463,7 +463,7 @@ async def create_card(
         description: Optional description for the card
         display: Visualization type (default: "table")
         visualization_settings: Visualization settings dictionary (optional, call GET_VISUALIZATION_DOCUMENT for format)
-        parameters: List of parameter dictionaries or JSON string (optional, call GET_ENHANCED_CARD_PARAMETERS_DOCUMENTATION for format)
+        parameters: List of parameter dictionaries or JSON string (optional, call GET_CARD_PARAMETERS_DOCUMENTATION for format)
         
     Returns:
         JSON string with creation result or error information
@@ -503,23 +503,23 @@ async def create_card(
             # Parse parameters if they're a string
             parsed_parameters = parse_parameters_if_string(parameters)
             
-            if ENHANCED_PARAMETERS_AVAILABLE and parsed_parameters:
-                # Process enhanced parameters with validation
-                processed_parameters, template_tags, errors = await process_enhanced_parameters(client, parsed_parameters)
+            if CARD_PARAMETERS_AVAILABLE and parsed_parameters:
+                # Process card parameters with validation
+                processed_parameters, template_tags, errors = await process_card_parameters(client, parsed_parameters)
                 if errors:
                     return json.dumps({
                         "success": False,
-                        "error": "Invalid enhanced parameters",
+                        "error": "Invalid card parameters",
                         "validation_errors": errors,
                         "parameters_count": len(parsed_parameters),
-                        "help": "Call GET_ENHANCED_CARD_PARAMETERS_DOCUMENTATION for format details"
+                        "help": "Call GET_CARD_PARAMETERS_DOCUMENTATION for format details"
                     }, indent=2)
             elif parsed_parameters:
-                # Parameters provided but enhanced parameters module not available
+                # Parameters provided but card parameters module not available
                 return json.dumps({
                     "success": False,
-                    "error": "Enhanced parameters functionality not available",
-                    "message": "Enhanced parameters module could not be imported"
+                    "error": "Card parameters functionality not available",
+                    "message": "Card parameters module could not be imported"
                 }, indent=2)
                 
         except ValueError as e:
@@ -674,9 +674,9 @@ async def update_card(
     - SELECT * FROM products WHERE true [[AND category = {{category}}]] [[AND {{price_range}}]]
     
     PARAMETERS:
-    **IMPORTANT: Call GET_ENHANCED_CARD_PARAMETERS_DOCUMENTATION first to understand the parameters format**
+    **IMPORTANT: Call GET_CARD_PARAMETERS_DOCUMENTATION first to understand the parameters format**
     
-    Enhanced parameters provide comprehensive filtering capabilities:
+    Card parameters provide comprehensive filtering capabilities:
     - SIMPLE FILTERS: category, number/=, date/single (work with {{variable}} in SQL)
     - FIELD FILTERS: string/=, string/contains, number/between, date/range, etc. (connect to database columns)
     - UI WIDGETS: input, dropdown, search with automatic value population
@@ -699,7 +699,7 @@ async def update_card(
         archived: Whether the card is archived (optional)
         display: New visualization type (optional)
         visualization_settings: New visualization settings dictionary (optional, call GET_VISUALIZATION_DOCUMENT for format)
-        parameters: New list of parameter dictionaries or JSON string (optional, call GET_ENHANCED_CARD_PARAMETERS_DOCUMENTATION for format)
+        parameters: New list of parameter dictionaries or JSON string (optional, call GET_CARD_PARAMETERS_DOCUMENTATION for format)
         
     Returns:
         JSON string with update result or error information
@@ -764,23 +764,23 @@ async def update_card(
             # Parse parameters if they're a string
             parsed_parameters = parse_parameters_if_string(parameters)
             
-            if ENHANCED_PARAMETERS_AVAILABLE and parsed_parameters:
-                # Process enhanced parameters with validation
-                processed_parameters, template_tags, errors = await process_enhanced_parameters(client, parsed_parameters)
+            if CARD_PARAMETERS_AVAILABLE and parsed_parameters:
+                # Process card parameters with validation
+                processed_parameters, template_tags, errors = await process_card_parameters(client, parsed_parameters)
                 if errors:
                     return json.dumps({
                         "success": False,
-                        "error": "Invalid enhanced parameters",
+                        "error": "Invalid card parameters",
                         "validation_errors": errors,
                         "parameters_count": len(parsed_parameters),
-                        "help": "Call GET_ENHANCED_CARD_PARAMETERS_DOCUMENTATION for format details"
+                        "help": "Call GET_CARD_PARAMETERS_DOCUMENTATION for format details"
                     }, indent=2)
             elif parsed_parameters:
-                # Parameters provided but enhanced parameters module not available
+                # Parameters provided but card parameters module not available
                 return json.dumps({
                     "success": False,
-                    "error": "Enhanced parameters functionality not available",
-                    "message": "Enhanced parameters module could not be imported"
+                    "error": "Card parameters functionality not available",
+                    "message": "Card parameters module could not be imported"
                 }, indent=2)
                 
         except ValueError as e:

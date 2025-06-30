@@ -12,9 +12,9 @@ from mcp.server.fastmcp import Context, FastMCP
 from ..server import get_server_instance
 from .common import format_error_response, get_metabase_client, check_response_size
 from .dashcards import validate_dashcards_helper, validate_tabs_helper
-from .enhanced_dashboard_parameters import (
-    process_enhanced_dashboard_parameters,
-    validate_enhanced_dashboard_parameters_helper
+from .dashboard_parameters import (
+    process_dashboard_parameters,
+    validate_dashboard_parameters_helper
 )
 
 logger = logging.getLogger(__name__)
@@ -152,13 +152,13 @@ async def update_dashboard(
     """
     Update a dashboard with new cards, tabs, enhanced parameters, and/or metadata.
     
-    **IMPORTANT: Call GET_DASHCARDS_SCHEMA and GET_ENHANCED_DASHBOARD_PARAMETERS_DOCUMENTATION first to understand the formats**
+    **IMPORTANT: Call GET_DASHCARDS_SCHEMA and GET_DASHBOARD_PARAMETERS_DOCUMENTATION first to understand the formats**
     
     This tool allows you to:
     - Add new cards to a dashboard using the dashcards parameter
     - Update existing cards by providing their existing ID
     - Add/update dashboard tabs using the tabs parameter
-    - Add/update enhanced dashboard parameters using the parameters parameter
+    - Add/update dashboard parameters using the parameters parameter
     - Update dashboard metadata (name, description, collection, archived status)
     
     DASHCARDS FORMAT:
@@ -180,8 +180,8 @@ async def update_dashboard(
         "name": string           // Required: Tab name
     }
     
-    ENHANCED DASHBOARD PARAMETERS:
-    The new enhanced parameters system supports:
+    DASHBOARD PARAMETERS:
+    The new dashboard parameters system supports:
     - ALL dashboard parameter types (string, number, date, temporal-unit, location, ID)
     - Multi-select support where applicable (string/=, number/=, id, location)
     - Automatic ID generation (8-character alphanumeric)
@@ -190,7 +190,7 @@ async def update_dashboard(
     - Name-based identification with automatic processing
     
     **CRITICAL**: Parameters are identified by NAME only. IDs are generated automatically.
-    For parameters: call GET_ENHANCED_DASHBOARD_PARAMETERS_DOCUMENTATION for complete format.
+    For parameters: call GET_DASHBOARD_PARAMETERS_DOCUMENTATION for complete format.
 
     GRID CONSTRAINTS:
     - Dashboard grid has 24 columns (col: 0-23)
@@ -202,7 +202,7 @@ async def update_dashboard(
         ctx: MCP context
         dashcards: List of dashboard cards to add/update (call GET_DASHCARDS_SCHEMA for format)
         tabs: List of dashboard tabs to add/update (format: [{"id": int, "name": string}])
-        parameters: List of enhanced dashboard parameters (call GET_ENHANCED_DASHBOARD_PARAMETERS_DOCUMENTATION for format)
+        parameters: List of dashboard parameters (call GET_DASHBOARD_PARAMETERS_DOCUMENTATION for format)
         name: New dashboard name (optional)
         description: New dashboard description (optional)
         collection_id: New collection ID (optional)
@@ -237,24 +237,24 @@ async def update_dashboard(
                 "help": "Tabs must have 'name' field (string) and optional 'id' field (integer). Use negative IDs for new tabs."
             }, indent=2)
     
-    # Validate enhanced dashboard parameters if provided
+    # Validate dashboard parameters if provided
     if parameters is not None:
-        parameters_validation_result = validate_enhanced_dashboard_parameters_helper(parameters)
+        parameters_validation_result = validate_dashboard_parameters_helper(parameters)
         if not parameters_validation_result["valid"]:
             return json.dumps({
                 "success": False,
-                "error": "Invalid enhanced dashboard parameters format",
+                "error": "Invalid dashboard parameters format",
                 "validation_errors": parameters_validation_result["errors"],
-                "help": "Call GET_ENHANCED_DASHBOARD_PARAMETERS_DOCUMENTATION to understand the correct format. Required fields: name, type."
+                "help": "Call GET_DASHBOARD_PARAMETERS_DOCUMENTATION to understand the correct format. Required fields: name, type."
             }, indent=2)
         
-        # Process enhanced parameters with full validation
+        # Process parameters with full validation
         try:
-            processed_parameters, processing_errors = await process_enhanced_dashboard_parameters(client, parameters)
+            processed_parameters, processing_errors = await process_dashboard_parameters(client, parameters)
             if processing_errors:
                 return json.dumps({
                     "success": False,
-                    "error": "Enhanced dashboard parameters processing failed",
+                    "error": "Dashboard parameters processing failed",
                     "validation_errors": processing_errors,
                     "help": "Check parameter configuration and ensure referenced cards are accessible."
                 }, indent=2)
@@ -262,7 +262,7 @@ async def update_dashboard(
         except Exception as e:
             return json.dumps({
                 "success": False,
-                "error": "Enhanced dashboard parameters processing error",
+                "error": "Dashboard parameters processing error",
                 "message": str(e)
             }, indent=2)
     

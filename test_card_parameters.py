@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Comprehensive test suite for enhanced card parameters implementation.
+Comprehensive test suite for card parameters implementation.
 This script validates schemas, validation logic, and parameter processing.
 """
 
@@ -13,9 +13,9 @@ from unittest.mock import AsyncMock, MagicMock
 # Add the project root to the path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
-from talk_to_metabase.resources import load_enhanced_card_parameters_schema, load_enhanced_card_parameters_docs
-from talk_to_metabase.tools.enhanced_parameters.core import (
-    validate_enhanced_parameters,
+from talk_to_metabase.resources import load_card_parameters_schema, load_card_parameters_docs
+from talk_to_metabase.tools.card_parameters.core import (
+    validate_card_parameters,
     generate_parameter_id,
     generate_slug,
     is_field_filter_parameter,
@@ -26,7 +26,7 @@ from talk_to_metabase.tools.enhanced_parameters.core import (
     build_values_source_config,
     create_template_tag,
     validate_parameter_widget_compatibility,
-    process_enhanced_parameters
+    process_card_parameters
 )
 
 class TestResults:
@@ -58,9 +58,9 @@ def test_schema_loading(results):
     print("📋 Testing schema and documentation loading...")
     
     try:
-        schema = load_enhanced_card_parameters_schema()
+        schema = load_card_parameters_schema()
         if schema is None:
-            results.fail_test("Schema loading", "Failed to load enhanced parameters schema")
+            results.fail_test("Schema loading", "Failed to load card parameters schema")
             return
         
         # Validate schema structure
@@ -70,11 +70,11 @@ def test_schema_loading(results):
                 results.fail_test("Schema structure", f"Missing required field: {field}")
                 return
         
-        results.pass_test("Enhanced parameters schema loaded successfully")
+        results.pass_test("Card parameters schema loaded successfully")
         
-        docs = load_enhanced_card_parameters_docs()
+        docs = load_card_parameters_docs()
         if docs is None:
-            results.fail_test("Documentation loading", "Failed to load enhanced parameters documentation")
+            results.fail_test("Documentation loading", "Failed to load card parameters documentation")
             return
         
         # Check docs contain key sections
@@ -84,7 +84,7 @@ def test_schema_loading(results):
                 results.fail_test("Documentation content", f"Missing required section: {section}")
                 return
         
-        results.pass_test("Enhanced parameters documentation loaded successfully")
+        results.pass_test("Card parameters documentation loaded successfully")
         
     except Exception as e:
         results.fail_test("Schema/docs loading", str(e))
@@ -204,7 +204,7 @@ def test_simple_parameter_validation(results):
             }
         ]
         
-        is_valid, errors = validate_enhanced_parameters(valid_simple_params)
+        is_valid, errors = validate_card_parameters(valid_simple_params)
         if not is_valid:
             results.fail_test("Valid simple parameters", f"Validation failed: {errors}")
             return
@@ -299,7 +299,7 @@ def test_field_filter_validation(results):
             }
         ]
         
-        is_valid, errors = validate_enhanced_parameters(valid_field_filters)
+        is_valid, errors = validate_card_parameters(valid_field_filters)
         if not is_valid:
             results.fail_test("Valid field filter parameters", f"Validation failed: {errors}")
             return
@@ -376,7 +376,7 @@ def test_invalid_parameter_rejection(results):
         ]
         
         for test_case in invalid_test_cases:
-            is_valid, errors = validate_enhanced_parameters(test_case["params"])
+            is_valid, errors = validate_card_parameters(test_case["params"])
             
             if test_case["should_fail"]:
                 if is_valid:
@@ -513,7 +513,7 @@ async def test_field_validation_with_mock_client(results):
         ]
         
         # Test full parameter processing with field validation
-        processed_params, template_tags, errors = await process_enhanced_parameters(mock_client, valid_field_params)
+        processed_params, template_tags, errors = await process_card_parameters(mock_client, valid_field_params)
         
         if errors:
             results.fail_test("Field validation with valid fields", f"Should pass but got errors: {errors}")
@@ -540,7 +540,7 @@ async def test_field_validation_with_mock_client(results):
             }
         ]
         
-        processed_params, template_tags, errors = await process_enhanced_parameters(mock_client, invalid_field_params)
+        processed_params, template_tags, errors = await process_card_parameters(mock_client, invalid_field_params)
         
         if not errors:
             results.fail_test("Field validation with invalid fields", "Should fail with invalid field ID but passed")
@@ -607,7 +607,7 @@ def test_complete_examples(results):
             }
         ]
         
-        is_valid, errors = validate_enhanced_parameters(ecommerce_params)
+        is_valid, errors = validate_card_parameters(ecommerce_params)
         if not is_valid:
             results.fail_test("E-commerce example validation", f"Failed: {errors}")
             return
@@ -653,7 +653,7 @@ def test_complete_examples(results):
             }
         ]
         
-        is_valid, errors = validate_enhanced_parameters(marketing_params)
+        is_valid, errors = validate_card_parameters(marketing_params)
         if not is_valid:
             results.fail_test("Marketing example validation", f"Failed: {errors}")
             return
@@ -664,7 +664,7 @@ def test_complete_examples(results):
 
 async def main():
     """Run all tests."""
-    print("🧪 Enhanced Card Parameters Test Suite")
+    print("🧪 Card Parameters Test Suite")
     print("=" * 50)
     
     results = TestResults()
@@ -685,7 +685,7 @@ async def main():
     success = results.summary()
     
     if success:
-        print("🎉 All tests passed! Enhanced parameters implementation is ready.")
+        print("🎉 All tests passed! Card parameters implementation is ready.")
     else:
         print("⚠️ Some tests failed. Please review and fix issues before deployment.")
     

@@ -1,8 +1,8 @@
-# Enhanced Dashboard Parameters Implementation Summary
+# Dashboard Parameters Implementation Summary
 
 ## Overview
 
-The Enhanced Dashboard Parameters system is a comprehensive implementation that provides full support for all Metabase dashboard filter types. This system replaces the previous simplified dashboard parameters implementation and offers sophisticated filtering capabilities with automatic processing and validation.
+The Dashboard Parameters system is a comprehensive implementation that provides full support for all Metabase dashboard filter types. This system replaces the previous simplified dashboard parameters implementation and offers sophisticated filtering capabilities with automatic processing and validation.
 
 ## Architecture Summary
 
@@ -10,9 +10,9 @@ The Enhanced Dashboard Parameters system is a comprehensive implementation that 
 
 | Component | File | Purpose |
 |-----------|------|---------|
-| **Main Implementation** | `enhanced_dashboard_parameters.py` | Core logic, validation, processing, and tools |
-| **JSON Schema** | `enhanced_dashboard_parameters.json` | Structure validation and constraints |
-| **Documentation** | `enhanced_dashboard_parameters_docs.md` | Complete usage guide and examples |
+| **Main Implementation** | `dashboard_parameters.py` | Core logic, validation, processing, and tools |
+| **JSON Schema** | `dashboard_parameters.json` | Structure validation and constraints |
+| **Documentation** | `dashboard_parameters_docs.md` | Complete usage guide and examples |
 | **Dashboard Integration** | `dashboard.py` (updated) | Integration with dashboard update tool |
 | **Resource Loading** | `resources.py` (updated) | Schema and documentation loading functions |
 
@@ -155,7 +155,7 @@ The Enhanced Dashboard Parameters system is a comprehensive implementation that 
 ## Processing Flow
 
 ```
-Enhanced Configuration → JSON Schema Validation → Business Logic Validation → Card Reference Validation → Parameter Processing → Metabase API Format
+Dashboard Configuration → JSON Schema Validation → Business Logic Validation → Card Reference Validation → Parameter Processing → Metabase API Format
 ```
 
 ### Automatic Processing
@@ -178,12 +178,12 @@ Enhanced Configuration → JSON Schema Validation → Business Logic Validation 
 ```json
 {
   \"success\": false,
-  \"error\": \"Invalid enhanced dashboard parameters format\",
+  \"error\": \"Invalid dashboard parameters format\",
   \"validation_errors\": [
     \"Parameter 2 (Search Term): Multi-select not supported for parameter type 'date/single'\",
     \"Parameter 5 (Time Grouping): temporal-unit parameter requires non-empty temporal_units array\"
   ],
-  \"help\": \"Call GET_ENHANCED_DASHBOARD_PARAMETERS_DOCUMENTATION for format details\"
+  \"help\": \"Call GET_DASHBOARD_PARAMETERS_DOCUMENTATION for format details\"
 }
 ```
 
@@ -193,15 +193,15 @@ Enhanced Configuration → JSON Schema Validation → Business Logic Validation 
 ```python
 # In update_dashboard tool
 if parameters is not None:
-    processed_parameters, processing_errors = await process_enhanced_dashboard_parameters(client, parameters)
+    processed_parameters, processing_errors = await process_dashboard_parameters(client, parameters)
     if processing_errors:
         return validation_error_response
 ```
 
 ### Documentation Tool
 ```python
-@mcp.tool(name=\"GET_ENHANCED_DASHBOARD_PARAMETERS_DOCUMENTATION\")
-async def get_enhanced_dashboard_parameters_documentation(ctx: Context) -> str:
+@mcp.tool(name=\"GET_DASHBOARD_PARAMETERS_DOCUMENTATION\")
+async def get_dashboard_parameters_documentation(ctx: Context) -> str:
     # Returns comprehensive documentation, schema, and examples
 ```
 
@@ -288,23 +288,23 @@ async def get_enhanced_dashboard_parameters_documentation(ctx: Context) -> str:
 - ✅ **Complete Type Coverage**: All 18 parameter types vs. limited set
 - ✅ **Accurate Multi-Select Rules**: Matches Metabase capabilities
 - ✅ **Name-Based Identification**: Simplified parameter management
-- ✅ **Enhanced Validation**: Prevents configuration errors
+- ✅ **Validation**: Prevents configuration errors
 - ✅ **Better Documentation**: Comprehensive examples and guidance
 - ✅ **Value Source Validation**: Ensures card accessibility
 
 ### Deprecated Components
 - ❌ **Old parameters.py**: Replaced with placeholder
-- ❌ **GET_PARAMETERS_SCHEMA**: Replaced with GET_ENHANCED_DASHBOARD_PARAMETERS_DOCUMENTATION
+- ❌ **GET_PARAMETERS_SCHEMA**: Replaced with GET_DASHBOARD_PARAMETERS_DOCUMENTATION
 - ❌ **Manual ID Management**: Now automatic
 
 ## Future Extensibility
 
 The system is designed for easy extension:
 - **New Parameter Types**: Add to type enums and validation rules
-- **Enhanced Value Sources**: Extend value source processing
+- **Value Sources**: Extend value source processing
 - **Additional Validation**: Add to business logic validation
 - **UI Enhancements**: Schema supports future UI widget types
 
 ## Summary
 
-The Enhanced Dashboard Parameters system provides a complete, robust solution for dashboard filtering in Metabase. It accurately reflects Metabase's capabilities, prevents configuration errors, and significantly improves the user experience for creating sophisticated dashboard filters through Claude.
+The Dashboard Parameters system provides a complete, robust solution for dashboard filtering in Metabase. It accurately reflects Metabase's capabilities, prevents configuration errors, and significantly improves the user experience for creating sophisticated dashboard filters through Claude.
