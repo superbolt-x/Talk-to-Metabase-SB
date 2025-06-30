@@ -3,7 +3,6 @@
   "title": "Metabase Dashboard Cards Schema",
   "description": "JSON schema for dashboard cards (dashcards) in Metabase dashboard updates",
   "type": "array",
-  "description": "Array of dashboard cards to be added to the dashboard",
   "items": {
     "type": "object",
     "properties": {
