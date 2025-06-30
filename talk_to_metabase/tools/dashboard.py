@@ -190,26 +190,8 @@ async def update_dashboard(
     - Name-based identification with automatic processing
     
     **CRITICAL**: Parameters are identified by NAME only. IDs are generated automatically.
-    
-    PARAMETERS FORMAT:
-    The parameters parameter must be a list of objects with the following structure:
-    {
-        "name": string,          // Required: Parameter name (used for identification)
-        "type": string,          // Required: Parameter type (e.g., "date/range", "string/=", "temporal-unit")
-        "default": value,        // Optional: Default value (format depends on type)
-        "isMultiSelect": bool,   // Optional: Enable multi-select (where supported)
-        "values_source": {...},  // Optional: Value source configuration
-        "temporal_units": [...], // Required for temporal-unit parameters
-        ... other fields         // See GET_ENHANCED_DASHBOARD_PARAMETERS_DOCUMENTATION for complete structure
-    }
-    
-    FORBIDDEN KEYS (dashcards only):
-    The following keys are forbidden in dashcards and will cause validation errors:
-    - action_id
-    - series
-    - visualization_settings
-    - parameter_mappings
-    
+    For parameters: call GET_ENHANCED_DASHBOARD_PARAMETERS_DOCUMENTATION for complete format.
+
     GRID CONSTRAINTS:
     - Dashboard grid has 24 columns (col: 0-23)
     - col + size_x must not exceed 24
@@ -220,7 +202,7 @@ async def update_dashboard(
         ctx: MCP context
         dashcards: List of dashboard cards to add/update (call GET_DASHCARDS_SCHEMA for format)
         tabs: List of dashboard tabs to add/update (format: [{"id": int, "name": string}])
-        parameters: List of enhanced dashboard parameters to add/update (call GET_ENHANCED_DASHBOARD_PARAMETERS_DOCUMENTATION for format)
+        parameters: List of enhanced dashboard parameters (call GET_ENHANCED_DASHBOARD_PARAMETERS_DOCUMENTATION for format)
         name: New dashboard name (optional)
         description: New dashboard description (optional)
         collection_id: New collection ID (optional)

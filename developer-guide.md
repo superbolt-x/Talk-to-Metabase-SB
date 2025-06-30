@@ -623,28 +623,30 @@ The enhanced system completely replaces the old simplified card parameters:
 
 ## Enhanced Dashboard Parameters Implementation
 
-The enhanced dashboard parameters system provides comprehensive support for all Metabase dashboard filter types with automatic ID generation, intelligent defaults, and complete validation. This system completely replaces the previous simplified dashboard parameters implementation.
+The enhanced dashboard parameters system provides comprehensive support for all Metabase dashboard filter types with automatic ID generation, intelligent defaults, and complete validation. This system completely replaces the previous simplified dashboard parameters implementation and is designed for maximum AI assistant usability.
 
 ### Key Features
 
 1. **Complete Parameter Type Support**:
-   - **Text Parameters**: All 6 string parameter types with full multi-select support
+   - **Text Parameters**: All 6 string parameter types with full multi-select support by default
+   - **Location Parameters**: All 6 location parameter types with full multi-select support by default  
    - **Number Parameters**: 5 number parameter types with multi-select for equality types
    - **Date Parameters**: 6 date parameter types (no multi-select support)
-   - **Special Parameters**: `temporal-unit`, `id`, and location parameters
+   - **Special Parameters**: `temporal-unit`, `id`
 
-2. **Multi-Select Support Rules**:
+2. **Multi-Select Default Behavior**:
+   - ✅ **Multi-select enabled by default** for all supported parameter types
    - ✅ **Supported**: All string types (`string/=`, `string/!=`, `string/contains`, `string/does-not-contain`, `string/starts-with`, `string/ends-with`)
+   - ✅ **Supported**: All location types (`location/=`, `location/!=`, `location/contains`, `location/does-not-contain`, `location/starts-with`, `location/ends-with`)
    - ✅ **Supported**: Number equality types (`number/=`, `number/!=`)
    - ✅ **Supported**: `id` parameters
-   - ✅ **Supported**: Location parameters (`string/=` with `sectionId: "location"`)
    - ❌ **Not Supported**: All date parameters, `temporal-unit`, number range/comparison parameters
 
-3. **Value Sources**: Static lists, card sources, and connected values with comprehensive validation
+3. **Value Sources**: Only "static" and "card" sources - no "connected" option
 
-4. **Automatic Processing**: ID generation (8-character alphanumeric), slug creation, sectionId determination
+4. **Automatic Processing**: ID generation (8-character alphanumeric), slug creation, automatic location detection
 
-5. **Name-Based Identification**: Parameters identified by name only, IDs managed internally
+5. **AI-Friendly Design**: Parameters identified by name only, all complex processing handled automatically
 
 ### Implementation Architecture
 
@@ -660,14 +662,15 @@ The enhanced dashboard parameters system provides comprehensive support for all 
 2. **JSON Schema** (`enhanced_dashboard_parameters.json`):
    - Validates all parameter types and configurations
    - Enforces multi-select restrictions
-   - Validates required fields and business rules
-   - Handles temporal-unit parameter requirements
+   - Sets `isMultiSelect` default to `true` for supported types
+   - Prevents use of unauthorized fields (no `id` or `sectionId` allowed)
+   - Only allows "static" and "card" value sources
 
-3. **Documentation** (`enhanced_dashboard_parameters_docs.md`):
-   - Complete examples for all parameter types
-   - Usage guidelines and best practices
-   - Multi-select compatibility rules
-   - Default value formats
+3. **Documentation**: All documentation is embedded directly in the JSON schema
+   - Examples for all parameter types showing default multi-select behavior
+   - Usage guidelines focused on AI assistant needs
+   - Default value format specifications
+   - No separate markdown file needed
 
 4. **Updated Dashboard Tool** (`dashboard.py`):
    - Uses enhanced validation and processing
@@ -679,13 +682,19 @@ The enhanced dashboard parameters system provides comprehensive support for all 
 ```python
 # Text parameters - all support multi-select
 TEXT_PARAMETER_TYPES = {
-    "string/=", "string/!=", "string/contains", "string/does-not-contain",
-    "string/starts-with", "string/ends-with"
+"string/=", "string/!=", "string/contains", "string/does-not-contain",
+"string/starts-with", "string/ends-with"
+}
+
+# Location parameters - all support multi-select
+LOCATION_PARAMETER_TYPES = {
+"location/=", "location/!=", "location/contains", "location/does-not-contain",
+    "location/starts-with", "location/ends-with"
 }
 
 # Number parameters - equality types support multi-select
 NUMBER_PARAMETER_TYPES = {
-    "number/=", "number/!=", "number/between", "number/>=", "number/<="
+"number/=", "number/!=", "number/between", "number/>=", "number/<=" 
 }
 
 # Date parameters - none support multi-select
@@ -695,12 +704,46 @@ DATE_PARAMETER_TYPES = {
 }
 ```
 
-#### Validation System
+#### Key Validation Changes for Multi-Select Default
 
-1. **JSON Schema Validation**: Handles structure, types, and basic constraints
-2. **Business Logic Validation**: Multi-select compatibility, temporal units, value sources
-3. **Card Reference Validation**: Validates accessibility of referenced cards for value sources
-4. **Parameter Processing**: Converts enhanced format to Metabase API format
+The validation system has been updated to handle the new default behavior:
+
+```python
+def validate_default_value_format(param_config: Dict[str, Any]) -> List[str]:
+    # Determine if multi-select is enabled
+    # For supported types, isMultiSelect defaults to True unless explicitly set to False
+    if param_type in MULTI_SELECT_SUPPORTED:
+        is_multi_select = param_config.get("isMultiSelect", True)  # Default to True
+    else:
+        is_multi_select = param_config.get("isMultiSelect", False)  # Default to False for unsupported types
+```
+
+This ensures that:
+- Parameters without explicit `isMultiSelect` are treated as multi-select for supported types
+- Array defaults are expected for these implicitly multi-select parameters
+- Explicit `isMultiSelect: false` still works to create single-value parameters
+
+#### Location Parameter Types
+
+**Location parameters** are explicitly specified using dedicated parameter types:
+
+```python
+# Location parameter types - all support multi-select
+LOCATION_PARAMETER_TYPES = {
+    "location/=", "location/!=", "location/contains", "location/does-not-contain",
+    "location/starts-with", "location/ends-with"
+}
+
+# Location parameters are translated to string types with location sectionId
+LOCATION_TO_STRING_MAPPING = {
+    "location/=": "string/=",
+    "location/!=": "string/!=",
+    "location/contains": "string/contains",
+    "location/does-not-contain": "string/does-not-contain",
+    "location/starts-with": "string/starts-with",
+    "location/ends-with": "string/ends-with"
+}
+```
 
 ### Usage Pattern
 
@@ -726,21 +769,25 @@ async def update_dashboard(
 #### Parameter Configuration Format
 
 ```python
-# Enhanced parameter configuration
+# AI assistant only needs to provide these fields
 {
     "name": "Parameter Name",        # Required: Used for identification
     "type": "string/=",              # Required: Parameter type
-    "default": "value",             # Optional: Default value
-    "isMultiSelect": True,           # Optional: Enable multi-select (where supported)
-    "sectionId": "location",        # Optional: Override section (for location parameters)
+    "default": ["value1", "value2"], # Optional: Array for multi-select (default), single for isMultiSelect: false
+    "isMultiSelect": False,          # Optional: Set to false for single-value parameters
     "required": True,                # Optional: Whether parameter is required
     "values_source": {               # Optional: Value source configuration
-        "type": "static",
+        "type": "static",             # Only "static" or "card" allowed
         "values": ["option1", "option2"]
     },
-    "temporal_units": ["day", "week"] # Required for temporal-unit parameters
+    "temporal_units": ["day", "week"] # Required only for temporal-unit parameters
 }
 ```
+
+**Forbidden Fields** (prevented by schema):
+- `id` - Generated automatically
+- `sectionId` - Determined automatically (including location detection)
+- Any other internal Metabase fields
 
 ### Processing Flow
 
@@ -762,13 +809,96 @@ The system provides detailed error messages for:
 
 ### Key Improvements Over Previous System
 
-1. **Complete Type Coverage**: All 18 dashboard parameter types supported
-2. **Accurate Multi-Select Rules**: Reflects actual Metabase capabilities
-3. **Name-Based Identification**: Simplified parameter management
-4. **Comprehensive Validation**: Prevents configuration errors
-5. **Better Error Messages**: Clear, actionable feedback
-6. **Value Source Validation**: Ensures referenced cards are accessible
-7. **Automatic Processing**: Reduces manual configuration effort
+1. **AI-Friendly Defaults**: Multi-select enabled by default for supported types
+2. **Simplified Interface**: No manual ID or sectionId management required
+3. **Automatic Processing**: ID generation, slug creation
+4. **Explicit Location Types**: Direct specification with `location/=`, `location/contains`, etc.
+5. **Streamlined Value Sources**: Only "static" and "card" sources (no confusing "connected" option)
+6. **Schema-Only Documentation**: All guidance embedded in JSON schema
+7. **Robust Validation**: Prevents AI assistant configuration errors
+8. **Clean Error Messages**: Clear, actionable feedback for validation issues
+
+### Usage Examples
+
+#### Multi-Select Parameter (Default Behavior)
+```json
+{
+  "name": "Categories",
+  "type": "string/=",
+  "default": ["electronics", "books"],
+  "values_source": {
+    "type": "static",
+    "values": ["electronics", "books", "clothing"]
+  }
+}
+```
+
+#### Single-Value Parameter (Explicit)
+```json
+{
+  "name": "Department",
+  "type": "string/=",
+  "isMultiSelect": false,
+  "default": "engineering",
+  "values_source": {
+    "type": "static",
+    "values": ["engineering", "product", "design"]
+  }
+}
+```
+
+#### Location Parameter
+```json
+{
+  "name": "Cities",
+  "type": "location/=",
+  "default": ["New York", "Chicago"],
+  "values_source": {
+    "type": "static",
+    "values": ["New York", "Chicago", "Boston"]
+  }
+}
+```
+
+#### Location Parameter with Contains Operation
+```json
+{
+  "name": "City Search",
+  "type": "location/contains",
+  "default": ["York"],
+  "values_source": {
+    "type": "static",
+    "values": ["York", "Angeles", "Francisco"]
+  }
+}
+```
+
+#### ID Parameter with Mixed Types
+```json
+{
+  "name": "Product IDs",
+  "type": "id",
+  "default": [1001, 1002, "SPECIAL-001"],
+  "values_source": {
+    "type": "static",
+    "values": [1001, 1002, 1003, "SPECIAL-001"]
+  }
+}
+```
+
+#### Card Source Parameter
+```json
+{
+  "name": "User Names",
+  "type": "string/=",
+  "values_source": {
+    "type": "card",
+    "card_id": 98765,
+    "value_field": "user_id",
+    "label_field": "user_name"
+  }
+}
+```
 
 ## Project Structure
 

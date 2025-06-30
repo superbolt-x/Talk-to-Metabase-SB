@@ -1,7 +1,7 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "Enhanced Metabase Dashboard Parameters Schema",
-  "description": "Comprehensive schema for dashboard parameters supporting all Metabase dashboard filter types with automatic ID generation and comprehensive validation",
+  "title": "Enhanced Metabase Dashboard Parameters",
+  "description": "Complete schema for dashboard parameters with automatic processing. Parameters are identified by name only - IDs are generated automatically.",
   "type": "array",
   "items": {
     "type": "object",
@@ -9,47 +9,42 @@
       "name": {
         "type": "string",
         "minLength": 1,
-        "description": "Parameter name - used for identification and as display label. Cannot be 'tab' (reserved)."
+        "description": "Parameter name - used for identification and as display label. Cannot be 'tab' (reserved).",
+        "examples": ["Status Filter", "Date Range", "Categories", "Price Range"]
       },
       "type": {
         "type": "string",
         "enum": [
           "string/=", "string/!=", "string/contains", "string/does-not-contain",
           "string/starts-with", "string/ends-with",
+          "location/=", "location/!=", "location/contains", "location/does-not-contain",
+          "location/starts-with", "location/ends-with",
           "number/=", "number/!=", "number/between", "number/>=", "number/<=",
           "date/single", "date/range", "date/month-year", "date/quarter-year",
           "date/relative", "date/all-options",
           "temporal-unit", "id"
         ],
-        "description": "Parameter type determining filtering behavior and UI widget"
+        "description": "Parameter type determining filtering behavior. TEXT TYPES (all support multi-select): string/=, string/!=, string/contains, string/does-not-contain, string/starts-with, string/ends-with. LOCATION TYPES (all support multi-select): location/=, location/!=, location/contains, location/does-not-contain, location/starts-with, location/ends-with. NUMBER TYPES: number/= and number/!= support multi-select, others don't. DATE TYPES (no multi-select): date/single, date/range, date/month-year, date/quarter-year, date/relative, date/all-options. SPECIAL: temporal-unit (requires temporal_units array), id (supports multi-select)."
       },
-      "id": {
-        "type": "string",
-        "pattern": "^[a-zA-Z0-9]{8}$",
-        "description": "8-character alphanumeric parameter ID (auto-generated if not provided)"
-      },
-      "sectionId": {
-        "type": "string",
-        "enum": ["string", "number", "date", "location", "temporal-unit", "id"],
-        "description": "Parameter category for UI grouping (auto-determined if not provided, except for location)"
-      },
+
       "required": {
         "type": "boolean",
         "default": false,
-        "description": "Whether parameter value is required (required parameters must have defaults)"
+        "description": "Whether parameter value is required. Required parameters must have non-null default values."
       },
       "default": {
-        "description": "Default value - format depends on type and multi-select setting",
+        "description": "Default value - format varies by type and multi-select. TEXT: single value 'active' or array ['active','pending'] for multi-select. LOCATION: single value 'New York' or array ['New York','Chicago'] for multi-select. NUMBER: single value 100 or array [10,50,100] for multi-select, or [min,max] for number/between. DATE: ISO string '2025-06-08', range '2025-06-01~2025-06-08', or relative 'past30days', 'thismonth', 'next1weeks'. TEMPORAL-UNIT: temporal unit string like 'day', 'hour-of-day'. ID: string '12345' or number 12345, array for multi-select (mixed types allowed).",
         "anyOf": [
-          {"type": "string"},
-          {"type": "number"},
-          {"type": "array"},
+          {"type": "string", "examples": ["active", "2025-06-08", "past30days", "thismonth", "day", "hour-of-day", "12345"]},
+          {"type": "number", "examples": [100, 0, 12345]},
+          {"type": "array", "examples": [["active", "pending"], [10, 100], ["New York", "Chicago"], ["12345", "67890"]]},
           {"type": "null"}
         ]
       },
       "isMultiSelect": {
         "type": "boolean",
-        "description": "Enable multiple value selection (only supported for string/=, number/=, id, and location)"
+        "default": true,
+        "description": "Enable multiple value selection. SUPPORTED: all string types (string/=, string/!=, string/contains, string/does-not-contain, string/starts-with, string/ends-with), all location types (location/=, location/!=, location/contains, location/does-not-contain, location/starts-with, location/ends-with), number/=, number/!=, id parameters. NOT SUPPORTED: date types, temporal-unit, number/between, number/>=, number/<=."
       },
       "temporal_units": {
         "type": "array",
@@ -62,15 +57,16 @@
           ]
         },
         "minItems": 1,
-        "description": "Available temporal units (required for temporal-unit parameters)"
+        "description": "Available temporal units for temporal-unit parameters. ABSOLUTE: minute, hour, day, week, month, quarter, year. RELATIVE: minute-of-hour, hour-of-day, day-of-week, day-of-month, day-of-year, week-of-year, month-of-year, quarter-of-year.",
+        "examples": [["day", "week", "month"], ["hour-of-day", "day-of-week"]]
       },
       "values_source": {
         "type": "object",
         "properties": {
           "type": {
             "type": "string",
-            "enum": ["static", "card", "connected"],
-            "description": "Source type for parameter values"
+            "enum": ["static", "card"],
+            "description": "Value source type. STATIC: predefined list (best for <50 stable values). CARD: values from another card's column (best for dynamic/large datasets)."
           },
           "values": {
             "type": "array",
@@ -82,20 +78,24 @@
               ]
             },
             "minItems": 1,
-            "description": "Static list of values (when type is 'static')"
+            "description": "Static list of values (required when type is 'static')",
+            "examples": [["active", "inactive", "pending"], [10, 50, 100, 200], ["New York", "Chicago", "Boston"]]
           },
           "card_id": {
             "type": "integer",
             "minimum": 1,
-            "description": "Card ID to source values from (when type is 'card')"
+            "description": "Card ID to source values from (required when type is 'card')",
+            "examples": [12345, 98765]
           },
           "value_field": {
             "type": "string",
-            "description": "Column name for values (when type is 'card')"
+            "description": "Column name for values (required when type is 'card')",
+            "examples": ["user_id", "category_name", "city"]
           },
           "label_field": {
             "type": "string",
-            "description": "Column name for display labels (when type is 'card')"
+            "description": "Column name for display labels (optional when type is 'card')",
+            "examples": ["user_name", "category_display", "city_display"]
           }
         },
         "required": ["type"],
@@ -171,22 +171,126 @@
           "required": ["type", "isMultiSelect"]
         },
         "then": false
+      }
+    ]
+  },
+  "examples": [
+    [
+      {
+        "name": "Status Filter",
+        "type": "string/=",
+        "default": ["active"],
+        "values_source": {
+          "type": "static",
+          "values": ["active", "inactive", "pending"]
+        }
       },
       {
-        "description": "Location parameters must use string/= type when sectionId is location",
-        "if": {
-          "properties": {
-            "sectionId": {"const": "location"}
-          },
-          "required": ["sectionId"]
-        },
-        "then": {
-          "properties": {
-            "type": {"const": "string/="}
-          },
-          "required": ["type"]
+        "name": "Categories",
+        "type": "string/=",
+        "default": ["electronics", "books"],
+        "values_source": {
+          "type": "static",
+          "values": ["electronics", "books", "clothing", "home"]
+        }
+      },
+      {
+        "name": "Single Category",
+        "type": "string/=",
+        "isMultiSelect": false,
+        "default": "electronics",
+        "values_source": {
+          "type": "static",
+          "values": ["electronics", "books", "clothing"]
+        }
+      },
+      {
+        "name": "Date Range",
+        "type": "date/range",
+        "default": "past30days"
+      },
+      {
+        "name": "Time Grouping",
+        "type": "temporal-unit",
+        "default": "day",
+        "temporal_units": ["day", "week", "month"]
+      },
+      {
+        "name": "Locations",
+        "type": "location/=",
+        "default": ["New York"],
+        "values_source": {
+          "type": "static",
+          "values": ["New York", "Chicago", "Boston"]
+        }
+      },
+      {
+        "name": "Cities Contains",
+        "type": "location/contains",
+        "default": ["York"],
+        "values_source": {
+          "type": "static",
+          "values": ["York", "Chicago", "Boston"]
+        }
+      },
+      {
+        "name": "Price Range",
+        "type": "number/between",
+        "default": [10, 1000]
+      },
+      {
+        "name": "User IDs",
+        "type": "id",
+        "default": ["12345", "67890"],
+        "values_source": {
+          "type": "card",
+          "card_id": 98765,
+          "value_field": "user_id",
+          "label_field": "user_name"
+        }
+      },
+      {
+        "name": "Single Product ID",
+        "type": "id",
+        "isMultiSelect": false,
+        "default": 1001,
+        "values_source": {
+          "type": "static",
+          "values": [1001, 1002, 1003, 1004]
         }
       }
     ]
+  ],
+  "_usage_notes": {
+    "key_concepts": [
+      "Parameters are identified by NAME only - never include any ID or sectionId fields",
+      "Multi-select is enabled by default - explicitly set isMultiSelect: false to disable",
+      "Multi-select support: ALL string types, ALL location types, number/= and number/!=, 'id' type",
+      "No multi-select for: date types, temporal-unit, number/between, number/>=, number/<=  ",
+      "For location filtering: use location/= (or location/!=, location/contains, etc.) types",
+      "Temporal-unit parameters require 'temporal_units' array",
+      "Value sources: 'static' for predefined lists, 'card' for dynamic data from other cards"
+    ],
+    "default_value_formats": {
+      "text_single": "\"active\"",
+      "text_multi": "[\"active\", \"pending\"]",
+      "location_single": "\"New York\"",
+      "location_multi": "[\"New York\", \"Chicago\"]",
+      "number_single": "100",
+      "number_multi": "[10, 50, 100]",
+      "number_range": "[10, 1000]",
+      "date_single": "\"2025-06-08\"",
+      "date_range": "\"2025-06-01~2025-06-08\"",
+      "date_relative": "\"past30days\", \"thismonth\", \"next1weeks\", \"past1weeks-from-2weeks\"",
+      "temporal_unit": "\"day\", \"hour-of-day\", \"month-of-year\"",
+      "id_single": "\"12345\" or 12345",
+      "id_multi": "[\"12345\", \"67890\"] or [12345, 67890]"
+    },
+    "relative_date_patterns": {
+      "format": "{direction}{amount}{unit}[-from-{offset}{offsetUnit}]",
+      "directions": ["past", "next", "this"],
+      "units": ["minutes", "hours", "days", "weeks", "months", "quarters", "years"],
+      "examples": ["past30days", "next1weeks", "thismonth", "past1weeks-from-2weeks"]
+    }
   }
 }

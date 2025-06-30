@@ -34,6 +34,11 @@ TEXT_PARAMETER_TYPES = {
     "string/starts-with", "string/ends-with"
 }
 
+LOCATION_PARAMETER_TYPES = {
+    "location/=", "location/!=", "location/contains", "location/does-not-contain",
+    "location/starts-with", "location/ends-with"
+}
+
 NUMBER_PARAMETER_TYPES = {
     "number/=", "number/!=", "number/between", "number/>=", "number/<="
 }
@@ -46,8 +51,9 @@ DATE_PARAMETER_TYPES = {
 # Parameter types that support multi-select
 MULTI_SELECT_SUPPORTED = {
     "string/=", "string/!=", "string/contains", "string/does-not-contain",
-    "string/starts-with", "string/ends-with", "number/=", "number/!=", "id"
-    # Location uses string/= with location sectionId
+    "string/starts-with", "string/ends-with", "number/=", "number/!=", "id",
+    "location/=", "location/!=", "location/contains", "location/does-not-contain",
+    "location/starts-with", "location/ends-with"
 }
 
 # Parameter types that do NOT support multi-select
@@ -73,6 +79,14 @@ SECTION_ID_MAPPINGS = {
     "string/starts-with": "string",
     "string/ends-with": "string",
     
+    # Location parameters (translate to string types with location sectionId)
+    "location/=": "location",
+    "location/!=": "location",
+    "location/contains": "location",
+    "location/does-not-contain": "location",
+    "location/starts-with": "location",
+    "location/ends-with": "location",
+    
     # Number parameters
     "number/=": "number",
     "number/!=": "number",
@@ -91,18 +105,22 @@ SECTION_ID_MAPPINGS = {
     # Special parameters
     "temporal-unit": "temporal-unit",
     "id": "id"
-    # Note: location uses "string/=" with sectionId "location"
+}
+
+# Location parameter to string parameter mapping
+LOCATION_TO_STRING_MAPPING = {
+    "location/=": "string/=",
+    "location/!=": "string/!=",
+    "location/contains": "string/contains",
+    "location/does-not-contain": "string/does-not-contain",
+    "location/starts-with": "string/starts-with",
+    "location/ends-with": "string/ends-with"
 }
 
 
 def load_enhanced_dashboard_parameters_schema() -> Optional[Dict[str, Any]]:
     """Load the enhanced dashboard parameters JSON schema."""
     return load_json_resource("schemas/enhanced_dashboard_parameters.json")
-
-
-def load_enhanced_dashboard_parameters_docs() -> Optional[str]:
-    """Load the enhanced dashboard parameters documentation."""
-    return load_text_resource("schemas/enhanced_dashboard_parameters_docs.md")
 
 
 def generate_parameter_id() -> str:
@@ -137,39 +155,44 @@ def generate_slug(name: str) -> str:
     return slug
 
 
-def determine_section_id(param_type: str, section_id_override: Optional[str] = None) -> str:
+def determine_section_id(param_type: str, param_name: str, values_source: Optional[Dict[str, Any]] = None) -> str:
     """
     Determine the appropriate sectionId for a parameter type.
     
     Args:
         param_type: Parameter type
-        section_id_override: Override sectionId (for location parameters)
+        param_name: Parameter name (unused, kept for compatibility)
+        values_source: Optional values source (unused, kept for compatibility)
         
     Returns:
         Appropriate sectionId
     """
-    if section_id_override:
-        return section_id_override
-    
     return SECTION_ID_MAPPINGS.get(param_type, "string")
 
 
-def validate_multi_select_compatibility(param_type: str, is_multi_select: bool) -> List[str]:
+def validate_multi_select_compatibility(param_type: str, is_multi_select: Optional[bool]) -> List[str]:
     """
     Validate multi-select compatibility with parameter type.
+    Note: isMultiSelect defaults to True for supported parameter types.
     
     Args:
         param_type: Parameter type
-        is_multi_select: Whether multi-select is enabled
+        is_multi_select: Whether multi-select is enabled (None means use default)
         
     Returns:
         List of validation errors
     """
     errors = []
     
-    if is_multi_select:
-        if param_type in MULTI_SELECT_FORBIDDEN:
-            errors.append(f"Multi-select not supported for parameter type '{param_type}'")
+    # Determine actual multi-select setting with defaults
+    if param_type in MULTI_SELECT_SUPPORTED:
+        actual_is_multi_select = is_multi_select if is_multi_select is not None else True
+    else:
+        actual_is_multi_select = is_multi_select if is_multi_select is not None else False
+    
+    # Only validate if multi-select is explicitly enabled for forbidden types
+    if actual_is_multi_select and param_type in MULTI_SELECT_FORBIDDEN:
+        errors.append(f"Multi-select not supported for parameter type '{param_type}'")
     
     return errors
 
@@ -219,9 +242,6 @@ def validate_values_source_config(param_config: Dict[str, Any]) -> List[str]:
             errors.append("Card values source requires 'card_id'")
         if "value_field" not in values_source:
             errors.append("Card values source requires 'value_field'")
-    elif source_type == "connected":
-        # Connected values source is allowed for any parameter type in dashboard context
-        pass
     
     return errors
 
@@ -229,6 +249,7 @@ def validate_values_source_config(param_config: Dict[str, Any]) -> List[str]:
 def validate_default_value_format(param_config: Dict[str, Any]) -> List[str]:
     """
     Validate default value format matches parameter type and multi-select setting.
+    Note: isMultiSelect defaults to True for supported parameter types.
     
     Args:
         param_config: Parameter configuration
@@ -243,7 +264,13 @@ def validate_default_value_format(param_config: Dict[str, Any]) -> List[str]:
     
     param_type = param_config["type"]
     default_value = param_config["default"]
-    is_multi_select = param_config.get("isMultiSelect", False)
+    
+    # Determine if multi-select is enabled
+    # For supported types, isMultiSelect defaults to True unless explicitly set to False
+    if param_type in MULTI_SELECT_SUPPORTED:
+        is_multi_select = param_config.get("isMultiSelect", True)  # Default to True
+    else:
+        is_multi_select = param_config.get("isMultiSelect", False)  # Default to False for unsupported types
     
     # For multi-select parameters, default should be an array
     if is_multi_select and not isinstance(default_value, list):
@@ -265,12 +292,28 @@ def validate_default_value_format(param_config: Dict[str, Any]) -> List[str]:
         if not isinstance(default_value, str):
             errors.append("Date parameter requires string default value")
     
-    elif param_type in TEXT_PARAMETER_TYPES or param_type == "id":
+    elif param_type in TEXT_PARAMETER_TYPES or param_type in LOCATION_PARAMETER_TYPES or param_type == "id":
         if is_multi_select:
-            if not isinstance(default_value, list) or not all(isinstance(v, str) for v in default_value):
-                errors.append("Text/ID parameter with multi-select requires array of strings as default")
-        elif not isinstance(default_value, str):
-            errors.append("Text/ID parameter requires string default value")
+            if not isinstance(default_value, list):
+                errors.append("Multi-select parameter default value must be an array")
+            else:
+                # For ID parameters, allow mixed string/number arrays
+                if param_type == "id":
+                    if not all(isinstance(v, (str, int, float)) for v in default_value):
+                        errors.append("ID parameter with multi-select requires array of strings or numbers as default")
+                else:
+                    # For text parameters, require strings
+                    if not all(isinstance(v, str) for v in default_value):
+                        errors.append("Text parameter with multi-select requires array of strings as default")
+        else:
+            # For single values, ID parameters can be string or number
+            if param_type == "id":
+                if not isinstance(default_value, (str, int, float)):
+                    errors.append("ID parameter requires string or number default value")
+            else:
+                # Text parameters require strings
+                if not isinstance(default_value, str):
+                    errors.append("Text parameter requires string default value")
     
     elif param_type == "temporal-unit":
         if not isinstance(default_value, str) or default_value not in VALID_TEMPORAL_UNITS:
@@ -334,10 +377,6 @@ def build_values_source_config(param_config: Dict[str, Any]) -> Tuple[Optional[s
             config["label_field"] = ["field", values_source["label_field"], {"base-type": "type/Text"}]
         return "card", config
     
-    elif source_type == "connected":
-        # For connected values, use null values_source_type and empty config
-        return None, {}
-    
     return None, None
 
 
@@ -361,8 +400,6 @@ def determine_values_query_type(param_config: Dict[str, Any]) -> str:
         return "list"
     elif source_type == "card":
         return "search"
-    elif source_type == "connected":
-        return "list"  # Connected values typically use list interface
     
     return "none"
 
@@ -391,19 +428,22 @@ def process_single_dashboard_parameter(param_config: Dict[str, Any], existing_id
     
     existing_ids.add(param_id)
     
-    # Determine sectionId
-    section_id_override = param_config.get("sectionId")
-    if param_type == "string/=" and section_id_override == "location":
+    # Handle location parameter type translation
+    if param_type in LOCATION_PARAMETER_TYPES:
+        # Translate location/= to string/= but keep location sectionId
+        actual_param_type = LOCATION_TO_STRING_MAPPING[param_type]
         section_id = "location"
     else:
-        section_id = determine_section_id(param_type, section_id_override)
+        # Use original type and determine sectionId normally
+        actual_param_type = param_type
+        section_id = determine_section_id(param_type, param_name, param_config.get("values_source"))
     
     # Build the processed parameter
     processed_param = {
         "id": param_id,
         "name": param_name,
         "slug": generate_slug(param_name),
-        "type": param_type,
+        "type": actual_param_type,
         "sectionId": section_id
     }
     
@@ -475,7 +515,7 @@ def validate_enhanced_dashboard_parameters(parameters: List[Dict[str, Any]]) -> 
             param_type = param.get("type")
             
             # Multi-select validation
-            is_multi_select = param.get("isMultiSelect", False)
+            is_multi_select = param.get("isMultiSelect")  # Get actual value, could be None
             multi_select_errors = validate_multi_select_compatibility(param_type, is_multi_select)
             for error in multi_select_errors:
                 errors.append(f"Parameter {i} ({param_name}): {error}")
@@ -504,10 +544,23 @@ def validate_enhanced_dashboard_parameters(parameters: List[Dict[str, Any]]) -> 
             if param.get("required", False):
                 if "default" not in param or param["default"] is None:
                     errors.append(f"Parameter {i} ({param_name}): required parameters must have a default value")
-                elif isinstance(param["default"], list) and len(param["default"]) == 0:
-                    errors.append(f"Parameter {i} ({param_name}): required parameters must have a non-empty default value")
-                elif isinstance(param["default"], str) and param["default"] == "":
-                    errors.append(f"Parameter {i} ({param_name}): required parameters must have a non-empty default value")
+                else:
+                    # Check if default is empty based on multi-select behavior
+                    default_value = param["default"]
+                    
+                    # Determine if this parameter uses multi-select by default
+                    param_is_multi_select = param.get("isMultiSelect")
+                    if param_type in MULTI_SELECT_SUPPORTED:
+                        actual_is_multi_select = param_is_multi_select if param_is_multi_select is not None else True
+                    else:
+                        actual_is_multi_select = param_is_multi_select if param_is_multi_select is not None else False
+                    
+                    if actual_is_multi_select:
+                        if isinstance(default_value, list) and len(default_value) == 0:
+                            errors.append(f"Parameter {i} ({param_name}): required parameters must have a non-empty default value")
+                    else:
+                        if isinstance(default_value, str) and default_value == "":
+                            errors.append(f"Parameter {i} ({param_name}): required parameters must have a non-empty default value")
         
         return len(errors) == 0, errors
         
@@ -632,27 +685,22 @@ def validate_enhanced_dashboard_parameters_helper(parameters: List[Dict[str, Any
     }
 
 
-@mcp.tool(name="GET_ENHANCED_DASHBOARD_PARAMETERS_DOCUMENTATION", description="Get comprehensive documentation for enhanced dashboard parameters")
+@mcp.tool(name="GET_ENHANCED_DASHBOARD_PARAMETERS_DOCUMENTATION", description="Get complete schema and documentation for enhanced dashboard parameters")
 async def get_enhanced_dashboard_parameters_documentation(ctx: Context) -> str:
     """
-    Get comprehensive documentation for enhanced dashboard parameters including:
-    - All dashboard parameter types (string, number, date, temporal-unit, location, ID)
-    - Multi-select support where applicable
-    - UI widget options and value sources
-    - Complete examples for all parameter types
-    - Usage guidelines and best practices
+    Get complete schema and documentation for enhanced dashboard parameters.
+    All documentation is embedded in the JSON schema.
     
     Args:
         ctx: MCP context
         
     Returns:
-        Complete documentation and examples as JSON string
+        JSON schema with embedded documentation
     """
     logger.info("Tool called: GET_ENHANCED_DASHBOARD_PARAMETERS_DOCUMENTATION()")
     
     try:
         schema = load_enhanced_dashboard_parameters_schema()
-        docs = load_enhanced_dashboard_parameters_docs()
         
         if schema is None:
             return format_error_response(
@@ -662,107 +710,8 @@ async def get_enhanced_dashboard_parameters_documentation(ctx: Context) -> str:
                 request_info={"schema_file": "enhanced_dashboard_parameters.json"}
             )
         
-        if docs is None:
-            return format_error_response(
-                status_code=500,
-                error_type="docs_loading_error", 
-                message="Could not load enhanced dashboard parameters documentation",
-                request_info={"docs_file": "enhanced_dashboard_parameters_docs.md"}
-            )
-        
-        response_data = {
-            "success": True,
-            "documentation": docs,
-            "schema": schema,
-            "parameter_types": {
-                "text_parameters": {
-                    "types": list(TEXT_PARAMETER_TYPES),
-                    "multi_select_support": "all text parameter types support multi-select",
-                    "description": "String-based filtering with various comparison operators"
-                },
-                "number_parameters": {
-                    "types": list(NUMBER_PARAMETER_TYPES), 
-                    "multi_select_support": "number/= and number/!= support multi-select",
-                    "description": "Numeric filtering with comparison and range operators"
-                },
-                "date_parameters": {
-                    "types": list(DATE_PARAMETER_TYPES),
-                    "multi_select_support": "none",
-                    "description": "Date-based filtering with various picker configurations"
-                },
-                "special_parameters": {
-                    "temporal-unit": "Time grouping control with predefined units (no multi-select)",
-                    "id": "Identifier-based filtering (supports multi-select)",
-                    "location": "Geographic filtering (uses string/= with location sectionId, supports multi-select)"
-                }
-            },
-            "value_sources": {
-                "static": "Predefined list of values",
-                "card": "Values from another card/model with search functionality",
-                "connected": "Values connected to parameter context (automatic population)"
-            },
-            "multi_select_rules": {
-                "supported": list(MULTI_SELECT_SUPPORTED),
-                "forbidden": list(MULTI_SELECT_FORBIDDEN),
-                "notes": "Location parameters use string/= with sectionId='location' and support multi-select. All string types and ID parameters support multi-select."
-            },
-            "usage_notes": [
-                "Parameter names are used for identification - IDs are generated automatically",
-                "Use descriptive names as they become the parameter labels in the UI",
-                "sectionId is automatically determined from parameter type unless overridden",
-                "Required parameters must have default values",
-                "Multi-select parameters require array default values",
-                "Temporal-unit parameters must include temporal_units array",
-                "Card value sources are validated to ensure accessibility",
-                "All parameter types and options from Metabase dashboard filters are supported"
-            ],
-            "common_examples": {
-                "text_filter": {
-                    "name": "Status Filter",
-                    "type": "string/=",
-                    "default": "active",
-                    "values_source": {
-                        "type": "static",
-                        "values": ["active", "inactive", "pending"]
-                    }
-                },
-                "multi_select_category": {
-                    "name": "Categories", 
-                    "type": "string/=",
-                    "isMultiSelect": True,
-                    "default": ["electronics", "books"],
-                    "values_source": {
-                        "type": "static",
-                        "values": ["electronics", "books", "clothing", "home"]
-                    }
-                },
-                "date_range": {
-                    "name": "Date Range",
-                    "type": "date/range", 
-                    "default": "past30days"
-                },
-                "time_grouping": {
-                    "name": "Time Breakdown",
-                    "type": "temporal-unit",
-                    "default": "day",
-                    "temporal_units": ["hour", "day", "week", "month", "quarter"]
-                },
-                "location_filter": {
-                    "name": "Locations",
-                    "type": "string/=",
-                    "sectionId": "location",
-                    "isMultiSelect": True,
-                    "default": ["New York"],
-                    "values_source": {
-                        "type": "static", 
-                        "values": ["New York", "San Francisco", "Chicago"]
-                    }
-                }
-            }
-        }
-        
-        # Convert to JSON string
-        response = json.dumps(response_data, indent=2)
+        # Return the schema directly - all documentation is embedded
+        response = json.dumps(schema, indent=2)
         
         # Check response size
         metabase_ctx = ctx.request_context.lifespan_context
