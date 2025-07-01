@@ -43,8 +43,8 @@ def validate_dashcards(dashcards: List[Dict[str, Any]]) -> Tuple[bool, List[str]
         # Additional validation for business rules
         errors = []
         
-        # Check for forbidden keys
-        forbidden_keys = {"action_id", "series", "visualization_settings", "parameter_mappings"}
+        # Check for forbidden keys (parameter_mappings is now allowed but will be processed)
+        forbidden_keys = {"action_id", "series", "visualization_settings"}
         
         for i, dashcard in enumerate(dashcards):
             # Check for forbidden keys
@@ -111,9 +111,18 @@ async def get_dashcards_schema(ctx: Context) -> str:
             "schema": schema,
             "description": "JSON schema for validating dashboard cards in update_dashboard tool",
             "usage": {
-                "forbidden_keys": ["action_id", "series", "visualization_settings", "parameter_mappings"],
+                "forbidden_keys": ["action_id", "series", "visualization_settings"],
                 "required_keys": ["card_id", "col", "row", "size_x", "size_y"],
-                "optional_keys": ["id", "dashboard_tab_id"],
+                "optional_keys": ["id", "dashboard_tab_id", "parameter_mappings"],
+                "parameter_mappings": {
+                    "description": "Optional array to connect dashboard parameters to card parameters by name",
+                    "format": [
+                        {
+                            "dashboard_parameter_name": "Name of dashboard parameter",
+                            "card_parameter_name": "Name of card parameter (or slug)"
+                        }
+                    ]
+                },
                 "grid_constraints": {
                     "col_range": "0-23 (24 columns total)",
                     "size_x_range": "1-24",
@@ -214,3 +223,164 @@ def validate_tabs_helper(tabs: List[Dict[str, Any]]) -> Dict[str, Any]:
         "tabs_count": len(tabs) if tabs else 0,
         "validation_timestamp": "2025-06-06T00:00:00Z"
     }
+
+
+async def process_parameter_mappings(
+    client,
+    dashcards: List[Dict[str, Any]],
+    dashboard_parameters: List[Dict[str, Any]],
+    card_parameters_by_card: Dict[int, List[Dict[str, Any]]]
+) -> Tuple[List[Dict[str, Any]], List[str]]:
+    """
+    Process parameter mappings for dashcards, converting name-based mappings to ID-based mappings.
+    
+    Args:
+        client: Metabase client
+        dashcards: List of dashcard configurations
+        dashboard_parameters: List of processed dashboard parameters with generated IDs
+        card_parameters_by_card: Dictionary mapping card_id to list of card parameters
+        
+    Returns:
+        Tuple of (processed_dashcards, errors)
+    """
+    errors = []
+    processed_dashcards = []
+    
+    # Create lookup dictionaries for parameters
+    dashboard_param_by_name = {param["name"]: param for param in dashboard_parameters}
+    
+    for i, dashcard in enumerate(dashcards):
+        processed_dashcard = dashcard.copy()
+        card_id = dashcard["card_id"]
+        
+        # Process parameter mappings if present
+        if "parameter_mappings" in dashcard and dashcard["parameter_mappings"]:
+            # Get card parameters for this card
+            card_parameters = card_parameters_by_card.get(card_id, [])
+            card_param_by_name = {param.get("name", ""): param for param in card_parameters if "name" in param}
+            
+            # Also check for slug-based mapping (parameters can be referenced by slug)
+            card_param_by_slug = {param.get("slug", ""): param for param in card_parameters if "slug" in param}
+            
+            metabase_parameter_mappings = []
+            
+            for j, mapping in enumerate(dashcard["parameter_mappings"]):
+                dashboard_param_name = mapping["dashboard_parameter_name"]
+                card_param_name = mapping["card_parameter_name"]
+                
+                # Find dashboard parameter by name
+                dashboard_param = dashboard_param_by_name.get(dashboard_param_name)
+                if not dashboard_param:
+                    errors.append(
+                        f"Dashcard {i} mapping {j}: Dashboard parameter '{dashboard_param_name}' not found"
+                    )
+                    continue
+                
+                # Find card parameter by name or slug
+                card_param = card_param_by_name.get(card_param_name) or card_param_by_slug.get(card_param_name)
+                if not card_param:
+                    errors.append(
+                        f"Dashcard {i} mapping {j}: Card parameter '{card_param_name}' not found in card {card_id}"
+                    )
+                    continue
+                
+                # Create Metabase API parameter mapping
+                metabase_mapping = {
+                    "card_id": card_id,
+                    "parameter_id": dashboard_param["id"],  # Dashboard parameter ID
+                    "target": card_param["target"]  # Card parameter target
+                }
+                
+                metabase_parameter_mappings.append(metabase_mapping)
+            
+            # Replace name-based mappings with ID-based mappings
+            processed_dashcard["parameter_mappings"] = metabase_parameter_mappings
+        
+        processed_dashcards.append(processed_dashcard)
+    
+    return processed_dashcards, errors
+
+
+async def get_card_parameters(client, card_id: int) -> Tuple[List[Dict[str, Any]], Optional[str]]:
+    """
+    Get parameters for a specific card.
+    
+    Args:
+        client: Metabase client
+        card_id: Card ID
+        
+    Returns:
+        Tuple of (parameters_list, error_message)
+    """
+    try:
+        # Get card definition
+        data, status, error = await client.auth.make_request(
+            "GET", f"card/{card_id}"
+        )
+        
+        if error:
+            return [], f"Cannot access card {card_id}: {error}"
+        
+        # Extract parameters from card
+        parameters = data.get("parameters", [])
+        return parameters, None
+        
+    except Exception as e:
+        return [], f"Error getting parameters for card {card_id}: {str(e)}"
+
+
+async def validate_parameter_mappings(
+    client,
+    dashcards: List[Dict[str, Any]],
+    dashboard_parameters: List[Dict[str, Any]]
+) -> Tuple[Dict[int, List[Dict[str, Any]]], List[str]]:
+    """
+    Validate parameter mappings and collect card parameters.
+    
+    Args:
+        client: Metabase client
+        dashcards: List of dashcard configurations
+        dashboard_parameters: List of dashboard parameters
+        
+    Returns:
+        Tuple of (card_parameters_by_card, errors)
+    """
+    errors = []
+    card_parameters_by_card = {}
+    dashboard_param_names = {param["name"] for param in dashboard_parameters}
+    
+    for i, dashcard in enumerate(dashcards):
+        card_id = dashcard["card_id"]
+        
+        # Get card parameters if this card has parameter mappings
+        if "parameter_mappings" in dashcard and dashcard["parameter_mappings"]:
+            if card_id not in card_parameters_by_card:
+                card_parameters, error = await get_card_parameters(client, card_id)
+                if error:
+                    errors.append(f"Dashcard {i}: {error}")
+                    continue
+                card_parameters_by_card[card_id] = card_parameters
+            
+            card_parameters = card_parameters_by_card[card_id]
+            card_param_names = {param.get("name", "") for param in card_parameters if "name" in param}
+            card_param_slugs = {param.get("slug", "") for param in card_parameters if "slug" in param}
+            card_param_identifiers = card_param_names.union(card_param_slugs)
+            
+            # Validate each mapping
+            for j, mapping in enumerate(dashcard["parameter_mappings"]):
+                dashboard_param_name = mapping["dashboard_parameter_name"]
+                card_param_name = mapping["card_parameter_name"]
+                
+                # Check if dashboard parameter exists
+                if dashboard_param_name not in dashboard_param_names:
+                    errors.append(
+                        f"Dashcard {i} mapping {j}: Dashboard parameter '{dashboard_param_name}' not found in dashboard parameters"
+                    )
+                
+                # Check if card parameter exists
+                if card_param_name not in card_param_identifiers:
+                    errors.append(
+                        f"Dashcard {i} mapping {j}: Card parameter '{card_param_name}' not found in card {card_id}. Available: {list(card_param_identifiers)}"
+                    )
+    
+    return card_parameters_by_card, errors

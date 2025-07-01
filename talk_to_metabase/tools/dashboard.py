@@ -11,7 +11,12 @@ from mcp.server.fastmcp import Context, FastMCP
 
 from ..server import get_server_instance
 from .common import format_error_response, get_metabase_client, check_response_size
-from .dashcards import validate_dashcards_helper, validate_tabs_helper
+from .dashcards import (
+    validate_dashcards_helper, 
+    validate_tabs_helper,
+    validate_parameter_mappings,
+    process_parameter_mappings
+)
 from .dashboard_parameters import (
     process_dashboard_parameters,
     validate_dashboard_parameters_helper
@@ -157,6 +162,7 @@ async def update_dashboard(
     This tool allows you to:
     - Add new cards to a dashboard using the dashcards parameter
     - Update existing cards by providing their existing ID
+    - Link dashboard parameters to card parameters via parameter_mappings
     - Add/update dashboard tabs using the tabs parameter
     - Add/update dashboard parameters using the parameters parameter
     - Update dashboard metadata (name, description, collection, archived status)
@@ -170,7 +176,13 @@ async def update_dashboard(
         "row": integer,          // Required: Row position (0+)
         "size_x": integer,       // Required: Width in columns (1-24)
         "size_y": integer,       // Required: Height in rows (1+)
-        "dashboard_tab_id": int  // Optional: Tab ID for multi-tab dashboards
+        "dashboard_tab_id": int, // Optional: Tab ID for multi-tab dashboards
+        "parameter_mappings": [  // Optional: Link dashboard parameters to card parameters
+            {
+                "dashboard_parameter_name": "Status Filter",
+                "card_parameter_name": "order_status"
+            }
+        ]
     }
     
     TABS FORMAT:
@@ -191,6 +203,11 @@ async def update_dashboard(
     
     **CRITICAL**: Parameters are identified by NAME only. IDs are generated automatically.
     For parameters: call GET_DASHBOARD_PARAMETERS_DOCUMENTATION for complete format.
+    
+    PARAMETER MAPPINGS:
+    Connect dashboard parameters to card parameters by specifying parameter_mappings in dashcards.
+    Both dashboard and card parameters are identified by their names. The system automatically
+    converts these to the appropriate IDs and targets for the Metabase API.
 
     GRID CONSTRAINTS:
     - Dashboard grid has 24 columns (col: 0-23)
@@ -223,7 +240,7 @@ async def update_dashboard(
                 "success": False,
                 "error": "Invalid dashcards format",
                 "validation_errors": validation_result["errors"],
-                "help": "Call GET_DASHCARDS_SCHEMA to understand the correct format. Forbidden keys: action_id, series, visualization_settings, parameter_mappings"
+                "help": "Call GET_DASHCARDS_SCHEMA to understand the correct format."
             }, indent=2)
     
     # Validate tabs if provided
@@ -265,6 +282,52 @@ async def update_dashboard(
                 "error": "Dashboard parameters processing error",
                 "message": str(e)
             }, indent=2)
+    
+    # Process parameter mappings if both dashcards and parameters are provided
+    if dashcards is not None and parameters is not None:
+        # Check if any dashcard has parameter mappings
+        has_parameter_mappings = any(
+            "parameter_mappings" in dashcard and dashcard["parameter_mappings"]
+            for dashcard in dashcards
+        )
+        
+        if has_parameter_mappings:
+            try:
+                # Validate parameter mappings and collect card parameters
+                card_parameters_by_card, mapping_errors = await validate_parameter_mappings(
+                    client, dashcards, parameters
+                )
+                
+                if mapping_errors:
+                    return json.dumps({
+                        "success": False,
+                        "error": "Parameter mapping validation failed",
+                        "validation_errors": mapping_errors,
+                        "help": "Check that dashboard parameter names and card parameter names match exactly."
+                    }, indent=2)
+                
+                # Process parameter mappings to convert from name-based to ID-based
+                processed_dashcards, processing_errors = await process_parameter_mappings(
+                    client, dashcards, parameters, card_parameters_by_card
+                )
+                
+                if processing_errors:
+                    return json.dumps({
+                        "success": False,
+                        "error": "Parameter mapping processing failed",
+                        "validation_errors": processing_errors,
+                        "help": "Check that parameter names match between dashboard and card configurations."
+                    }, indent=2)
+                
+                # Replace original dashcards with processed ones
+                dashcards = processed_dashcards
+                
+            except Exception as e:
+                return json.dumps({
+                    "success": False,
+                    "error": "Parameter mapping processing error",
+                    "message": str(e)
+                }, indent=2)
     
     try:
         # Prepare update payload with only the fields to be updated

@@ -115,6 +115,93 @@ if processed_parameters:
 }
 ```
 
+### Parameter Mappings Support
+
+The tool supports linking dashboard parameters to card parameters through the `parameter_mappings` field in dashcards. This creates the connection that allows dashboard filters to control card behavior.
+
+#### Parameter Mapping Structure
+```json
+{
+  "dashboard_parameter_name": "Status Filter",
+  "card_parameter_name": "order_status"
+}
+```
+
+#### Key Features
+
+1. **Name-Based Identification**: Both dashboard and card parameters are identified by their names
+2. **Automatic ID Resolution**: The system automatically converts names to internal IDs and targets
+3. **Validation**: Ensures both dashboard and card parameters exist before creating mappings
+4. **Card Parameter Support**: Card parameters can be referenced by either name or slug
+5. **Comprehensive Error Messages**: Clear feedback when parameter names don't match
+
+#### Processing Flow
+
+1. **Parameter Validation**: Validates that dashboard parameter names exist in the dashboard parameters configuration
+2. **Card Parameter Retrieval**: Fetches card parameters from Metabase for each card with parameter mappings
+3. **Name Resolution**: Matches card parameter names (or slugs) to actual parameter objects
+4. **ID Conversion**: Converts name-based mappings to ID-based mappings for the Metabase API
+5. **Target Extraction**: Extracts the appropriate target information from card parameters
+
+#### Generated Metabase API Format
+
+The system converts name-based mappings like this:
+
+```json
+// Input (name-based)
+{
+  "dashboard_parameter_name": "Status Filter",
+  "card_parameter_name": "order_status"
+}
+
+// Generated (ID-based for Metabase API)
+{
+  "card_id": 54276,
+  "parameter_id": "ab12cd34",  // Dashboard parameter ID
+  "target": ["variable", ["template-tag", "order_status"]]  // Card parameter target
+}
+```
+
+#### Usage Example
+
+```json
+{
+  "method": "tools/call",
+  "params": {
+    "name": "update_dashboard",
+    "arguments": {
+      "id": 1864,
+      "parameters": [
+        {
+          "name": "Status Filter",
+          "type": "string/=",
+          "default": ["active"],
+          "values_source": {
+            "type": "static",
+            "values": ["active", "inactive", "pending"]
+          }
+        }
+      ],
+      "dashcards": [
+        {
+          "id": -1,
+          "card_id": 54276,
+          "col": 0,
+          "row": 0,
+          "size_x": 12,
+          "size_y": 8,
+          "parameter_mappings": [
+            {
+              "dashboard_parameter_name": "Status Filter",
+              "card_parameter_name": "order_status"
+            }
+          ]
+        }
+      ]
+    }
+  }
+}
+
 ### Parameter Preservation in Card Updates
 
 The `update_card` tool has been enhanced to preserve existing parameters when updating queries:
@@ -2164,19 +2251,20 @@ The `run_dataset_query` tool has been implemented to allow direct execution of b
 
 This implementation provides Claude with a powerful way to directly execute SQL and MBQL queries against Metabase databases, while focusing on essential output fields for better performance and readability.
 
-## Dashboard Update Tool with Cards, Tabs and Parameters
+## Dashboard Update Tool with Cards, Tabs, Parameters and Parameter Mappings
 
-The `update_dashboard` tool has been enhanced to support adding cards, managing tabs and configuring parameters in Metabase dashboards, providing comprehensive dashboard management capabilities.
+The `update_dashboard` tool has been enhanced to support adding cards, managing tabs, configuring parameters, and establishing parameter mappings in Metabase dashboards, providing comprehensive dashboard management capabilities.
 
 ### Key Features
 
 1. **Dashcards Management**: Add new cards to dashboards with precise grid positioning
-2. **Tabs Management**: Create and manage dashboard tabs for multi-tab dashboards
-3. **Parameters Management**: Add and configure dashboard parameters for interactive filtering
-4. **Strict Validation**: JSON schema validation for dashcards and parameters with business rule enforcement
-5. **Grid Constraints**: Automatic validation of dashboard grid boundaries (24-column system)
-6. **Forbidden Keys Protection**: Prevents use of complex configuration keys to maintain simplicity
-7. **Metadata Updates**: Support for updating dashboard name, description, collection, and archived status
+2. **Parameter Mappings**: Link dashboard parameters to card parameters by name
+3. **Tabs Management**: Create and manage dashboard tabs for multi-tab dashboards
+4. **Parameters Management**: Add and configure dashboard parameters for interactive filtering
+5. **Strict Validation**: JSON schema validation for dashcards and parameters with business rule enforcement
+6. **Grid Constraints**: Automatic validation of dashboard grid boundaries (24-column system)
+7. **Automatic Processing**: Convert name-based parameter mappings to ID-based mappings for Metabase API
+8. **Metadata Updates**: Support for updating dashboard name, description, collection, and archived status
 
 ### Dashcards Support
 
@@ -2191,7 +2279,13 @@ The tool supports adding cards to dashboards using the `dashcards` parameter wit
   "row": integer,          // Required: Row position (0+)
   "size_x": integer,       // Required: Width in columns (1-24)
   "size_y": integer,       // Required: Height in rows (1+)
-  "dashboard_tab_id": int  // Optional: Tab ID for multi-tab dashboards
+  "dashboard_tab_id": int, // Optional: Tab ID for multi-tab dashboards
+  "parameter_mappings": [  // Optional: Link dashboard parameters to card parameters
+    {
+      "dashboard_parameter_name": "Status Filter",
+      "card_parameter_name": "order_status"
+    }
+  ]
 }
 ```
 
@@ -2202,7 +2296,7 @@ The tool supports adding cards to dashboards using the `dashcards` parameter wit
    - `col` range: 0-23 (24 columns total)
    - `size_x` range: 1-24
    - `col + size_x` must not exceed 24
-3. **Forbidden Keys**: `action_id`, `series`, `visualization_settings`, `parameter_mappings`
+3. **Forbidden Keys**: `action_id`, `series`, `visualization_settings` (parameter_mappings is now allowed)
 4. **ID Convention**: Use existing positive IDs for updates, negative IDs (-1, -2, -3) for new cards
 
 #### Usage Example
@@ -2229,11 +2323,84 @@ The tool supports adding cards to dashboards using the `dashcards` parameter wit
           "col": 12,
           "row": 0,
           "size_x": 12,
-          "size_y": 8
+          "size_y": 8,
+          "parameter_mappings": [
+            {
+              "dashboard_parameter_name": "Status Filter",
+              "card_parameter_name": "order_status"
+            },
+            {
+              "dashboard_parameter_name": "Date Range",
+              "card_parameter_name": "date_filter"
+            }
+          ]
         }
       ]
     }
   }
+}
+```
+
+### Parameter Mappings Support
+
+The tool supports linking dashboard parameters to card parameters through the `parameter_mappings` field in dashcards. This creates the connection that allows dashboard filters to control card behavior.
+
+#### Parameter Mapping Structure
+```json
+{
+  "dashboard_parameter_name": "Status Filter",
+  "card_parameter_name": "order_status"
+}
+```
+
+#### Key Features
+
+1. **Name-Based Identification**: Both dashboard and card parameters are identified by their names
+2. **Automatic ID Resolution**: The system automatically converts names to internal IDs and targets
+3. **Validation**: Ensures both dashboard and card parameters exist before creating mappings
+4. **Card Parameter Support**: Card parameters can be referenced by either name or slug
+5. **Comprehensive Error Messages**: Clear feedback when parameter names don't match
+
+#### Processing Flow
+
+1. **Parameter Validation**: Validates that dashboard parameter names exist in the dashboard parameters configuration
+2. **Card Parameter Retrieval**: Fetches card parameters from Metabase for each card with parameter mappings
+3. **Name Resolution**: Matches card parameter names (or slugs) to actual parameter objects
+4. **ID Conversion**: Converts name-based mappings to ID-based mappings for the Metabase API
+5. **Target Extraction**: Extracts the appropriate target information from card parameters
+
+#### Generated Metabase API Format
+
+The system converts name-based mappings like this:
+
+```json
+// Input (name-based)
+{
+  "dashboard_parameter_name": "Status Filter",
+  "card_parameter_name": "order_status"
+}
+
+// Generated (ID-based for Metabase API)
+{
+  "card_id": 54276,
+  "parameter_id": "ab12cd34",  // Dashboard parameter ID
+  "target": ["variable", ["template-tag", "order_status"]]  // Card parameter target
+}
+```
+
+#### Error Handling
+
+The system provides detailed error messages for parameter mapping issues:
+
+```json
+{
+  "success": false,
+  "error": "Parameter mapping validation failed",
+  "validation_errors": [
+    "Dashcard 0 mapping 0: Dashboard parameter 'Status Filter' not found in dashboard parameters",
+    "Dashcard 1 mapping 0: Card parameter 'customer_filter' not found in card 54276. Available: ['order_status', 'date_filter']"
+  ],
+  "help": "Check that dashboard parameter names and card parameter names match exactly."
 }
 ```
 
@@ -2414,7 +2581,8 @@ Returns the complete schema with usage guidelines, constraints, and examples.
 
 1. **Dashcards Validation** (`/talk_to_metabase/tools/dashcards.py`):
    - JSON schema validation against `/talk_to_metabase/schemas/dashcards.json`
-   - Business rule validation (forbidden keys, grid constraints)
+   - Business rule validation (grid constraints)
+   - Parameter mapping validation and processing
    - Helper functions for structured validation results
 
 2. **Tabs Validation** (in `dashcards.py`):
@@ -2452,6 +2620,34 @@ if parameters is not None:
     # Process parameters to ensure all have IDs
     parameters = process_parameters(parameters)
 
+# Parameter mappings validation and processing
+if dashcards is not None and parameters is not None:
+    # Check if any dashcard has parameter mappings
+    has_parameter_mappings = any(
+        "parameter_mappings" in dashcard and dashcard["parameter_mappings"]
+        for dashcard in dashcards
+    )
+    
+    if has_parameter_mappings:
+        # Validate parameter mappings and collect card parameters
+        card_parameters_by_card, mapping_errors = await validate_parameter_mappings(
+            client, dashcards, parameters
+        )
+        
+        if mapping_errors:
+            return validation_error_response
+        
+        # Process parameter mappings to convert from name-based to ID-based
+        processed_dashcards, processing_errors = await process_parameter_mappings(
+            client, dashcards, parameters, card_parameters_by_card
+        )
+        
+        if processing_errors:
+            return validation_error_response
+        
+        # Replace original dashcards with processed ones
+        dashcards = processed_dashcards
+
 # Proceed with update if all validations pass
 ```
 
@@ -2488,21 +2684,24 @@ The tool returns a concise success response with essential information:
 
 ### Benefits
 
-1. **Complete Dashboard Management**: Single tool for all dashboard update operations
+1. **Complete Dashboard Management**: Single tool for all dashboard update operations including parameter linking
 2. **Type Safety**: Strict validation prevents invalid configurations
-3. **Grid System Support**: Automatic validation of Metabase's 24-column grid system
-4. **Future Extensibility**: Architecture supports adding more complex features later
-5. **Clear Error Messages**: Actionable validation feedback with specific error locations
-6. **Modular Design**: Validation logic separated into reusable modules
+3. **Parameter Integration**: Seamless linking between dashboard and card parameters
+4. **Grid System Support**: Automatic validation of Metabase's 24-column grid system
+5. **Name-Based Parameter Mapping**: Intuitive parameter linking using names instead of IDs
+6. **Future Extensibility**: Architecture supports adding more complex features later
+7. **Clear Error Messages**: Actionable validation feedback with specific error locations
+8. **Modular Design**: Validation logic separated into reusable modules
 
 ### Future Extensibility
 
 The implementation is designed to easily support additional features:
 
 1. **Visualization Settings**: Can be added by removing from forbidden keys and adding validation
-2. **Parameter Mappings**: Can be added with appropriate schema extensions
+2. **Advanced Parameter Mappings**: Support for field filters and complex target types
 3. **Series Cards**: Can be supported by extending the validation system
 4. **Advanced Grid Features**: Layout optimization and collision detection
+5. **Parameter Mapping Templates**: Pre-defined mapping patterns for common use cases
 
 This implementation provides a solid foundation for dashboard management while maintaining simplicity and leaving room for future enhancements.
 

@@ -1,7 +1,7 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Metabase Dashboard Cards Schema",
-  "description": "JSON schema for dashboard cards (dashcards) in Metabase dashboard updates",
+  "description": "JSON schema for dashboard cards (dashcards) in Metabase dashboard updates with parameter mapping support",
   "type": "array",
   "items": {
     "type": "object",
@@ -40,6 +40,27 @@
       "dashboard_tab_id": {
         "type": ["integer", "null"],
         "description": "ID of the dashboard tab this card belongs to. Use null for single-tab dashboards"
+      },
+      "parameter_mappings": {
+        "type": "array",
+        "description": "Optional list of parameter mappings that connect dashboard parameters to card parameters by name",
+        "items": {
+          "type": "object",
+          "properties": {
+            "dashboard_parameter_name": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Name of the dashboard parameter to map from (as specified in dashboard parameters configuration)"
+            },
+            "card_parameter_name": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Name of the card parameter to map to (as specified in card parameters configuration)"
+            }
+          },
+          "required": ["dashboard_parameter_name", "card_parameter_name"],
+          "additionalProperties": false
+        }
       }
     },
     "required": ["card_id", "col", "row", "size_x", "size_y"],
@@ -86,7 +107,17 @@
         "row": 0,
         "size_x": 12,
         "size_y": 8,
-        "dashboard_tab_id": null
+        "dashboard_tab_id": null,
+        "parameter_mappings": [
+          {
+            "dashboard_parameter_name": "Status Filter",
+            "card_parameter_name": "order_status"
+          },
+          {
+            "dashboard_parameter_name": "Date Range",
+            "card_parameter_name": "date_filter"
+          }
+        ]
       }
     ],
     [
@@ -97,7 +128,13 @@
         "row": 0,
         "size_x": 24,
         "size_y": 12,
-        "dashboard_tab_id": 15
+        "dashboard_tab_id": 15,
+        "parameter_mappings": [
+          {
+            "dashboard_parameter_name": "Customer Filter",
+            "card_parameter_name": "customer_name_filter"
+          }
+        ]
       }
     ]
   ]
