@@ -88,9 +88,23 @@ def run_server() -> None:
         
         # This import triggers the tool registration
         from . import tools
-        logger.info("Tools registered successfully")
+        logger.info("Core tools registered successfully")
+        
+        # Load context tools if enabled (after environment is properly set)
+        from .config import MetabaseConfig
+        config = MetabaseConfig.from_env()
+        if config.context_auto_inject:
+            logger.info("Context auto-inject enabled, loading context tools...")
+            from .tools import context
+            logger.info("Context tools loaded successfully")
+        else:
+            logger.info("Context auto-inject disabled, context tools not loaded")
+            
+        logger.info("All tools registered successfully")
     except Exception as e:
         logger.error(f"Error registering tools: {e}")
+        import traceback
+        traceback.print_exc()
     
     # Log the registered tools for debugging
     logger.info(f"Server initialized with MCP tools")

@@ -44,13 +44,7 @@ try:
     from . import card_parameters
     logger.info("Loaded card_parameters tools module")
     
-    # Load context tools if enabled
-    from ..config import MetabaseConfig
-    config = MetabaseConfig.from_env()
-    if config.context_auto_inject:
-        from . import context
-        logger.info("Loaded context tools module")
-    else:
-        logger.info("Context tools module not loaded (disabled)")
+    # Context tools will be loaded lazily when the server starts
+    logger.info("Core tools modules loaded successfully")
 except Exception as e:
     logger.error(f"Error loading tool modules: {e}")
