@@ -44,6 +44,9 @@ try:
     from . import card_parameters
     logger.info("Loaded card_parameters tools module")
     
+    from . import mbql
+    logger.info("Loaded mbql tools module")
+    
     # Context tools will be loaded lazily when the server starts
     logger.info("Core tools modules loaded successfully")
 except Exception as e:

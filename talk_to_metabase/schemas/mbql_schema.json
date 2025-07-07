@@ -1,0 +1,811 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "MBQL Query Schema",
+  "description": "Comprehensive JSON schema for Metabase Query Language (MBQL) queries. MBQL is the structured query language that Metabase's user-friendly UI generates when users create questions through the visual query builder. It's database-agnostic and should be your default choice for analytical queries. All MBQL queries must have either 'source-table' or 'source-query' as the data source.",
+  "type": "object",
+  "examples": [
+    {
+      "description": "Simple count query",
+      "source-table": 1,
+      "aggregation": [["count"]]
+    },
+    {
+      "description": "Sum with filter and temporal breakout",
+      "source-table": 1,
+      "aggregation": [["sum", ["field", 123, null]]],
+      "breakout": [["field", 456, {"temporal-unit": "month"}]],
+      "filter": ["=", ["field", 789, null], "active"],
+      "order-by": [["asc", ["field", 456, {"temporal-unit": "month"}]]]
+    },
+    {
+      "description": "Query with custom expressions",
+      "source-table": 1,
+      "expressions": {
+        "profit_margin": ["/", ["-", ["field", 123, null], ["field", 456, null]], ["field", 123, null]]
+      },
+      "aggregation": [["avg", ["expression", "profit_margin"]]],
+      "filter": [">", ["expression", "profit_margin"], 0.1]
+    },
+    {
+      "description": "Query with table join",
+      "source-table": 1,
+      "joins": [{
+        "source-table": 2,
+        "condition": ["=", ["field", 111, null], ["field", 222, {"join-alias": "Products"}]],
+        "alias": "Products",
+        "strategy": "left-join",
+        "fields": [["field", 333, {"join-alias": "Products"}]]
+      }],
+      "fields": [["field", 123, null], ["field", 333, {"join-alias": "Products"}]]
+    },
+    {
+      "description": "Nested query example",
+      "source-query": {
+        "source-table": 1,
+        "aggregation": [["sum", ["field", 123, null]]],
+        "breakout": [["field", 456, null]]
+      },
+      "filter": [">", ["field", "sum", {"base-type": "type/Integer"}], 1000],
+      "order-by": [["desc", ["field", "sum", {"base-type": "type/Integer"}]]]
+    }
+  ],
+  "properties": {
+    "source-table": {
+      "oneOf": [
+        {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Table ID"
+        },
+        {
+          "type": "string",
+          "pattern": "^card__\\d+$",
+          "description": "Card reference in format 'card__123'"
+        }
+      ]
+    },
+    "source-query": {
+      "$ref": "#/definitions/mbql-query",
+      "description": "Nested MBQL query as data source"
+    },
+    "aggregation": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/aggregation-clause"
+      },
+      "description": "Aggregation functions to compute summary values"
+    },
+    "breakout": {
+      "type": "array",
+      "items": {
+        "anyOf": [
+          {"$ref": "#/definitions/field-reference"},
+          {"$ref": "#/definitions/expression-reference"}
+        ]
+      },
+      "description": "Fields or expressions to group by for aggregations"
+    },
+    "filter": {
+      "$ref": "#/definitions/filter-clause",
+      "description": "Conditions to filter rows"
+    },
+    "order-by": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/order-by-clause"
+      },
+      "description": "Sorting specifications"
+    },
+    "limit": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Maximum number of rows to return"
+    },
+    "expressions": {
+      "type": "object",
+      "patternProperties": {
+        "^[a-zA-Z][a-zA-Z0-9_]*$": {
+          "$ref": "#/definitions/expression"
+        }
+      },
+      "description": "Custom calculated fields"
+    },
+    "joins": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/join-clause"
+      },
+      "description": "Join specifications to expand available data"
+    },
+    "fields": {
+      "type": "array",
+      "items": {
+        "anyOf": [
+          {"$ref": "#/definitions/field-reference"},
+          {"$ref": "#/definitions/expression-reference"}
+        ]
+      },
+      "description": "Explicit field or expression selection"
+    },
+    "page": {
+      "type": "object",
+      "properties": {
+        "page": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "items": {
+          "type": "integer",
+          "minimum": 1
+        }
+      },
+      "required": ["page", "items"],
+      "description": "Pagination settings"
+    }
+  },
+  "oneOf": [
+    {
+      "required": ["source-table"]
+    },
+    {
+      "required": ["source-query"]
+    }
+  ],
+  "additionalProperties": false,
+  "definitions": {
+    "mbql-query": {
+      "type": "object",
+      "properties": {
+        "source-table": {
+          "oneOf": [
+            {
+              "type": "integer",
+              "minimum": 1
+            },
+            {
+              "type": "string",
+              "pattern": "^card__\\d+$"
+            }
+          ]
+        },
+        "source-query": {
+          "$ref": "#/definitions/mbql-query"
+        },
+        "aggregation": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/aggregation-clause"
+          }
+        },
+        "breakout": {
+          "type": "array",
+          "items": {
+            "anyOf": [
+              {"$ref": "#/definitions/field-reference"},
+              {"$ref": "#/definitions/expression-reference"}
+            ]
+          }
+        },
+        "filter": {
+          "$ref": "#/definitions/filter-clause"
+        },
+        "order-by": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/order-by-clause"
+          }
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "expressions": {
+          "type": "object",
+          "patternProperties": {
+            "^[a-zA-Z][a-zA-Z0-9_]*$": {
+              "$ref": "#/definitions/expression"
+            }
+          }
+        },
+        "joins": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/join-clause"
+          }
+        },
+        "fields": {
+          "type": "array",
+          "items": {
+            "anyOf": [
+              {"$ref": "#/definitions/field-reference"},
+              {"$ref": "#/definitions/expression-reference"}
+            ]
+          }
+        }
+      },
+      "oneOf": [
+        {
+          "required": ["source-table"]
+        },
+        {
+          "required": ["source-query"]
+        }
+      ],
+      "additionalProperties": false
+    },
+    "field-reference": {
+      "title": "Field Reference",
+      "description": "Reference to a database field by ID or name. Essential building block for all MBQL clauses.",
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 3,
+      "examples": [
+        ["field", 123, null],
+        ["field", 123, {"temporal-unit": "month"}],
+        ["field", "customer_name", {"base-type": "type/Text"}],
+        ["field", 456, {"join-alias": "Products"}],
+        ["field", 789, {"binning": {"strategy": "num-bins", "num-bins": 10}}]
+      ],
+      "items": [
+        {
+          "const": "field",
+          "description": "Field reference identifier"
+        },
+        {
+          "oneOf": [
+            {
+              "type": "integer",
+              "description": "Field ID - numeric identifier from Metabase"
+            },
+            {
+              "type": "string",
+              "description": "Field name - requires base-type in options"
+            }
+          ]
+        },
+        {
+          "oneOf": [
+            {
+              "type": "null",
+              "description": "No field options"
+            },
+            {
+              "$ref": "#/definitions/field-options"
+            }
+          ]
+        }
+      ],
+      "additionalItems": false
+    },
+    "field-options": {
+      "type": "object",
+      "properties": {
+        "base-type": {
+          "type": "string",
+          "enum": [
+            "type/BigInteger", "type/Boolean", "type/Date", "type/DateTime", 
+            "type/Decimal", "type/Float", "type/Integer", "type/Text", 
+            "type/Time", "type/UUID", "type/JSON", "type/SerializedJSON"
+          ],
+          "description": "Field data type"
+        },
+        "temporal-unit": {
+          "$ref": "#/definitions/temporal-unit",
+          "description": "Temporal bucketing unit"
+        },
+        "inherited-temporal-unit": {
+          "$ref": "#/definitions/temporal-unit",
+          "description": "Temporal unit from previous stages"
+        },
+        "binning": {
+          "$ref": "#/definitions/binning-options",
+          "description": "Numeric binning configuration"
+        },
+        "join-alias": {
+          "type": "string",
+          "description": "Alias for explicit joins"
+        },
+        "source-field": {
+          "type": "integer",
+          "description": "Field ID for implicit joins (FK relationships)"
+        },
+        "source-field-join-alias": {
+          "type": "string",
+          "description": "Join alias for source field"
+        }
+      },
+      "additionalProperties": false
+    },
+    "temporal-unit": {
+      "title": "Temporal Unit",
+      "description": "Temporal bucketing units for date/time fields. Use for grouping dates by period (year, quarter, month, week, day) or extracting components (day-of-week, hour-of-day). Must be compatible with field base type.",
+      "type": "string",
+      "examples": ["year", "month", "day", "week", "day-of-week", "hour-of-day"],
+      "enum": [
+        "day", "week", "month", "quarter", "year",
+        "day-of-week", "day-of-month", "day-of-year",
+        "week-of-year", "month-of-year", "quarter-of-year", "year-of-era"
+      ]
+    },
+    "binning-options": {
+      "type": "object",
+      "properties": {
+        "strategy": {
+          "type": "string",
+          "enum": ["num-bins", "bin-width", "default"]
+        },
+        "num-bins": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "bin-width": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        }
+      },
+      "required": ["strategy"],
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "strategy": {"const": "num-bins"}
+            }
+          },
+          "then": {
+            "required": ["num-bins"]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "strategy": {"const": "bin-width"}
+            }
+          },
+          "then": {
+            "required": ["bin-width"]
+          }
+        }
+      ],
+      "additionalProperties": false
+    },
+    "aggregation-clause": {
+      "title": "Aggregation Clause",
+      "description": "Compute summary values over groups of rows. Supports basic aggregations (count, sum, avg), statistical functions (stddev, median), conditional aggregations (count-where, sum-where), and cumulative aggregations.",
+      "type": "array",
+      "minItems": 1,
+      "examples": [
+        ["count"],
+        ["sum", ["field", 123, null]],
+        ["avg", ["field", 456, null]],
+        ["percentile", ["field", 123, null], 0.95],
+        ["count-where", ["=", ["field", 456, null], "active"]],
+        ["sum-where", ["field", 123, null], [">", ["field", 789, null], 0]],
+        ["aggregation-options", ["sum", ["field", 123, null]], {"name": "total_revenue"}],
+        ["metric", 42]
+      ],
+      "oneOf": [
+        {
+          "type": "array",
+          "items": [
+            {
+              "type": "string",
+              "enum": ["count"]
+            }
+          ],
+          "minItems": 1,
+          "maxItems": 1,
+          "additionalItems": false
+        },
+        {
+          "type": "array",
+          "items": [
+            {
+              "type": "string",
+              "enum": ["count", "sum", "avg", "min", "max", "distinct", "stddev", "var", "median"]
+            },
+            {
+              "anyOf": [
+                {"$ref": "#/definitions/field-reference"},
+                {"$ref": "#/definitions/expression-reference"},
+                {"$ref": "#/definitions/expression"}
+              ]
+            }
+          ],
+          "minItems": 2,
+          "maxItems": 2,
+          "additionalItems": false
+        },
+        {
+          "type": "array",
+          "items": [
+            {
+              "type": "string",
+              "enum": ["percentile"]
+            },
+            {
+              "anyOf": [
+                {"$ref": "#/definitions/field-reference"},
+                {"$ref": "#/definitions/expression-reference"},
+                {"$ref": "#/definitions/expression"}
+              ]
+            },
+            {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            }
+          ],
+          "minItems": 3,
+          "maxItems": 3,
+          "additionalItems": false
+        },
+        {
+          "type": "array",
+          "items": [
+            {
+              "type": "string",
+              "enum": ["count-where", "share"]
+            },
+            {
+              "$ref": "#/definitions/filter-clause"
+            }
+          ],
+          "minItems": 2,
+          "maxItems": 2,
+          "additionalItems": false
+        },
+        {
+          "type": "array",
+          "items": [
+            {
+              "type": "string",
+              "enum": ["sum-where", "distinct-where"]
+            },
+            {
+              "anyOf": [
+                {"$ref": "#/definitions/field-reference"},
+                {"$ref": "#/definitions/expression-reference"},
+                {"$ref": "#/definitions/expression"}
+              ]
+            },
+            {
+              "$ref": "#/definitions/filter-clause"
+            }
+          ],
+          "minItems": 3,
+          "maxItems": 3,
+          "additionalItems": false
+        },
+        {
+          "type": "array",
+          "items": [
+            {
+              "type": "string",
+              "enum": ["cum-count"]
+            }
+          ],
+          "minItems": 1,
+          "maxItems": 1,
+          "additionalItems": false
+        },
+        {
+          "type": "array",
+          "items": [
+            {
+              "type": "string",
+              "enum": ["cum-count", "cum-sum"]
+            },
+            {
+              "anyOf": [
+                {"$ref": "#/definitions/field-reference"},
+                {"$ref": "#/definitions/expression-reference"},
+                {"$ref": "#/definitions/expression"}
+              ]
+            }
+          ],
+          "minItems": 2,
+          "maxItems": 2,
+          "additionalItems": false
+        },
+        {
+          "type": "array",
+          "items": [
+            {
+              "type": "string",
+              "const": "aggregation-options"
+            },
+            {
+              "$ref": "#/definitions/aggregation-clause"
+            },
+            {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string"
+                },
+                "display-name": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false
+            }
+          ],
+          "minItems": 3,
+          "maxItems": 3,
+          "additionalItems": false
+        },
+        {
+          "type": "array",
+          "items": [
+            {
+              "type": "string",
+              "const": "metric"
+            },
+            {
+              "type": "integer",
+              "minimum": 1
+            }
+          ],
+          "minItems": 2,
+          "maxItems": 2,
+          "additionalItems": false
+        }
+      ]
+    },
+    "filter-clause": {
+      "title": "Filter Clause", 
+      "description": "Express conditions for row selection. Supports comparison operators (=, !=, <, >), string filters (contains, starts-with), null checks, temporal filters (time-interval, during), geographic filters (inside), and compound filters (and, or, not). Can reference fields, expressions, or aggregations.",
+      "type": "array",
+      "minItems": 1,
+      "examples": [
+        ["=", ["field", 123, null], "value"],
+        ["!=", ["field", 123, null], "unwanted"],
+        [">", ["field", 456, null], 100],
+        [">", ["expression", "calculated_field"], 50],
+        ["between", ["field", 456, null], 50, 100],
+        ["contains", ["field", 789, null], "search term"],
+        ["is-null", ["field", 123, null]],
+        ["and", [">", ["field", 123, null], 100], ["<", ["field", 123, null], 1000]]
+      ]
+    },
+    "expression": {
+      "title": "Expression",
+      "description": "Custom calculated fields and complex expressions. Supports arithmetic (+, -, *, /), string functions (concat, substring, trim), temporal functions (datetime-add, datetime-diff), conditional logic (case, if, coalesce), and type conversion (integer, float, text).",
+      "type": "array",
+      "minItems": 1,
+      "examples": [
+        ["+", ["field", 123, null], ["field", 456, null]],
+        ["*", ["field", 123, null], 2],
+        ["concat", ["field", 456, null], " - ", ["field", 789, null]],
+        ["case", [[["<", ["field", 123, null], 100], "Small"]], {"default": "Large"}]
+      ]
+    },
+    "order-by-clause": {
+      "title": "Order By Clause",
+      "description": "Sorting specification with direction and field/expression reference",
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 2,
+      "examples": [
+        ["asc", ["field", 123, null]],
+        ["desc", ["aggregation", 0]]
+      ],
+      "items": [
+        {
+          "type": "string",
+          "enum": ["asc", "desc"]
+        },
+        {
+          "anyOf": [
+            {"$ref": "#/definitions/field-reference"},
+            {"$ref": "#/definitions/expression-reference"},
+            {"$ref": "#/definitions/aggregation-reference"}
+          ]
+        }
+      ],
+      "additionalItems": false
+    },
+    "join-clause": {
+      "title": "Join Clause",
+      "description": "Join other tables or queries to expand available data. Supports all join strategies (left, right, inner, full) with flexible field selection (all, none, or specific fields). Requires unique alias for each join.",
+      "type": "object",
+      "examples": [
+        {
+          "source-table": 2,
+          "condition": ["=", ["field", 111, null], ["field", 222, {"join-alias": "Products"}]],
+          "alias": "Products",
+          "strategy": "left-join",
+          "fields": "all"
+        },
+        {
+          "source-query": {"source-table": 3, "aggregation": [["sum", ["field", 333, null]]]},
+          "condition": ["=", ["field", 111, null], ["field", "sum", {"join-alias": "Summary"}]],
+          "alias": "Summary",
+          "strategy": "inner-join",
+          "fields": [["field", "sum", {"join-alias": "Summary"}]]
+        }
+      ],
+      "properties": {
+        "source-table": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "source-query": {
+          "$ref": "#/definitions/mbql-query"
+        },
+        "condition": {
+          "$ref": "#/definitions/filter-clause"
+        },
+        "strategy": {
+          "type": "string",
+          "enum": ["left-join", "right-join", "inner-join", "full-join"],
+          "default": "left-join"
+        },
+        "alias": {
+          "type": "string"
+        },
+        "fields": {
+          "oneOf": [
+            {
+              "type": "string",
+              "enum": ["all", "none"]
+            },
+            {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/field-reference"
+              }
+            }
+          ]
+        }
+      },
+      "oneOf": [
+        {
+          "required": ["source-table", "condition", "alias"]
+        },
+        {
+          "required": ["source-query", "condition", "alias"]
+        }
+      ],
+      "additionalProperties": false
+    },
+    "expression-reference": {
+      "title": "Expression Reference",
+      "description": "Reference to a custom expression by name",
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 3,
+      "examples": [
+        ["expression", "profit_margin"],
+        ["expression", "channel_hash", {"base-type": "type/Integer"}]
+      ],
+      "items": [
+        {
+          "const": "expression"
+        },
+        {
+          "type": "string"
+        },
+        {
+          "oneOf": [
+            {
+              "type": "null",
+              "description": "No expression options"
+            },
+            {
+              "type": "object",
+              "properties": {
+                "base-type": {
+                  "type": "string",
+                  "enum": [
+                    "type/BigInteger", "type/Boolean", "type/Date", "type/DateTime", 
+                    "type/Decimal", "type/Float", "type/Integer", "type/Text", 
+                    "type/Time", "type/UUID", "type/JSON", "type/SerializedJSON"
+                  ],
+                  "description": "Expression result data type"
+                }
+              },
+              "additionalProperties": false
+            }
+          ]
+        }
+      ],
+      "additionalItems": false
+    },
+    "aggregation-reference": {
+      "title": "Aggregation Reference", 
+      "description": "Reference to an aggregation by index",
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 2,
+      "items": [
+        {
+          "const": "aggregation"
+        },
+        {
+          "type": "integer",
+          "minimum": 0
+        }
+      ],
+      "additionalItems": false
+    },
+    "template-tag-reference": {
+      "title": "Template Tag Reference",
+      "description": "Reference to a template tag by name",
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 2,
+      "items": [
+        {
+          "const": "template-tag"
+        },
+        {
+          "type": "string"
+        }
+      ],
+      "additionalItems": false
+    },
+    "value": {
+      "anyOf": [
+        {"type": "string"},
+        {"type": "number"},
+        {"type": "boolean"},
+        {"type": "null"},
+        {"$ref": "#/definitions/relative-datetime"},
+        {"$ref": "#/definitions/absolute-datetime"}
+      ]
+    },
+    "relative-datetime": {
+      "title": "Relative Datetime",
+      "description": "Relative datetime reference for temporal calculations",
+      "type": "array",
+      "oneOf": [
+        {
+          "minItems": 2,
+          "maxItems": 2,
+          "items": [
+            {"const": "relative-datetime"},
+            {"const": "current"}
+          ],
+          "additionalItems": false
+        },
+        {
+          "minItems": 3,
+          "maxItems": 3,
+          "items": [
+            {"const": "relative-datetime"},
+            {"type": "integer"},
+            {"$ref": "#/definitions/interval-unit"}
+          ],
+          "additionalItems": false
+        }
+      ]
+    },
+    "absolute-datetime": {
+      "title": "Absolute Datetime",
+      "description": "Absolute datetime reference with specific date/time",
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "items": [
+        {"const": "absolute-datetime"},
+        {"type": "string"},
+        {"$ref": "#/definitions/temporal-unit"}
+      ],
+      "additionalItems": false
+    },
+    "interval-unit": {
+      "type": "string",
+      "enum": ["second", "minute", "hour", "day", "week", "month", "quarter", "year"]
+    },
+    "temporal-extract-unit": {
+      "type": "string",
+      "enum": [
+        "year-of-era", "quarter-of-year", "month-of-year",
+        "week-of-year-iso", "week-of-year-us", "week-of-year-instance",
+        "day-of-month", "day-of-week", "day-of-week-iso",
+        "hour-of-day", "minute-of-hour", "second-of-minute"
+      ]
+    }
+  }
+}

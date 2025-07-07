@@ -380,6 +380,69 @@ await create_card(
 5. **Error Handling**: Clear validation errors with helpful guidance
 6. **Extensible**: Easy to add new chart types following the same pattern
 
+## MBQL (Metabase Query Language) Implementation
+
+Talk to Metabase now supports MBQL queries alongside SQL, providing database-agnostic structured queries with comprehensive schema validation.
+
+### Key Features
+
+1. **Complete MBQL Support**: All MBQL features (aggregations, filters, expressions, joins, nested queries)
+2. **JSON Schema Validation**: Comprehensive validation without query execution
+3. **Database-Agnostic**: Works across all Metabase-supported databases
+4. **Integrated with Card Tools**: Seamlessly works with `create_card` and `update_card`
+
+### When to Use MBQL vs SQL
+
+**Use MBQL ("query" type) - RECOMMENDED DEFAULT:**
+- Standard analytical queries (aggregations, grouping, filtering)
+- Database-agnostic queries
+- Structured, validated queries with clear semantics
+
+**Use SQL ("native" type) only when:**
+- Database-specific SQL features not available in MBQL
+- Complex custom SQL logic beyond MBQL capabilities
+- Template parameters for dynamic filtering
+
+### Basic MBQL Structure
+
+```json
+{
+  "source-table": 1,
+  "aggregation": [["sum", ["field", 123, null]]],
+  "breakout": [["field", 456, {"temporal-unit": "month"}]],
+  "filter": ["=", ["field", 789, null], "active"]
+}
+```
+
+### Implementation
+
+- **MBQL Schema**: `/talk_to_metabase/schemas/mbql_schema.json`
+- **Tools Module**: `/talk_to_metabase/tools/mbql.py`
+- **Enhanced Card Tools**: Updated with `query_type` parameter
+
+### Tools
+
+**GET_MBQL_SCHEMA**: Get comprehensive MBQL documentation and schema
+**create_card/update_card**: Now support `query_type: "query"` for MBQL queries
+
+### Usage Example
+
+```json
+{
+  "name": "create_card",
+  "arguments": {
+    "database_id": 195,
+    "query_type": "query",
+    "query": {
+      "source-table": 1,
+      "aggregation": [["count"]],
+      "breakout": [["field", 456, {"temporal-unit": "month"}]]
+    },
+    "name": "Monthly Count"
+  }
+}
+```
+
 # Talk to Metabase MCP Developer Guide
 
 This document provides comprehensive guidance for developers who will be implementing or modifying tools in the Talk to Metabase MCP server project.
@@ -397,6 +460,7 @@ Talk to Metabase is an MCP (Model Context Protocol) server that integrates Claud
 5. **Pagination**: Client-side pagination for large data sets where API doesn't natively support it
 6. **Unified Query Execution**: Flexible tool for executing queries in both standalone and dashboard contexts
 7. **Simplified Parameter System**: Streamlined card parameters with automatic JSON Schema validation
+8. **MBQL Query Support**: Full support for Metabase Query Language with comprehensive schema validation
 
 ## Card Parameters Implementation
 
@@ -1600,8 +1664,8 @@ The following table shows the Metabase API endpoints that correspond to existing
 | | `POST /api/dashboard/{dashboard-id}/cards` | `add_card_to_dashboard` | 📝 Planned |
 | | `DELETE /api/dashboard/{id}` | `delete_dashboard` | 📝 Planned |
 | **Card Operations** | `GET /api/card/{id}` | `get_card_definition` | ✅ Implemented |
-| | `POST /api/card/` | `create_card` | ✅ Implemented |
-| | `PUT /api/card/{id}` | `update_card` | ✅ Implemented |
+| | `POST /api/card/` | `create_card` | ✅ Implemented (MBQL & SQL support) |
+| | `PUT /api/card/{id}` | `update_card` | ✅ Implemented (MBQL & SQL support) |
 | | `POST /api/card/{card-id}/query` | `execute_card_query` | ✅ Implemented (with dashboard context support) |
 | | `DELETE /api/card/{id}` | `delete_card` | 📝 Planned |
 | **Collection Operations** | `GET /api/collection/root/items` & `GET /api/collection/{id}/items` | `explore_collection_tree` & `view_collection_contents` | ✅ Implemented |
@@ -1613,6 +1677,7 @@ The following table shows the Metabase API endpoints that correspond to existing
 | | `GET /api/table/{id}` | `get_table` | 📝 Planned |
 | | `GET /api/table/{id}/query_metadata` | `get_table_query_metadata` | ✅ Implemented (essential fields only) |
 | **Query Operations** | `POST /api/dataset/` | `run_dataset_query` | ✅ Implemented |
+| **MBQL Operations** | Schema-based | `GET_MBQL_SCHEMA` | ✅ Implemented (comprehensive MBQL documentation) |
 | **Search Operations** | `GET /api/search/` | `search_resources` | ✅ Implemented with pagination |
 | **Visualization Operations** | Various | `GET_VISUALIZATION_DOCUMENT` | ✅ Implemented (17 chart types) |
 
@@ -1727,26 +1792,35 @@ This unified implementation eliminates redundancy while providing a clean, flexi
 
 ## Card Creation Tool
 
-The `create_card` tool implements a two-step process for creating new SQL-based cards in Metabase, providing a streamlined way to create questions, models, or metrics from SQL queries.
+The `create_card` tool implements a flexible process for creating new cards in Metabase, supporting both SQL and MBQL queries. It provides a streamlined way to create questions, models, or metrics from either structured MBQL queries or raw SQL.
 
 ### Key Features
 
-1. **Query Validation**: Executes the SQL query first to validate it before creating the card
-2. **Support for Multiple Card Types**: Creates cards of type "question", "model", or "metric"
-3. **Concise Responses**: Returns simplified success/error responses focused on essential information
-4. **Optional Parameters**: Supports collection placement and descriptions
-5. **Automatic Metadata**: Captures result metadata from validation query for better card integration
+1. **Dual Query Support**: Supports both MBQL (query type) and SQL (native type) queries
+2. **MBQL Schema Validation**: Comprehensive validation for MBQL queries without execution
+3. **SQL Query Validation**: Executes SQL queries first to validate them before creating the card
+4. **Support for Multiple Card Types**: Creates cards of type "question", "model", or "metric"
+5. **Concise Responses**: Returns simplified success/error responses focused on essential information
+6. **Optional Parameters**: Supports collection placement and descriptions
+7. **Automatic Metadata**: Captures result metadata from validation query for better card integration
 
 ### Implementation Approach
 
-The tool uses a two-phase process:
+The tool uses different validation approaches based on query type:
 
-1. First, it executes the SQL query using the `/api/dataset/` endpoint to validate the query
-2. If the query is valid, it creates a new card using the `/api/card/` endpoint
-3. If the query fails, it returns the error message in a concise format
+#### For MBQL Queries (query_type="query") - RECOMMENDED DEFAULT
+1. Validates the MBQL query structure against comprehensive JSON schema
+2. If the query is valid, creates a new card using the `/api/card/` endpoint
+3. If validation fails, returns detailed schema validation errors
 
-### Usage Example
+#### For SQL Queries (query_type="native")
+1. First, executes the SQL query using the `/api/dataset/` endpoint to validate the query
+2. If the query is valid, creates a new card using the `/api/card/` endpoint
+3. If the query fails, returns the error message in a concise format
 
+### Usage Examples
+
+#### MBQL Query (Recommended)
 ```json
 {
   "method": "tools/call",
@@ -1754,9 +1828,29 @@ The tool uses a two-phase process:
     "name": "create_card",
     "arguments": {
       "database_id": 195,
+      "query_type": "query",
+      "query": {
+        "source-table": 1,
+        "aggregation": [["sum", ["field", 123, null]]],
+        "breakout": [["field", 456, {"temporal-unit": "month"}]]
+      },
+      "name": "Monthly Revenue"
+    }
+  }
+}
+```
+
+#### SQL Query
+```json
+{
+  "method": "tools/call",
+  "params": {
+    "name": "create_card",
+    "arguments": {
+      "database_id": 195,
+      "query_type": "native",
       "query": "SELECT * FROM reporting.bariendo_blended LIMIT 5",
-      "name": "My New Card",
-      "card_type": "question",
+      "name": "My New SQL Card",
       "collection_id": 123,
       "description": "A test card created via MCP"
     }
@@ -1774,11 +1868,24 @@ The tool uses a two-phase process:
 {
   "success": true,
   "card_id": 53832,
-  "name": "My New Card"
+  "name": "My New SQL Card"
 }
 ```
 
-#### Error Response (Query Validation Failed)
+#### Error Response (MBQL Query Validation Failed)
+
+```json
+{
+  "success": false,
+  "error": "Invalid MBQL query",
+  "validation_errors": [
+    "Validation error at breakout -> 0: Expected array with 2-3 items"
+  ],
+  "help": "Call GET_MBQL_SCHEMA first to understand the correct MBQL format"
+}
+```
+
+#### Error Response (SQL Query Validation Failed)
 
 ```json
 {
@@ -1816,12 +1923,41 @@ async def execute_sql_query(client, database_id: int, query: str) -> Dict[str, A
     # Returns a dict with success/error information
 ```
 
-### Complete Example
+### Complete Examples
 
-A simplified implementation showing all required fields:
-
+#### MBQL Card Creation
 ```python
-async def create_card(database_id: int, query: str, name: str, ctx: Context):
+async def create_card_mbql(database_id: int, query: dict, name: str, ctx: Context):
+    """Create an MBQL-based card after validating the query."""
+    # Validate MBQL query using schema
+    if MBQL_AVAILABLE:
+        validation_result = validate_mbql_query_helper(query)
+        if not validation_result["valid"]:
+            return json.dumps({
+                "success": False, 
+                "error": "Invalid MBQL query",
+                "validation_errors": validation_result["errors"]
+            })
+    
+    # Create the card with MBQL query
+    card_data = {
+        "name": name,
+        "dataset_query": {
+            "database": database_id,
+            "query": query,
+            "type": "query"
+        },
+        "display": "table",
+        "type": "question",
+        "visualization_settings": {}
+    }
+    
+    # Submit to API and return success response
+```
+
+#### SQL Card Creation
+```python
+async def create_card_sql(database_id: int, query: str, name: str, ctx: Context):
     """Create a SQL-based card after validating the query."""
     # Validate the query by executing it
     query_result = await execute_sql_query(client, database_id, query)
@@ -1830,6 +1966,7 @@ async def create_card(database_id: int, query: str, name: str, ctx: Context):
         return json.dumps({"success": False, "error": query_result["error"]})
     
     # Create the card with all required fields
+    card_data = {
     card_data = {
         "name": name,
         "dataset_query": {
@@ -1842,17 +1979,10 @@ async def create_card(database_id: int, query: str, name: str, ctx: Context):
         "visualization_settings": {}  # Required field, even if empty
     }
     
-    # Submit to API
-    data, status, error = await client.auth.make_request(
-        "POST", "card", json=card_data
-    )
-    
-    # Return success response
-    if not error:
-        return json.dumps({"success": True, "card_id": data.get("id"), "name": data.get("name")})
+    # Submit to API and return success response
 ```
 
-This implementation provides a clean, user-friendly way to create SQL cards in Metabase while ensuring the SQL is valid first, avoiding the creation of cards with invalid queries.
+This implementation provides a clean, user-friendly way to create both MBQL and SQL cards in Metabase. MBQL queries benefit from comprehensive schema validation without execution overhead, while SQL queries are validated through execution to ensure they work correctly.
 
 ## Context Guidelines Tool
 
@@ -3168,7 +3298,7 @@ When working with dashboards:
 
 ## Next Steps for Development
 
-The current implementation includes functionality for retrieving and searching Metabase resources with pagination, as well as executing queries for both standalone cards and cards within dashboards, creating new SQL cards, and providing dynamic context guidelines. Future development should focus on:
+The current implementation includes comprehensive functionality for retrieving and searching Metabase resources with pagination, executing queries for both standalone cards and cards within dashboards, creating new cards with both MBQL and SQL support, comprehensive MBQL schema validation, and providing dynamic context guidelines. Future development should focus on:
 
 1. Implementing the remaining tools defined in the specifications
 2. Adding integration tests with a real Metabase instance
@@ -3178,17 +3308,24 @@ The current implementation includes functionality for retrieving and searching M
 6. Enhancing pagination for other large resource types
 7. Improving parameter parsing for complex types
 8. Enhancing dashboard filter and parameter support
-9. **Context System Enhancements**:
-   - Adding validation for guidelines content format
-   - Implementing role-based context variations
-   - Adding collection-specific context information
-   - Supporting multiple text boxes for structured guidelines
+9. **MBQL Enhancements**:
+   - Adding SQL-to-MBQL conversion utilities
+   - Implementing MBQL query optimization suggestions
+   - Adding support for MBQL query templates
+   - Enhancing MBQL documentation with more complex examples
+10. **Context System Enhancements**:
+    - Adding validation for guidelines content format
+    - Implementing role-based context variations
+    - Adding collection-specific context information
+    - Supporting multiple text boxes for structured guidelines
 
 ## Conclusion
 
-By following these guidelines, you can effectively extend and improve the Talk to Metabase MCP server. The pagination patterns established for dashboard and search resources provide a robust foundation for handling large datasets while maintaining performance and usability.
+By following these guidelines, you can effectively extend and improve the Talk to Metabase MCP server. The comprehensive MBQL implementation provides a powerful, database-agnostic way to create analytical queries that leverage Metabase's native query format. The pagination patterns established for dashboard and search resources provide a robust foundation for handling large datasets while maintaining performance and usability.
 
-Remember to maintain consistency with the existing code patterns and to thoroughly test your implementations, especially pagination functionality which requires careful validation of edge cases.
+Remember to maintain consistency with the existing code patterns and to thoroughly test your implementations, especially for MBQL queries and pagination functionality which requires careful validation of edge cases.
+
+The MBQL implementation represents a significant enhancement to Talk to Metabase, enabling users to create sophisticated analytical queries using Metabase's structured query language. This approach offers superior type safety, database portability, and semantic clarity compared to raw SQL for most analytical use cases.
 
 The enhanced context guidelines system provides a powerful way to ensure Claude has organization-specific context when working with Metabase. By storing guidelines directly in Metabase, organizations can easily maintain and update their AI assistant's knowledge about their specific data infrastructure, leading to more accurate and contextually appropriate responses.
 

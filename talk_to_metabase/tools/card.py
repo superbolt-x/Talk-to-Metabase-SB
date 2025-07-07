@@ -34,6 +34,15 @@ except ImportError as e:
     logger.warning(f"Card parameters functionality not available: {e}")
     CARD_PARAMETERS_AVAILABLE = False
 
+# Import MBQL validation functions
+try:
+    from .mbql import validate_mbql_query_helper
+    MBQL_AVAILABLE = True
+    logger.info("MBQL functionality loaded successfully")
+except ImportError as e:
+    logger.warning(f"MBQL functionality not available: {e}")
+    MBQL_AVAILABLE = False
+
 
 def parse_parameters_if_string(parameters: Union[str, List[Dict[str, Any]], None]) -> Optional[List[Dict[str, Any]]]:
     """
@@ -397,10 +406,11 @@ async def get_card_definition(id: int, ctx: Context, ignore_view: Optional[bool]
         )
 
 
-@mcp.tool(name="create_card", description="Create a new SQL card with optional parameters")
+@mcp.tool(name="create_card", description="Create a new card with SQL or MBQL query")
 async def create_card(
     database_id: int,
-    query: str,
+    query_type: str,
+    query: Union[str, Dict[str, Any]],
     name: str,
     ctx: Context,
     card_type: str = "question",
@@ -411,7 +421,61 @@ async def create_card(
     parameters: Optional[Union[str, List[Dict[str, Any]]]] = None
 ) -> str:
     """
-    Create a new SQL card with optional parameters after validating the query.
+    Create a new card with SQL or MBQL query with optional parameters.
+    
+    QUERY TYPES:
+    - "query": MBQL query (object) - **DEFAULT CHOICE** - Database-agnostic queries created by Metabase's UI
+    - "native": SQL query (string) - Only when you need raw SQL features not available in MBQL
+    
+    **🎯 MBQL IS THE DEFAULT CHOICE**
+    
+    MBQL (Metabase Query Language) is what Metabase's user-friendly UI generates when users create 
+    questions through the visual query builder. It's database-agnostic, structured, and should be 
+    your default choice unless you specifically need raw SQL capabilities.
+    
+    **Use MBQL ("query") when:**
+    - Creating standard analytical queries (aggregations, grouping, filtering)
+    - You want database-agnostic queries that work across different databases
+    - You want structured, validated queries with clear semantics
+    - You're building queries that Metabase's UI could generate
+    
+    **Use SQL ("native") only when:**
+    - You need database-specific SQL features not available in MBQL
+    - You need complex custom SQL logic
+    - You're working with existing SQL code
+    - You need template parameters for dynamic filtering
+    
+    **FOR MBQL QUERIES (query_type="query") - RECOMMENDED DEFAULT:**
+    
+    **IMPORTANT: Call GET_MBQL_SCHEMA first to understand the MBQL query format**
+    
+    MBQL provides a database-agnostic way to express analytical queries exactly like Metabase's UI:
+    - Source tables: {"source-table": 123} or nested queries
+    - Aggregations: [["count"], ["sum", ["field", 456, null]], ["avg", ["expression", "calc_field"]]]
+    - Breakouts: [["field", 789, {"temporal-unit": "month"}], ["expression", "custom_calc"]]
+    - Filters: ["=", ["field", 123, null], "value"] or [">", ["expression", "profit"], 100]
+    - Expressions: Custom calculated fields referenced as ["expression", "name"]
+    - Joins: Connect multiple tables or queries
+    
+    **⚠️ CRITICAL: Expression References**
+    - Use ["expression", "name"] to reference custom expressions in aggregations, breakouts, order-by, filters
+    - Use ["field", id, options] to reference database fields
+    - Expression references can include base-type: ["expression", "name", {"base-type": "type/Integer"}]
+    
+    Example with expressions:
+    ```json
+    {
+      "source-table": 1,
+      "expressions": {
+        "profit": ["-", ["field", 123, null], ["field", 456, null]]
+      },
+      "aggregation": [["avg", ["expression", "profit"]]],
+      "breakout": [["expression", "profit", {"base-type": "type/Float"}]],
+      "order-by": [["desc", ["expression", "profit"]]]
+    }
+    ```
+    
+    **FOR SQL QUERIES (query_type="native") - Only when MBQL isn't sufficient:**
     
     CUSTOMIZABLE FILTERS:
     You can create SQL queries with customizable filters using Metabase's template syntax:
@@ -455,7 +519,8 @@ async def create_card(
     
     Args:
         database_id: Database ID to run the query against
-        query: SQL query string (can include {{variable}} and [[optional]] syntax)
+        query_type: Type of query - "query" for MBQL (RECOMMENDED) or "native" for SQL
+        query: Query content - MBQL object for "query" type, SQL string for "native" type
         name: Name for the new card
         ctx: MCP context
         card_type: Type of card (question, model, or metric)
@@ -468,10 +533,55 @@ async def create_card(
     Returns:
         JSON string with creation result or error information
     """
-    logger.info(f"Tool called: create_card(database_id={database_id}, name={name}, card_type={card_type}, display={display}, parameters={len(parameters) if isinstance(parameters, list) else 'string' if isinstance(parameters, str) else 0})")
+    logger.info(f"Tool called: create_card(database_id={database_id}, query_type={query_type}, name={name}, card_type={card_type}, display={display}, parameters={len(parameters) if isinstance(parameters, list) else 'string' if isinstance(parameters, str) else 0})")
     
     # Get the client early so it's available for parameter processing
     client = get_metabase_client(ctx)
+    
+    # Validate query type
+    valid_query_types = ["native", "query"]
+    if query_type not in valid_query_types:
+        return format_error_response(
+            status_code=400,
+            error_type="invalid_parameter",
+            message=f"Invalid query type: {query_type}. Must be one of: {', '.join(valid_query_types)}",
+            request_info={"database_id": database_id, "name": name}
+        )
+    
+    # Validate query parameter type based on query_type
+    if query_type == "native" and not isinstance(query, str):
+        return format_error_response(
+            status_code=400,
+            error_type="invalid_parameter",
+            message="For native query type, query must be a string (SQL)",
+            request_info={"database_id": database_id, "query_type": query_type}
+        )
+    
+    if query_type == "query" and not isinstance(query, dict):
+        return format_error_response(
+            status_code=400,
+            error_type="invalid_parameter",
+            message="For MBQL query type, query must be an object (MBQL structure)",
+            request_info={"database_id": database_id, "query_type": query_type}
+        )
+    
+    # Validate MBQL query if query_type is "query"
+    if query_type == "query":
+        if MBQL_AVAILABLE:
+            validation_result = validate_mbql_query_helper(query)
+            if not validation_result["valid"]:
+                return json.dumps({
+                    "success": False,
+                    "error": "Invalid MBQL query",
+                    "validation_errors": validation_result["errors"],
+                    "help": "Call GET_MBQL_SCHEMA first to understand the correct MBQL format"
+                }, indent=2)
+        else:
+            return json.dumps({
+                "success": False,
+                "error": "MBQL functionality not available",
+                "message": "MBQL validation module could not be imported"
+            }, indent=2)
     
     # Validate card type
     valid_card_types = ["question", "model", "metric"]
@@ -531,7 +641,7 @@ async def create_card(
     
     # Check for common SQL parameter mistakes and parameter consistency if parameters are provided
     sql_warnings = []
-    if processed_parameters:
+    if processed_parameters and query_type == "native":
         parameter_names = [param["slug"] for param in processed_parameters if "slug" in param]
         sql_warnings.extend(detect_sql_parameter_mistakes(query, parameter_names))
         
@@ -540,39 +650,53 @@ async def create_card(
         if consistency_issues:
             sql_warnings.extend([f"PARAMETER CONSISTENCY: {issue}" for issue in consistency_issues])
     
-    # Step 1: Execute the query to validate it
-    execution_result = await execute_sql_query(client, database_id, query)
-    
-    if not execution_result["success"]:
-        # Return a concise error response if query validation fails
-        response = {
-            "success": False,
-            "error": execution_result["error"]
-        }
-        # Include SQL warnings if any were detected
-        if sql_warnings:
-            response["sql_warnings"] = sql_warnings
-            response["help"] = "Check your SQL parameter usage. Parameters substitute with proper formatting automatically."
+    # Step 1: For native queries, execute the query to validate it
+    # For MBQL queries, we skip execution validation per requirements
+    if query_type == "native":
+        execution_result = await execute_sql_query(client, database_id, query)
         
-        return json.dumps(response, indent=2)
+        if not execution_result["success"]:
+            # Return a concise error response if query validation fails
+            response = {
+                "success": False,
+                "error": execution_result["error"]
+            }
+            # Include SQL warnings if any were detected
+            if sql_warnings:
+                response["sql_warnings"] = sql_warnings
+                response["help"] = "Check your SQL parameter usage. Parameters substitute with proper formatting automatically."
+            
+            return json.dumps(response, indent=2)
+    else:
+        # For MBQL queries, create a placeholder execution result
+        execution_result = {"success": True, "result_metadata": []}
     
     # Step 2: Query is valid, create the card
     try:
         # Prepare the card creation payload
         card_data = {
             "name": name,
-            "dataset_query": {
+            "type": card_type,
+            "display": display,
+            "visualization_settings": visualization_settings or {}
+        }
+        
+        # Set dataset_query based on query type
+        if query_type == "native":
+            card_data["dataset_query"] = {
                 "database": database_id,
                 "native": {
                     "query": query,
                     "template-tags": template_tags
                 },
                 "type": "native"
-            },
-            "display": display,
-            "type": card_type,
-            "visualization_settings": visualization_settings or {}  # Use provided settings or empty dict
-        }
+            }
+        else:  # query_type == "query" (MBQL)
+            card_data["dataset_query"] = {
+                "database": database_id,
+                "query": query,
+                "type": "query"
+            }
         
         # Add parameters if provided
         if processed_parameters is not None:
@@ -633,11 +757,12 @@ async def create_card(
         )
 
 
-@mcp.tool(name="update_card", description="Update an existing card with optional parameters")
+@mcp.tool(name="update_card", description="Update an existing card with SQL or MBQL query")
 async def update_card(
     id: int,
     ctx: Context,
-    query: Optional[str] = None,
+    query_type: Optional[str] = None,
+    query: Optional[Union[str, Dict[str, Any]]] = None,
     name: Optional[str] = None,
     description: Optional[str] = None,
     collection_id: Optional[int] = None,
@@ -647,9 +772,62 @@ async def update_card(
     parameters: Optional[Union[str, List[Dict[str, Any]]]] = None
 ) -> str:
     """
-    Update an existing card with optional parameters, SQL query, or metadata.
+    Update an existing card with SQL or MBQL query, parameters, or metadata.
     
-    CUSTOMIZABLE FILTERS:
+    QUERY TYPES:
+    - "query": MBQL query (object) - **DEFAULT CHOICE** - Database-agnostic queries created by Metabase's UI
+    - "native": SQL query (string) - Only when you need raw SQL features not available in MBQL
+    
+    **🎯 MBQL IS THE DEFAULT CHOICE**
+    
+    MBQL (Metabase Query Language) is what Metabase's user-friendly UI generates when users create 
+    questions through the visual query builder. It's database-agnostic, structured, and should be 
+    your default choice unless you specifically need raw SQL capabilities.
+    
+    **Use MBQL ("query") when:**
+    - Updating standard analytical queries (aggregations, grouping, filtering)
+    - You want database-agnostic queries that work across different databases
+    - You want structured, validated queries with clear semantics
+    - You're modifying queries that Metabase's UI could generate
+    
+    **Use SQL ("native") only when:**
+    - You need database-specific SQL features not available in MBQL
+    - You need complex custom SQL logic
+    - You're working with existing SQL code
+    - You need template parameters for dynamic filtering
+    
+    **FOR MBQL QUERIES (query_type="query") - RECOMMENDED DEFAULT:**
+    
+    **IMPORTANT: Call GET_MBQL_SCHEMA first to understand the MBQL query format**
+    
+    MBQL provides a database-agnostic way to express analytical queries exactly like Metabase's UI:
+    - Source tables: {"source-table": 123} or nested queries
+    - Aggregations: [["count"], ["sum", ["field", 456, null]], ["avg", ["expression", "calc_field"]]]
+    - Breakouts: [["field", 789, {"temporal-unit": "month"}], ["expression", "custom_calc"]]
+    - Filters: ["=", ["field", 123, null], "value"] or [">", ["expression", "profit"], 100]
+    - Expressions: Custom calculated fields referenced as ["expression", "name"]
+    - Joins: Connect multiple tables or queries
+    
+    **⚠️ CRITICAL: Expression References**
+    - Use ["expression", "name"] to reference custom expressions in aggregations, breakouts, order-by, filters
+    - Use ["field", id, options] to reference database fields
+    - Expression references can include base-type: ["expression", "name", {"base-type": "type/Integer"}]
+    
+    Example with expressions:
+    ```json
+    {
+      "source-table": 1,
+      "expressions": {
+        "profit": ["-", ["field", 123, null], ["field", 456, null]]
+      },
+      "aggregation": [["avg", ["expression", "profit"]]],
+      "breakout": [["expression", "profit", {"base-type": "type/Float"}]],
+      "order-by": [["desc", ["expression", "profit"]]]
+    }
+    ```
+    
+    **FOR SQL QUERIES (query_type="native") - Only when MBQL isn't sufficient:**
+    
     When updating the query, you can use Metabase's template syntax for customizable filters:
     
     ⚠️ CRITICAL: NEVER add quotes around parameters! They substitute with proper formatting automatically.
@@ -692,7 +870,8 @@ async def update_card(
     Args:
         id: Card ID to update (required, must be a positive integer)
         ctx: MCP context
-        query: New SQL query string (optional, can include {{variable}} and [[optional]] syntax)
+        query_type: Type of query - "query" for MBQL (RECOMMENDED) or "native" for SQL (optional, required if query is provided)
+        query: Query content - MBQL object for "query" type, SQL string for "native" type (optional)
         name: New name for the card (optional)
         description: New description for the card (optional)
         collection_id: New collection ID to move the card to (optional)
@@ -704,10 +883,66 @@ async def update_card(
     Returns:
         JSON string with update result or error information
     """
-    logger.info(f"Tool called: update_card(id={id}, name={name}, display={display}, parameters={len(parameters) if isinstance(parameters, list) else 'string' if isinstance(parameters, str) else 0})")
+    logger.info(f"Tool called: update_card(id={id}, query_type={query_type}, name={name}, display={display}, parameters={len(parameters) if isinstance(parameters, list) else 'string' if isinstance(parameters, str) else 0})")
     
     # Get the client early so it's available for parameter processing
     client = get_metabase_client(ctx)
+    
+    # Validate query_type if provided
+    if query_type is not None:
+        valid_query_types = ["native", "query"]
+        if query_type not in valid_query_types:
+            return format_error_response(
+                status_code=400,
+                error_type="invalid_parameter",
+                message=f"Invalid query type: {query_type}. Must be one of: {', '.join(valid_query_types)}",
+                request_info={"card_id": id}
+            )
+    
+    # Validate that if query is provided, query_type is also provided
+    if query is not None and query_type is None:
+        return format_error_response(
+            status_code=400,
+            error_type="missing_parameter",
+            message="query_type parameter is required when query is provided",
+            request_info={"card_id": id}
+        )
+    
+    # Validate query parameter type based on query_type
+    if query is not None and query_type is not None:
+        if query_type == "native" and not isinstance(query, str):
+            return format_error_response(
+                status_code=400,
+                error_type="invalid_parameter",
+                message="For native query type, query must be a string (SQL)",
+                request_info={"card_id": id, "query_type": query_type}
+            )
+        
+        if query_type == "query" and not isinstance(query, dict):
+            return format_error_response(
+                status_code=400,
+                error_type="invalid_parameter",
+                message="For MBQL query type, query must be an object (MBQL structure)",
+                request_info={"card_id": id, "query_type": query_type}
+            )
+    
+    # Validate MBQL query if query_type is "query"
+    if query is not None and query_type == "query":
+        if MBQL_AVAILABLE:
+            validation_result = validate_mbql_query_helper(query)
+            if not validation_result["valid"]:
+                return json.dumps({
+                    "success": False,
+                    "error": "Invalid MBQL query",
+                    "validation_errors": validation_result["errors"],
+                    "help": "Call GET_MBQL_SCHEMA first to understand the correct MBQL format"
+                }, indent=2)
+        else:
+            return json.dumps({
+                "success": False,
+                "error": "MBQL functionality not available",
+                "message": "MBQL validation module could not be imported"
+            }, indent=2)
     
     # Initialize current_data as None
     current_data = None
@@ -855,7 +1090,7 @@ async def update_card(
                 )
             
             # Check for common SQL parameter mistakes and parameter consistency if parameters are provided
-            if processed_parameters:
+            if processed_parameters and query_type == "native":
                 parameter_names = [param["slug"] for param in processed_parameters if "slug" in param]
                 sql_warnings.extend(detect_sql_parameter_mistakes(query, parameter_names))
                 
@@ -863,7 +1098,7 @@ async def update_card(
                 consistency_issues = validate_sql_parameter_consistency(query, processed_parameters)
                 if consistency_issues:
                     sql_warnings.extend([f"PARAMETER CONSISTENCY: {issue}" for issue in consistency_issues])
-            elif "parameters" in update_data and update_data["parameters"]:
+            elif "parameters" in update_data and update_data["parameters"] and query_type == "native":
                 # If we're preserving existing parameters, validate them against the new query
                 preserved_params = update_data["parameters"]
                 consistency_issues = validate_sql_parameter_consistency(query, preserved_params)
@@ -876,35 +1111,46 @@ async def update_card(
                 existing_native = current_data["dataset_query"].get("native", {})
                 existing_template_tags = existing_native.get("template-tags", {})
             
-            # Validate the SQL query
-            execution_result = await execute_sql_query(client, database_id, query)
-            
-            if not execution_result["success"]:
-                # Return a concise error response if query validation fails
-                response = {
-                    "success": False,
-                    "error": execution_result["error"]
-                }
-                # Include SQL warnings if any were detected
-                if sql_warnings:
-                    response["sql_warnings"] = sql_warnings
-                    response["help"] = "Check your SQL parameter usage. Parameters substitute with proper formatting automatically."
+            # Validate the query based on type
+            if query_type == "native":
+                # Validate the SQL query
+                execution_result = await execute_sql_query(client, database_id, query)
                 
-                return json.dumps(response, indent=2)
-            
-            # Add the validated query to the update data
-            update_data["dataset_query"] = {
-                "type": "native",
-                "database": database_id,
-                "native": {
-                    "query": query,
-                    "template-tags": template_tags if template_tags else existing_template_tags
+                if not execution_result["success"]:
+                    # Return a concise error response if query validation fails
+                    response = {
+                        "success": False,
+                        "error": execution_result["error"]
+                    }
+                    # Include SQL warnings if any were detected
+                    if sql_warnings:
+                        response["sql_warnings"] = sql_warnings
+                        response["help"] = "Check your SQL parameter usage. Parameters substitute with proper formatting automatically."
+                    
+                    return json.dumps(response, indent=2)
+                
+                # Add the validated SQL query to the update data
+                update_data["dataset_query"] = {
+                    "type": "native",
+                    "database": database_id,
+                    "native": {
+                        "query": query,
+                        "template-tags": template_tags if template_tags else existing_template_tags
+                    }
                 }
-            }
+                
+                # If we have result metadata from the query execution, include it
+                if "result_metadata" in execution_result:
+                    update_data["result_metadata"] = execution_result["result_metadata"]
             
-            # If we have result metadata from the query execution, include it
-            if "result_metadata" in execution_result:
-                update_data["result_metadata"] = execution_result["result_metadata"]
+            else:  # query_type == "query" (MBQL)
+                # For MBQL queries, we don't execute them (per requirements)
+                # Just add the MBQL query to the update data
+                update_data["dataset_query"] = {
+                    "type": "query",
+                    "database": database_id,
+                    "query": query
+                }
         
         # If no fields were provided to update, return early
         if not update_data:
