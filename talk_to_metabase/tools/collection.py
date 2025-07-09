@@ -272,3 +272,66 @@ async def view_collection_contents(
             message=str(e),
             request_info={"endpoint": f"/api/{endpoint}", "method": "GET", "params": params}
         )
+
+
+@mcp.tool(name="create_collection", description="Create a new collection")
+async def create_collection(
+    name: str,
+    ctx: Context,
+    description: Optional[str] = None,
+    parent_id: Optional[int] = None
+) -> str:
+    """
+    Create a new collection.
+    
+    Args:
+        name: Collection name
+        ctx: MCP context
+        description: Collection description (optional)
+        parent_id: Parent collection ID to place this collection under (optional)
+        
+    Returns:
+        Created collection data as JSON string with essential information
+    """
+    logger.info(f"Tool called: create_collection(name={name}, description={description}, parent_id={parent_id})")
+    client = get_metabase_client(ctx)
+    
+    # Build collection data
+    collection_data = {
+        "name": name
+    }
+    
+    if description:
+        collection_data["description"] = description
+    
+    if parent_id:
+        collection_data["parent_id"] = parent_id
+    
+    try:
+        data = await client.create_resource("collection", collection_data)
+        
+        # Return a concise success response with essential info
+        response = {
+            "success": True,
+            "collection_id": data.get("id"),
+            "name": data.get("name")
+        }
+        
+        response_json = json.dumps(response, indent=2)
+        
+        # Check response size before returning
+        metabase_ctx = ctx.request_context.lifespan_context
+        config = metabase_ctx.auth.config
+        return check_response_size(response_json, config)
+    except Exception as e:
+        logger.error(f"Error creating collection: {e}")
+        return format_error_response(
+            status_code=500,
+            error_type="creation_error",
+            message=str(e),
+            request_info={
+                "endpoint": "/api/collection",
+                "method": "POST",
+                "params": collection_data
+            }
+        )
