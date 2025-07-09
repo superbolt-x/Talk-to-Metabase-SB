@@ -1670,7 +1670,7 @@ The following table shows the Metabase API endpoints that correspond to existing
 | | `DELETE /api/card/{id}` | `delete_card` | 📝 Planned |
 | **Collection Operations** | `GET /api/collection/root/items` & `GET /api/collection/{id}/items` | `explore_collection_tree` & `view_collection_contents` | ✅ Implemented |
 | | `GET /api/collection/{id}` | `get_collection` | 📝 Planned |
-| | `POST /api/collection/` | `create_collection` | 📝 Planned |
+| | `POST /api/collection/` | `create_collection` | ✅ Implemented |
 | | `PUT /api/collection/{id}` | `update_collection` | 📝 Planned |
 | **Database Operations** | `GET /api/database/` | `list_databases` | ✅ Implemented (simplified output) |
 | | `GET /api/database/{id}/metadata` | `get_database_metadata` | ✅ Implemented (with schema organization) |
@@ -2259,6 +2259,91 @@ Both tools support filtering and summarizing the following model types:
 - Items are simplified to include only essential fields for efficient exploration
 
 This two-tool approach provides both efficient collection hierarchy navigation and detailed content viewing, allowing Claude to choose the appropriate tool based on the user's needs.
+
+### 3. Collection Creation Tool (`create_collection`)
+
+This tool provides a simple interface for creating new collections in Metabase with optional nesting capabilities.
+
+#### Key Features
+
+1. **Simple Interface**: Minimal required parameters with optional description and parent collection
+2. **Collection Nesting**: Support for creating child collections by specifying a parent_id
+3. **Minimal Response**: Returns only essential information (success status, collection_id, name)
+4. **Consistent Error Handling**: Uses the standard error response format with detailed information
+5. **Clean Integration**: Follows the same patterns as other creation tools in the project
+
+#### Usage Examples
+
+**Create a top-level collection:**
+```json
+{
+  "method": "tools/call",
+  "params": {
+    "name": "create_collection",
+    "arguments": {
+      "name": "Marketing Analytics",
+      "description": "Collection for marketing team dashboards and reports"
+    }
+  },
+  "jsonrpc": "2.0",
+  "id": 1
+}
+```
+
+**Create a nested collection:**
+```json
+{
+  "method": "tools/call",
+  "params": {
+    "name": "create_collection",
+    "arguments": {
+      "name": "Q4 2024 Reports",
+      "description": "Fourth quarter reports and analysis",
+      "parent_id": 123
+    }
+  },
+  "jsonrpc": "2.0",
+  "id": 2
+}
+```
+
+#### Response Structure
+
+**Success Response:**
+```json
+{
+  "success": true,
+  "collection_id": 456,
+  "name": "Marketing Analytics"
+}
+```
+
+**Error Response:**
+```json
+{
+  "success": false,
+  "error": {
+    "status_code": 400,
+    "error_type": "creation_error",
+    "message": "Collection name cannot be empty",
+    "request_info": {
+      "endpoint": "/api/collection",
+      "method": "POST",
+      "params": {
+        "name": ""
+      }
+    }
+  }
+}
+```
+
+#### Implementation Details
+
+- Uses the `client.create_resource("collection", collection_data)` method following established patterns
+- Validates input parameters and builds the appropriate request payload
+- Returns only essential information to minimize response size
+- Includes proper logging for debugging and monitoring
+- Follows the same error handling patterns as other creation tools
 
 ## Dataset Query Tool
 
