@@ -4,7 +4,7 @@
 
 ### Step 1: Download the Executable
 
-Download the appropriate file for your platform from the [latest release](https://github.com/VincentGefflaut/Talk-to-Metabase/releases/latest):
+Download the appropriate file for your platform from the [latest release](https://github.com/superbolt-x/Talk-to-Metabase-SB/releases/latest):
 
 | Platform | File | Architecture |
 |----------|------|-------------|
@@ -113,7 +113,7 @@ notepad %APPDATA%\Claude\claude_desktop_config.json
 
 ```bash
 # Clone the repository
-git clone https://github.com/VincentGefflaut/Talk-to-Metabase.git
+git clone https://github.com/superbolt-x/Talk-to-Metabase-SB.git
 cd Talk-to-Metabase
 
 # Install in development mode

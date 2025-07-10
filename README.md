@@ -17,7 +17,7 @@ Talk to Metabase is a sophisticated MCP server that transforms LLM clients like 
 
 ### Option 1: Download Prebuilt Executable (Recommended)
 
-1. **Download** the appropriate executable for your platform from the [latest release](https://github.com/vincentgefflaut/talk-to-metabase/releases/latest):
+1. **Download** the appropriate executable for your platform from the [latest release](https://github.com/superbolt-x/talk-to-metabase-sb/releases/latest):
    - `talk-to-metabase-macos-intel.tar.gz` - Intel Mac (x86_64)
    - `talk-to-metabase-macos-apple-silicon.tar.gz` - Apple Silicon Mac (M1/M2/M3)
    - `talk-to-metabase-linux.tar.gz` - Linux (x86_64)
@@ -41,7 +41,7 @@ Talk to Metabase is a sophisticated MCP server that transforms LLM clients like 
 
 ```bash
 # Clone the repository
-git clone https://github.com/vincentgefflaut/talk-to-metabase.git
+git clone https://github.com/superbolt-x/Talk-to-Metabase-SB.git
 cd talk-to-metabase
 
 # Create and activate virtual environment

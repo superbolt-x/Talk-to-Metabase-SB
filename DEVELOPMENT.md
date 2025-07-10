@@ -345,7 +345,7 @@ Database-agnostic query language:
 
 ```bash
 # Clone the repository
-git clone https://github.com/vincentgefflaut/talk-to-metabase.git
+git clone https://github.com/superbolt-x/Talk-to-Metabase-SB.git
 cd talk-to-metabase
 
 # Create virtual environment
